@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import * as authApi from '../api/authApi';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface AdminGuardProps {
   children: React.ReactNode;
@@ -8,14 +9,11 @@ interface AdminGuardProps {
 const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   const [isAuthed, setIsAuthed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       await authApi.getMe();
       setIsAuthed(true);
@@ -24,20 +22,37 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void checkAuth();
+  }, [checkAuth]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+
     try {
       await authApi.login(password);
       setIsAuthed(true);
-      setError('');
     } catch {
       setError('비밀번호가 올바르지 않습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (isLoading) return null; // Or a loading spinner
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 text-[var(--text)]">
+        <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+          <LoadingSpinner message="관리자 인증 확인 중..." />
+        </div>
+      </div>
+    );
+  }
+
   if (isAuthed) return <>{children}</>;
 
   return (
@@ -57,7 +72,13 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
               type="password"
               autoFocus
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              disabled={isSubmitting}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (error) {
+                  setError('');
+                }
+              }}
               className="mt-2 w-full rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-4 py-3 text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
               placeholder="••••••••"
               aria-label="관리자 비밀번호"
@@ -66,9 +87,10 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
           {error && <p className="text-sm text-[var(--accent-strong)]">{error}</p>}
           <button
             type="submit"
+            disabled={isSubmitting}
             className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white"
           >
-            로그인
+            {isSubmitting ? '로그인 중...' : '로그인'}
           </button>
         </form>
         <div className="mt-4 text-center">

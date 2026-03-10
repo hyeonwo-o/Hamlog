@@ -668,7 +668,10 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.match(rssResponse.text, /meta-scheduled-visible/);
     assert.doesNotMatch(rssResponse.text, /meta-future-post/);
     assert.doesNotMatch(rssResponse.text, /meta-draft-post/);
-    assert.match(rssResponse.text, /Sat, 08 Mar 2026 04:05:06 GMT/);
+    assert.match(
+        rssResponse.text,
+        new RegExp(new Date('2026-03-08T04:05:06.000Z').toUTCString())
+    );
 
     const sitemapResponse = await request(app).get('/sitemap.xml');
     assert.equal(sitemapResponse.status, 200);

@@ -1,4 +1,4 @@
-import { requestJson } from './client';
+import { requestJson, requestVoid } from './client';
 
 export interface User {
     role: string;
@@ -20,7 +20,7 @@ export const login = async (password: string): Promise<AuthResponse> => {
 };
 
 export const logout = async (): Promise<void> => {
-    return requestJson<void>('/auth/logout', {
+    return requestVoid('/auth/logout', {
         method: 'POST',
     });
 };
