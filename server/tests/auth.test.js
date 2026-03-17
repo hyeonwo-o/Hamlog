@@ -52,3 +52,42 @@ test('POST /api/auth/login should issue cross-site compatible cookie when CORS o
         }
     }
 });
+
+test('POST /api/auth/login should avoid secure cookie for direct HTTP same-origin access', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousCorsOrigins = process.env.CORS_ORIGINS;
+    const previousCookieSameSite = process.env.COOKIE_SAME_SITE;
+    const previousCookieSecure = process.env.COOKIE_SECURE;
+
+    process.env.NODE_ENV = 'production';
+    delete process.env.CORS_ORIGINS;
+    delete process.env.COOKIE_SAME_SITE;
+    delete process.env.COOKIE_SECURE;
+
+    try {
+        const response = await request(app)
+            .post('/api/auth/login')
+            .send({ password: process.env.ADMIN_PASSWORD ?? 'test-password' });
+
+        assert.equal(response.status, 200);
+
+        const setCookie = response.headers['set-cookie']?.[0] ?? '';
+        assert.match(setCookie, /SameSite=Lax/i);
+        assert.doesNotMatch(setCookie, /Secure/i);
+    } finally {
+        process.env.NODE_ENV = previousNodeEnv;
+        process.env.CORS_ORIGINS = previousCorsOrigins;
+
+        if (previousCookieSameSite === undefined) {
+            delete process.env.COOKIE_SAME_SITE;
+        } else {
+            process.env.COOKIE_SAME_SITE = previousCookieSameSite;
+        }
+
+        if (previousCookieSecure === undefined) {
+            delete process.env.COOKIE_SECURE;
+        } else {
+            process.env.COOKIE_SECURE = previousCookieSecure;
+        }
+    }
+});

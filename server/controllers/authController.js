@@ -18,7 +18,20 @@ const resolveCookieSameSite = () => {
     return process.env.CORS_ORIGINS?.trim() ? 'none' : 'lax';
 };
 
-const resolveCookieSecure = (sameSite) => {
+const getForwardedProto = (req) => (
+    String(req.get('x-forwarded-proto') ?? '')
+        .split(',')[0]
+        .trim()
+        .toLowerCase()
+);
+
+const isHttpsRequest = (req) => (
+    req.secure
+    || req.protocol === 'https'
+    || getForwardedProto(req) === 'https'
+);
+
+const resolveCookieSecure = (req, sameSite) => {
     const configured = String(process.env.COOKIE_SECURE ?? '').trim().toLowerCase();
 
     if (configured === 'true') {
@@ -29,23 +42,27 @@ const resolveCookieSecure = (sameSite) => {
         return false;
     }
 
-    return process.env.NODE_ENV === 'production' || sameSite === 'none';
+    if (sameSite === 'none') {
+        return true;
+    }
+
+    return isHttpsRequest(req);
 };
 
-const buildAuthCookieOptions = () => {
+const buildAuthCookieOptions = (req) => {
     const sameSite = resolveCookieSameSite();
 
     return {
         httpOnly: true,
-        secure: resolveCookieSecure(sameSite),
+        secure: resolveCookieSecure(req, sameSite),
         sameSite,
         path: '/',
         maxAge: AUTH_COOKIE_MAX_AGE
     };
 };
 
-const buildAuthClearCookieOptions = () => {
-    const { httpOnly, secure, sameSite, path } = buildAuthCookieOptions();
+const buildAuthClearCookieOptions = (req) => {
+    const { httpOnly, secure, sameSite, path } = buildAuthCookieOptions(req);
     return { httpOnly, secure, sameSite, path };
 };
 
@@ -59,7 +76,7 @@ export const login = (req, res) => {
     // Role is simple: 'admin'
     const user = { role: 'admin' };
     const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-    const cookieOptions = buildAuthCookieOptions();
+    const cookieOptions = buildAuthCookieOptions(req);
 
     res.cookie('token', token, cookieOptions);
 
@@ -67,7 +84,7 @@ export const login = (req, res) => {
 };
 
 export const logout = (req, res) => {
-    res.clearCookie('token', buildAuthClearCookieOptions());
+    res.clearCookie('token', buildAuthClearCookieOptions(req));
     res.json({ message: '로그아웃 성공' });
 };
 
