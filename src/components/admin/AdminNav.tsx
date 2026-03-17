@@ -8,7 +8,7 @@ interface AdminNavProps {
 }
 
 const AdminNav: React.FC<AdminNavProps> = ({ activeSection, sections, onChange }) => (
-  <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
+  <div className="angular-panel rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
     <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
       관리 메뉴
     </p>
@@ -18,7 +18,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ activeSection, sections, onChange }
           key={item.key}
           type="button"
           onClick={() => onChange(item.key)}
-          className={`flex items-center justify-center rounded-lg border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${activeSection === item.key
+          className={`angular-control flex items-center justify-center rounded-lg border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${activeSection === item.key
               ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
               : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[color:var(--accent)] hover:text-[var(--text)]'
             }`}

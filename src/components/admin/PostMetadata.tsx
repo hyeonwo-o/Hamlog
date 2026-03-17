@@ -33,8 +33,8 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
                     onChange={(category) => updateDraft({ category })}
                     defaultOptionLabel={DEFAULT_CATEGORY}
                     recentStorageKey="hamlog:admin:editor-categories"
-                    triggerClassName={`flex w-full items-center justify-between rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] transition-colors hover:border-[color:var(--accent)]`}
-                    panelClassName="absolute left-0 top-full z-50 mt-2 w-full min-w-[280px] rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-2xl"
+                    triggerClassName={`angular-control flex w-full items-center justify-between rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] transition-colors hover:border-[color:var(--accent)]`}
+                    panelClassName="angular-panel absolute left-0 top-full z-50 mt-2 w-full min-w-[280px] rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-2xl"
                 />
             </div>
 
@@ -48,14 +48,14 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
                         type="datetime-local"
                         value={draft.scheduledAt}
                         onChange={(e) => updateDraft({ scheduledAt: e.target.value })}
-                        className={`w-full rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
+                        className={`angular-control w-full rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
                     />
                 ) : (
                     <input
                         type="date"
                         value={draft.publishedAt}
                         onChange={(e) => updateDraft({ publishedAt: e.target.value })}
-                        className={`w-full rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
+                        className={`angular-control w-full rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
                     />
                 )}
             </div>
@@ -68,7 +68,7 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
                         value={draft.cover}
                         onChange={(e) => updateDraft({ cover: e.target.value })}
                         placeholder="https://..."
-                        className={`flex-1 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
+                        className={`angular-control flex-1 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
                     />
                     <input
                         ref={coverInputRef}
@@ -86,7 +86,7 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
                     <button
                         type="button"
                         onClick={() => coverInputRef.current?.click()}
-                        className={`rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface-muted)]' : 'bg-[var(--surface)]'} px-3 py-2 text-sm font-medium hover:bg-[var(--surface-muted)]`}
+                        className={`angular-control rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface-muted)]' : 'bg-[var(--surface)]'} px-3 py-2 text-sm font-medium hover:bg-[var(--surface-muted)]`}
                         title="이미지 업로드"
                     >
                         📁
@@ -102,10 +102,10 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
                         value={draft.summary}
                         onChange={(e) => updateDraft({ summary: e.target.value })}
                         rows={1}
-                        className={`flex-1 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none resize-none`}
+                        className={`angular-control flex-1 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none resize-none`}
                         placeholder="글 요약..."
                     />
-                    <label className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 transition-colors ${draft.featured ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]' : `border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} text-[var(--text-muted)]`}`}>
+                    <label className={`angular-control flex cursor-pointer items-center gap-2 rounded-xl border px-3 transition-colors ${draft.featured ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]' : `border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} text-[var(--text-muted)]`}`}>
                         <input type="checkbox" checked={draft.featured} onChange={(e) => updateDraft({ featured: e.target.checked })} className="hidden" />
                         <span className="text-xs font-bold">추천</span>
                     </label>

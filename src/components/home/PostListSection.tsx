@@ -59,7 +59,7 @@ export const PostListSection = ({
                     )}
 
                     {filteredPosts.length === 0 && hasLoaded && !loading && !error && (
-                        <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-8 text-center">
+                        <div className="angular-panel rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-8 text-center">
                             <h3 className="font-display text-lg font-semibold">
                                 조건에 맞는 글이 없어요
                             </h3>
@@ -71,7 +71,7 @@ export const PostListSection = ({
                                     <button
                                         type="button"
                                         onClick={onClearTag}
-                                        className="rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]"
+                                        className="angular-control rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]"
                                     >
                                         태그 해제
                                     </button>
@@ -80,7 +80,7 @@ export const PostListSection = ({
                                     <button
                                         type="button"
                                         onClick={() => onSelectCategory(null)}
-                                        className="rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]"
+                                        className="angular-control rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]"
                                     >
                                         카테고리 해제
                                     </button>
@@ -89,7 +89,7 @@ export const PostListSection = ({
                                     <button
                                         type="button"
                                         onClick={onClearSearch}
-                                        className="rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]"
+                                        className="angular-control rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]"
                                     >
                                         검색 초기화
                                     </button>

@@ -62,7 +62,7 @@ export default function AdminSidebar({
   ];
 
   return (
-    <aside className="flex h-full flex-col gap-5 overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] lg:sticky lg:top-24 lg:h-[calc(100vh-110px)]">
+    <aside className="angular-panel flex h-full flex-col gap-5 overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] lg:sticky lg:top-24 lg:h-[calc(100vh-110px)]">
       <SidebarSummary
         totalCount={totalCount}
         statusCount={statusCount}

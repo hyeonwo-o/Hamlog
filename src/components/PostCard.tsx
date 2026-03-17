@@ -11,7 +11,7 @@ interface PostCardProps {
 
 // Sub-components
 const CategoryBadge: React.FC<{ category?: string; className?: string }> = ({ category, className }) => (
-  <span className={`rounded-lg border border-[color:var(--accent)] bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--accent-strong)] ${className}`}>
+  <span className={`angular-chip rounded-lg border border-[color:var(--accent)] bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--accent-strong)] ${className}`}>
     {category ?? '미분류'}
   </span>
 );
@@ -30,7 +30,7 @@ const TagList: React.FC<{ tags: string[] }> = ({ tags }) => (
     {tags.map(tag => (
       <span
         key={tag}
-        className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]"
+        className="angular-chip rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]"
       >
         #{tag}
       </span>
@@ -42,8 +42,8 @@ const PostImage: React.FC<{ post: Post; variant: 'featured' | 'compact' }> = ({ 
   if (!post.cover) return null;
 
   const wrapperClass = variant === 'featured'
-    ? "relative overflow-hidden rounded-lg"
-    : "overflow-hidden rounded-lg md:h-32 md:w-48";
+    ? "angular-control relative overflow-hidden rounded-lg"
+    : "angular-control overflow-hidden rounded-lg md:h-32 md:w-48";
 
   const imgClass = variant === 'featured'
     ? "h-40 w-full object-cover transition duration-500 group-hover:scale-105"
@@ -58,7 +58,7 @@ const PostImage: React.FC<{ post: Post; variant: 'featured' | 'compact' }> = ({ 
         loading="lazy"
       />
       {variant === 'featured' && (
-        <span className="absolute left-3 top-3 rounded-lg bg-[var(--surface-strong)] px-2 py-0.5 text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] backdrop-blur-sm">
+        <span className="angular-chip absolute left-3 top-3 rounded-lg border border-[color:var(--border)] bg-[var(--surface-strong)] px-2 py-0.5 text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] backdrop-blur-sm">
           {post.category ?? '미분류'}
         </span>
       )}
@@ -72,8 +72,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
   const isFeatured = variant === 'featured';
 
   const containerClass = isFeatured
-    ? "group flex h-full flex-col gap-3 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-strong)] animate-slide-up"
-    : "group flex flex-col gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 transition duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow)] animate-slide-up";
+    ? "angular-panel-strong group flex h-full flex-col gap-3 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] transition duration-300 hover:translate-x-1 hover:-translate-y-1 hover:shadow-[var(--shadow-strong)] animate-slide-up"
+    : "angular-panel group flex flex-col gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 transition duration-300 hover:translate-x-1 hover:-translate-y-1 hover:shadow-[var(--shadow)] animate-slide-up";
 
   return (
     <Link

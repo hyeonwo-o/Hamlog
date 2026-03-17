@@ -33,7 +33,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                     </span>
                     <button
                         onClick={toggleTheme}
-                        className="rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text)]"
+                        className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text)]"
                         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                     >
                         {theme === 'dark' ? <Sun size={20} strokeWidth={1.5} /> : <Moon size={20} strokeWidth={1.5} />}
@@ -55,7 +55,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                             <div className="flex flex-wrap gap-3">
                                 <a
                                     href={`mailto:${profile.email}`}
-                                    className="group inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-transparent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-all hover:border-[var(--text)] hover:text-[var(--text)] active:scale-95"
+                                    className="angular-control group inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-transparent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-all hover:translate-x-1 hover:-translate-y-1 hover:border-[var(--text)] hover:text-[var(--text)] active:scale-95"
                                 >
                                     메일 보내기
                                 </a>
@@ -64,19 +64,19 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
 
                         <div className="pt-4">
                             <dl className="grid grid-cols-4 gap-6 border-t border-[color:var(--border)] pt-6">
-                                <div>
+                                <div className="angular-control border border-[color:var(--border)] bg-[var(--surface-muted)] p-3">
                                     <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Post</dt>
                                     <dd className="mt-1 font-display text-xl font-bold text-[var(--text)]">{postCount}</dd>
                                 </div>
-                                <div>
+                                <div className="angular-control border border-[color:var(--border)] bg-[var(--surface-muted)] p-3">
                                     <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Tag</dt>
                                     <dd className="mt-1 font-display text-xl font-bold text-[var(--text)]">{tagCount}</dd>
                                 </div>
-                                <div>
+                                <div className="angular-control border border-[color:var(--border)] bg-[var(--surface-muted)] p-3">
                                     <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Category</dt>
                                     <dd className="mt-1 font-display text-xl font-bold text-[var(--text)]">{categoryCount}</dd>
                                 </div>
-                                <div>
+                                <div className="angular-control border border-[color:var(--border)] bg-[var(--surface-muted)] p-3">
                                     <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Series</dt>
                                     <dd className="mt-1 font-display text-xl font-bold text-[var(--text)]">{seriesCount}</dd>
                                 </div>
@@ -85,13 +85,13 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                     </div>
 
                     <div>
-                        <div className="space-y-6 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+                        <div className="angular-panel-strong space-y-6 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
                             <div className="flex items-center gap-4">
                                 {profile.display.showProfileImage && profile.profileImage && (
                                     <img
                                         src={profile.profileImage}
                                         alt={`${profile.name} portrait`}
-                                        className="h-16 w-16 rounded-lg object-cover"
+                                        className="angular-control h-16 w-16 rounded-lg object-cover"
                                         loading="lazy"
                                     />
                                 )}
@@ -111,7 +111,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                             href={profile.social.github}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                                             aria-label="GitHub"
                                         >
                                             <Github size={18} />
@@ -122,7 +122,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                             href={profile.social.linkedin}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                                             aria-label="LinkedIn"
                                         >
                                             <Linkedin size={18} />
@@ -133,7 +133,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                             href={profile.social.twitter}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                                             aria-label="Twitter"
                                         >
                                             <Twitter size={18} />
@@ -144,7 +144,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                             href={profile.social.instagram}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                                             aria-label="Instagram"
                                         >
                                             <Instagram size={18} />
@@ -155,7 +155,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                             href={profile.social.threads}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                                             aria-label="Threads"
                                         >
                                             <AtSign size={18} />
@@ -166,7 +166,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                             href={profile.social.telegram}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                                             aria-label="Telegram"
                                         >
                                             <Send size={18} />
@@ -175,7 +175,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                     {profile.display.showEmail && profile.email && (
                                         <a
                                             href={`mailto:${profile.email}`}
-                                            className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
                                             aria-label="Email"
                                         >
                                             <Mail size={18} />
@@ -201,7 +201,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                                         {profile.stack.map(item => (
                                             <span
                                                 key={item}
-                                                className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] text-[var(--text-muted)]"
+                                                className="angular-chip rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-1 text-[11px] text-[var(--text-muted)]"
                                             >
                                                 {item}
                                             </span>

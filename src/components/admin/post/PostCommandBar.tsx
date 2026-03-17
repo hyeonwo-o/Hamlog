@@ -44,7 +44,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
   onDelete
 }) => {
   return (
-    <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface-muted)] p-4">
+    <div className="angular-control rounded-xl border border-[color:var(--border)] bg-[var(--surface-muted)] p-4">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
@@ -70,14 +70,14 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
                 <button
                   type="button"
                   onClick={() => onRestoreAutosave?.()}
-                  className="rounded-lg border border-[color:var(--border)] px-2.5 py-1 text-[var(--text)] transition hover:border-[color:var(--accent)]"
+                  className="angular-control rounded-lg border border-[color:var(--border)] px-2.5 py-1 text-[var(--text)] transition hover:border-[color:var(--accent)]"
                 >
                   복구
                 </button>
                 <button
                   type="button"
                   onClick={() => onDiscardAutosave?.()}
-                  className="rounded-lg border border-[color:var(--border)] px-2.5 py-1 transition hover:border-red-300 hover:text-red-500"
+                  className="angular-control rounded-lg border border-[color:var(--border)] px-2.5 py-1 transition hover:border-red-300 hover:text-red-500"
                 >
                   삭제
                 </button>
@@ -91,7 +91,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
                 key={option.value}
                 type="button"
                 onClick={() => onStatusChange(option.value)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                className={`angular-control rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                   status === option.value
                     ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
                     : 'border-[color:var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[color:var(--accent)] hover:text-[var(--text)]'
@@ -107,7 +107,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
           <button
             type="button"
             onClick={onTogglePreview}
-            className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-semibold text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
+            className="angular-control inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-semibold text-[var(--text)] transition hover:translate-x-1 hover:-translate-y-1 hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
           >
             {previewMode ? <EyeOff size={14} /> : <Eye size={14} />}
             {previewMode ? '편집 보기' : '미리보기'}
@@ -116,7 +116,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-semibold text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50"
+            className="angular-control inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-semibold text-[var(--text)] transition hover:translate-x-1 hover:-translate-y-1 hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50"
           >
             <Save size={14} />
             {saving ? '저장 중' : '저장'}
@@ -125,7 +125,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             type="button"
             onClick={onPublish}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--text)] px-4 py-2 text-xs font-semibold text-[var(--bg)] transition hover:opacity-90 disabled:opacity-50"
+            className="angular-control inline-flex items-center gap-2 rounded-lg bg-[var(--text)] px-4 py-2 text-xs font-semibold text-[var(--bg)] transition hover:translate-x-1 hover:-translate-y-1 hover:opacity-90 disabled:opacity-50"
           >
             <Send size={14} />
             발행
@@ -134,7 +134,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             <button
               type="button"
               onClick={onDelete}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-50"
+              className="angular-control inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-500 transition hover:translate-x-1 hover:-translate-y-1 hover:bg-red-50"
             >
               <Trash2 size={14} />
               삭제

@@ -9,7 +9,7 @@
   color-scheme: light;
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-muted: #f1ece5;
+  --surface-muted: #efe8de;
   --surface-overlay: rgba(255, 255, 255, 0.86);
   --surface-strong: rgba(255, 255, 255, 0.92);
   --text: #1d1916;
@@ -17,13 +17,17 @@
   --accent: #0f766e;
   --accent-strong: #0a4a45;
   --accent-soft: rgba(15, 118, 110, 0.25);
-  --border: rgba(29, 25, 22, 0.12);
-  --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-  --shadow-strong: 0 24px 60px rgba(15, 23, 42, 0.16);
+  --border: rgba(29, 25, 22, 0.16);
+  --border-strong: rgba(29, 25, 22, 0.28);
+  --shadow: 0 0 0 1px rgba(29, 25, 22, 0.08), 10px 10px 0 rgba(15, 23, 42, 0.08);
+  --shadow-strong: 0 0 0 1px rgba(10, 74, 69, 0.14), 16px 16px 0 rgba(15, 23, 42, 0.14);
   --font-body: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
   --font-display: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'Menlo', monospace;
-  --bg-overlay: none;
+  --bg-overlay:
+    linear-gradient(rgba(29, 25, 22, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 25, 22, 0.04) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 42%);
 }
 
 [data-theme='dark'] {
@@ -38,10 +42,13 @@
   --accent: #2dd4bf;
   --accent-strong: #14b8a6;
   --accent-soft: rgba(45, 212, 191, 0.25);
-  --border: rgba(255, 255, 255, 0.12);
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
-  --shadow-strong: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --border: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.26);
+  --shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 10px 10px 0 rgba(0, 0, 0, 0.32);
+  --shadow-strong: 0 0 0 1px rgba(45, 212, 191, 0.12), 16px 16px 0 rgba(0, 0, 0, 0.42);
   --bg-overlay:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     radial-gradient(600px circle at 10% -10%, rgba(15, 118, 110, 0.12), transparent 60%),
     radial-gradient(500px circle at 90% 10%, rgba(241, 195, 89, 0.18), transparent 55%),
     radial-gradient(500px circle at 15% 80%, rgba(12, 74, 110, 0.12), transparent 60%);
@@ -59,6 +66,7 @@ body::before {
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
+  background-size: 28px 28px, 28px 28px, auto, auto, auto;
   z-index: -1;
   pointer-events: none;
 }
@@ -69,6 +77,34 @@ body::before {
 
 .font-mono {
   font-family: var(--font-mono);
+}
+
+@layer components {
+  .angular-panel {
+    border-radius: 4px !important;
+    box-shadow: var(--shadow);
+  }
+
+  .angular-panel-strong {
+    border-radius: 4px !important;
+    box-shadow: var(--shadow-strong);
+  }
+
+  .angular-control {
+    border-radius: 3px !important;
+  }
+
+  .angular-chip {
+    border-radius: 2px !important;
+  }
+
+  .angular-stage {
+    border-radius: 4px !important;
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+    background-image:
+      linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34%),
+      linear-gradient(180deg, var(--surface), var(--surface-muted));
+  }
 }
 
 .post-content {
@@ -182,7 +218,7 @@ body::before {
   border-left: 4px solid var(--accent);
   padding: 1.5rem 2rem;
   background: var(--surface-muted);
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 4px 4px 0;
   color: var(--text);
   font-style: italic;
   font-size: 1.1rem;
@@ -194,7 +230,7 @@ body::before {
 .tiptap-editor table {
   width: 100%;
   border-collapse: collapse;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
   font-size: 0.95rem;
 }
@@ -220,7 +256,7 @@ body::before {
   background: var(--accent-soft);
   color: var(--text);
   padding: 0 3px;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .tiptap-editor .selectedCell {
@@ -229,7 +265,7 @@ body::before {
 
 .rich-content pre,
 .tiptap-editor pre {
-  border-radius: 16px;
+  border-radius: 4px;
   background: #0f172a;
   color: #e2e8f0;
   overflow: hidden;
@@ -249,7 +285,7 @@ body::before {
 .tiptap-editor :not(pre)>code {
   background: var(--surface-muted);
   padding: 2px 6px;
-  border-radius: 8px;
+  border-radius: 3px;
   color: var(--text);
 }
 

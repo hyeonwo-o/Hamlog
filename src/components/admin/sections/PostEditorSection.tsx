@@ -133,7 +133,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
     <div className="mx-auto max-w-[1600px]">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
-          <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+          <div className="angular-panel rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
             <div className="space-y-6">
               <PostEditorHeader
                 activeId={activeId}

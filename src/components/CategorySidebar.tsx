@@ -61,7 +61,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                     <button
                         type="button"
                         onClick={() => onSelectCategory(isActive ? null : node.name)}
-                        className={`flex flex-1 items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${isActive
+                        className={`angular-control flex flex-1 items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${isActive
                             ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
                             : 'border-[color:var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)] hover:border-[color:var(--accent)] hover:text-[var(--text)]'
                             }`}
@@ -69,7 +69,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                         <span className="flex min-w-0 items-center gap-2">
                             <span className="truncate">{node.name}</span>
                             {node.hasNew && (
-                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-white">
+                                <span className="angular-chip inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-white">
                                     N
                                 </span>
                             )}
@@ -88,7 +88,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
     return (
         <aside className="space-y-4">
-            <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] lg:sticky lg:top-6">
+            <div className="angular-panel rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] lg:sticky lg:top-6">
                 <div className="flex items-center justify-between">
                     <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
                         카테고리
@@ -101,7 +101,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                     <button
                         type="button"
                         onClick={() => onSelectCategory(null)}
-                        className={`flex w-full items-center justify-between rounded-lg border px-4 py-2 text-sm transition ${selectedCategory === null
+                        className={`angular-control flex w-full items-center justify-between rounded-lg border px-4 py-2 text-sm transition ${selectedCategory === null
                             ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
                             : 'border-[color:var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)] hover:border-[color:var(--accent)] hover:text-[var(--text)]'
                             }`}
@@ -109,7 +109,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                         <span className="flex items-center gap-2">
                             <span>분류 전체보기</span>
                             {categoryTree.hasNew && (
-                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-white">
+                                <span className="angular-chip inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-white">
                                     N
                                 </span>
                             )}
