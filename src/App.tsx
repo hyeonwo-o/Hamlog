@@ -54,6 +54,14 @@ const router = createBrowserRouter([
     )
   },
   {
+    path: '/p/:slug',
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <PostPage />
+      </Suspense>
+    )
+  },
+  {
     path: '/admin',
     element: (
       <AdminGuard>

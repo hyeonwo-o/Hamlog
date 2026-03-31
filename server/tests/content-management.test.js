@@ -22,6 +22,7 @@ import { readPostRevisions } from '../models/revisionModel.js';
 import { defaultProfile } from '../utils/normalizers/profileNormalizers.js';
 
 const adminPassword = process.env.ADMIN_PASSWORD ?? 'test-password';
+const TRUSTED_ORIGIN = 'https://tech.hamwoo.co.kr';
 const tinyPngDataUrl =
     'data:image/png;base64,'
     + 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0mQAAAAASUVORK5CYII=';
@@ -89,6 +90,14 @@ const loginAsAdmin = async () => {
     return response.headers['set-cookie'];
 };
 
+const withTrustedOrigin = (requestBuilder, origin = TRUSTED_ORIGIN) => {
+    const parsed = new URL(origin);
+    return requestBuilder
+        .set('Origin', origin)
+        .set('X-Forwarded-Host', parsed.host)
+        .set('X-Forwarded-Proto', parsed.protocol.replace(':', ''));
+};
+
 before(async () => {
     backupRoot = await mkdtemp(path.join(tmpdir(), 'hamlog-tests-'));
     await copyIfExists(dataDir, path.join(backupRoot, 'data'));
@@ -132,9 +141,9 @@ test('authenticated content routes persist posts and categories', async () => {
 
     const cookies = await loginAsAdmin();
 
-    const createCategoryResponse = await request(app)
+    const createCategoryResponse = await withTrustedOrigin(request(app)
         .post('/api/categories')
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send({ name: 'DevOps' });
 
     assert.equal(createCategoryResponse.status, 201);
@@ -158,9 +167,9 @@ test('authenticated content routes persist posts and categories', async () => {
         sections: []
     };
 
-    const createPostResponse = await request(app)
+    const createPostResponse = await withTrustedOrigin(request(app)
         .post('/api/posts')
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send(createPostPayload);
 
     assert.equal(createPostResponse.status, 201);
@@ -168,9 +177,9 @@ test('authenticated content routes persist posts and categories', async () => {
     assert.deepEqual(createPostResponse.body.contentJson, sampleContentJson);
     assert.equal(createPostResponse.body.contentHtml, '<h1>Heading</h1><p>Body copy</p>');
 
-    const updateCategoryResponse = await request(app)
+    const updateCategoryResponse = await withTrustedOrigin(request(app)
         .patch(`/api/categories/${encodeURIComponent(createdCategory.id)}`)
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send({ name: 'Platform' });
 
     assert.equal(updateCategoryResponse.status, 200);
@@ -181,9 +190,9 @@ test('authenticated content routes persist posts and categories', async () => {
     assert.deepEqual(postsAfterCategoryRename[0].contentJson, sampleContentJson);
     assert.equal(postsAfterCategoryRename[0].contentHtml, '<h1>Heading</h1><p>Body copy</p>');
 
-    const updatePostResponse = await request(app)
+    const updatePostResponse = await withTrustedOrigin(request(app)
         .put(`/api/posts/${createPostResponse.body.id}`)
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send({
             ...createPostPayload,
             slug: 'ci-hardening-updated',
@@ -198,9 +207,9 @@ test('authenticated content routes persist posts and categories', async () => {
     assert.ok(revisionsAfterUpdate.length >= 2);
     assert.equal(revisionsAfterUpdate[0].event, 'updated');
 
-    const deleteCategoryResponse = await request(app)
+    const deleteCategoryResponse = await withTrustedOrigin(request(app)
         .delete(`/api/categories/${encodeURIComponent(createdCategory.id)}`)
-        .set('Cookie', cookies);
+        .set('Cookie', cookies));
 
     assert.equal(deleteCategoryResponse.status, 200);
 
@@ -211,9 +220,9 @@ test('authenticated content routes persist posts and categories', async () => {
     const categoriesAfterDelete = await readCategories();
     assert.ok(!categoriesAfterDelete.some(category => category.name === 'Platform'));
 
-    const deletePostResponse = await request(app)
+    const deletePostResponse = await withTrustedOrigin(request(app)
         .delete(`/api/posts/${createPostResponse.body.id}`)
-        .set('Cookie', cookies);
+        .set('Cookie', cookies));
 
     assert.equal(deletePostResponse.status, 204);
 
@@ -256,9 +265,9 @@ test('ensurePostsFile backfills contentJson for legacy html-only posts', async (
 test('post revisions can be listed and restored', async () => {
     const cookies = await loginAsAdmin();
 
-    const createPostResponse = await request(app)
+    const createPostResponse = await withTrustedOrigin(request(app)
         .post('/api/posts')
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send({
             slug: 'revision-driven-post',
             title: 'Revision Driven Post',
@@ -285,9 +294,9 @@ test('post revisions can be listed and restored', async () => {
     assert.equal(initialRevisionsResponse.body[0].event, 'created');
     assert.equal(initialRevisionsResponse.body[0].title, 'Revision Driven Post');
 
-    const updatePostResponse = await request(app)
+    const updatePostResponse = await withTrustedOrigin(request(app)
         .put(`/api/posts/${createdPostId}`)
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send({
             ...createPostResponse.body,
             title: 'Revision Driven Post Updated',
@@ -310,9 +319,9 @@ test('post revisions can be listed and restored', async () => {
     );
     assert.ok(createdRevision);
 
-    const restoreResponse = await request(app)
+    const restoreResponse = await withTrustedOrigin(request(app)
         .post(`/api/posts/${createdPostId}/revisions/${createdRevision.id}/restore`)
-        .set('Cookie', cookies);
+        .set('Cookie', cookies));
 
     assert.equal(restoreResponse.status, 200);
     assert.equal(restoreResponse.body.title, 'Revision Driven Post');
@@ -342,9 +351,9 @@ test('profile update and uploads require authentication and persist', async () =
 
     const cookies = await loginAsAdmin();
 
-    const updateProfileResponse = await request(app)
+    const updateProfileResponse = await withTrustedOrigin(request(app)
         .put('/api/profile')
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send({
             title: 'HamLog Ops',
             name: 'Hamwoo',
@@ -366,9 +375,9 @@ test('profile update and uploads require authentication and persist', async () =
     assert.equal(savedProfile.display.showStack, false);
     assert.equal(savedProfile.display.showLocation, false);
 
-    const uploadResponse = await request(app)
+    const uploadResponse = await withTrustedOrigin(request(app)
         .post('/api/uploads')
-        .set('Cookie', cookies)
+        .set('Cookie', cookies))
         .send({ dataUrl: tinyPngDataUrl });
 
     assert.equal(uploadResponse.status, 201);
@@ -483,6 +492,32 @@ test('comments respect password verification on deletion', async () => {
 
     const remainingComments = await readComments();
     assert.equal(remainingComments.length, 0);
+});
+
+test('authenticated write routes reject untrusted origins', async () => {
+    const cookies = await loginAsAdmin();
+
+    const response = await request(app)
+        .post('/api/posts')
+        .set('Cookie', cookies)
+        .set('Origin', 'https://evil.example.com')
+        .set('X-Forwarded-Host', 'tech.hamwoo.co.kr')
+        .set('X-Forwarded-Proto', 'https')
+        .send({
+            slug: 'blocked-by-origin',
+            title: 'Blocked by origin',
+            summary: 'summary',
+            category: 'Security',
+            contentHtml: '<p>blocked</p>',
+            publishedAt: '2026-03-06',
+            readingTime: '1분 읽기',
+            tags: [],
+            status: 'published',
+            sections: []
+        });
+
+    assert.equal(response.status, 403);
+    assert.equal(response.body.message, '유효하지 않은 요청 출처입니다.');
 });
 
 test('public post endpoints hide drafts and future scheduled posts from unauthenticated users', async () => {
@@ -698,14 +733,42 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.deepEqual(searchResponse.body.map(post => post.slug), ['meta-scheduled-visible']);
 });
 
-test('home page can expose google site verification meta tag from environment', async () => {
+test('home page reflects profile SEO metadata and google site verification', async () => {
     const previousVerification = process.env.GOOGLE_SITE_VERIFICATION;
     process.env.GOOGLE_SITE_VERIFICATION = 'google-verification-token';
 
     try {
+        await writeProfile({
+            ...defaultProfile,
+            title: 'HamLog Ops',
+            name: 'Hamwoo',
+            description: '운영 관점의 클라우드 엔지니어링 기록입니다.',
+            favicon: '/uploads/favicon-home.png',
+            profileImage: '/uploads/profile-home.png',
+            stack: ['Terraform', 'AWS']
+        });
+
         const response = await request(app).get('/');
 
         assert.equal(response.status, 200);
+        assert.match(response.text, /<title>HamLog Ops \| 클라우드 엔지니어링과 개발 기록<\/title>/);
+        assert.match(
+            response.text,
+            /<meta name="description" content="운영 관점의 클라우드 엔지니어링 기록입니다\." \/>/
+        );
+        assert.match(
+            response.text,
+            /<meta property="og:image" content="https:\/\/tech\.hamwoo\.co\.kr\/uploads\/profile-home\.png" \/>/
+        );
+        assert.match(
+            response.text,
+            /<link rel="icon" href="https:\/\/tech\.hamwoo\.co\.kr\/uploads\/favicon-home\.png" \/>/
+        );
+        assert.match(
+            response.text,
+            /<link rel="canonical" href="https:\/\/tech\.hamwoo\.co\.kr" \/>/
+        );
+        assert.match(response.text, /Terraform/);
         assert.match(
             response.text,
             /<meta name="google-site-verification" content="google-verification-token" \/>/

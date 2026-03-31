@@ -1,6 +1,6 @@
 const DEV_CORS_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
-const normalizeOrigin = (origin) => origin.trim().replace(/\/+$/, '');
+export const normalizeOrigin = (origin) => origin.trim().replace(/\/+$/, '');
 
 const parseCorsOrigins = () => {
     const raw = process.env.CORS_ORIGINS ?? '';
@@ -20,8 +20,6 @@ const parseCorsOrigins = () => {
 
     return new Set(DEV_CORS_ORIGINS);
 };
-
-const allowedCorsOrigins = parseCorsOrigins();
 
 const getForwardedValue = (value) => value.split(',')[0]?.trim();
 
@@ -44,6 +42,38 @@ const isSameOrigin = (requestOrigin, req) => {
     }
 };
 
+const getAllowedCorsOrigins = () => parseCorsOrigins();
+
+export const getRequestOrigin = (req) => {
+    const origin = req.get('origin');
+    if (origin) {
+        return normalizeOrigin(origin);
+    }
+
+    const referer = req.get('referer');
+    if (!referer) {
+        return '';
+    }
+
+    try {
+        return normalizeOrigin(new URL(referer).origin);
+    } catch {
+        return '';
+    }
+};
+
+export const isTrustedOrigin = (req, requestOrigin) => {
+    if (!requestOrigin) {
+        return false;
+    }
+
+    const normalizedOrigin = normalizeOrigin(requestOrigin);
+    return (
+        getAllowedCorsOrigins().has(normalizedOrigin)
+        || isSameOrigin(normalizedOrigin, req)
+    );
+};
+
 export const resolveCorsOptions = (req) => {
     const requestOrigin = req.get('origin');
 
@@ -51,14 +81,8 @@ export const resolveCorsOptions = (req) => {
         return { origin: true, credentials: true };
     }
 
-    const normalizedOrigin = normalizeOrigin(requestOrigin);
-    const isAllowed = (
-        allowedCorsOrigins.has(normalizedOrigin)
-        || isSameOrigin(normalizedOrigin, req)
-    );
-
     return {
-        origin: isAllowed,
+        origin: isTrustedOrigin(req, requestOrigin),
         credentials: true
     };
 };

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 // Config
 import { uploadDir } from './config/paths.js';
 import { resolveCorsOptions } from './config/security.js';
+import { readProfile } from './models/profileModel.js';
 
 // Routers
 import { categoryRouter } from './routes/categories.js';
@@ -25,6 +26,9 @@ import { readSpaIndexHtml, resolveSpaIndexPath } from './utils/spaIndex.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const DEFAULT_SITE_URL = 'https://tech.hamwoo.co.kr';
+const HOME_TITLE_SUFFIX = '클라우드 엔지니어링과 개발 기록';
+const HOME_DESCRIPTION = '클라우드 엔지니어링, 인프라, DevOps, 개발 경험을 기록하는 기술 블로그입니다.';
 
 const app = express();
 const replaceHeadTag = (html, pattern, replacement) => (
@@ -38,6 +42,49 @@ const escapeHtml = (value = '') => String(value)
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+const resolveBaseUrl = (profile) => {
+    const candidate = String(profile?.siteUrl ?? '').trim().replace(/\/+$/, '');
+    return /^https?:\/\//i.test(candidate) ? candidate : DEFAULT_SITE_URL;
+};
+const toAbsoluteUrl = (baseUrl, value = '') => {
+    if (!value) return `${baseUrl}/avatar.jpg`;
+    if (/^https?:\/\//i.test(value)) return value;
+    return `${baseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
+};
+const resolveHomeTitle = (profile) => {
+    const title = String(profile?.title ?? '').trim() || 'Ham_Tech_Log';
+    return title.includes('|') ? title : `${title} | ${HOME_TITLE_SUFFIX}`;
+};
+const resolveHomeDescription = (profile) => (
+    String(profile?.description ?? '').trim() || HOME_DESCRIPTION
+);
+const resolveHomeKeywords = (profile) => {
+    const profileStack = Array.isArray(profile?.stack)
+        ? profile.stack.map(item => String(item).trim()).filter(Boolean)
+        : [];
+
+    return Array.from(new Set([
+        '클라우드 엔지니어링',
+        'DevOps',
+        '인프라',
+        'AWS',
+        'GCP',
+        'Kubernetes',
+        ...profileStack
+    ])).join(', ');
+};
+const buildHomeSchema = (profile, baseUrl, description) => JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: String(profile?.title ?? '').trim() || 'Hamlog',
+    description,
+    url: baseUrl,
+    publisher: {
+        '@type': 'Person',
+        name: String(profile?.name ?? '').trim() || 'Hamwoo'
+    },
+    inLanguage: 'ko-KR'
+}).replace(/</g, '\\u003c');
 
 const injectGoogleSiteVerification = (html) => {
     const verification = String(process.env.GOOGLE_SITE_VERIFICATION ?? '').trim();
@@ -51,6 +98,107 @@ const injectGoogleSiteVerification = (html) => {
         /<meta name="google-site-verification" content=".*?" \/>/,
         `<meta name="google-site-verification" content="${escapeHtml(verification)}" />`
     );
+};
+
+const injectHomeSeoMeta = (html, profile) => {
+    const baseUrl = resolveBaseUrl(profile);
+    const title = resolveHomeTitle(profile);
+    const description = resolveHomeDescription(profile);
+    const keywords = resolveHomeKeywords(profile);
+    const author = String(profile?.name ?? '').trim() || 'Hamwoo';
+    const siteName = String(profile?.title ?? '').trim() || 'Hamlog';
+    const favicon = toAbsoluteUrl(baseUrl, profile?.favicon || '/avatar.jpg');
+    const image = toAbsoluteUrl(baseUrl, profile?.profileImage || profile?.favicon || '/avatar.jpg');
+    const schema = buildHomeSchema(profile, baseUrl, description);
+
+    let nextHtml = html;
+    nextHtml = replaceHeadTag(nextHtml, /<title>.*?<\/title>/, `<title>${escapeHtml(title)}</title>`);
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="description" content=".*?" \/>/,
+        `<meta name="description" content="${escapeHtml(description)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="keywords" content=".*?" \/>/,
+        `<meta name="keywords" content="${escapeHtml(keywords)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="author" content=".*?" \/>/,
+        `<meta name="author" content="${escapeHtml(author)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:title" content=".*?" \/>/,
+        `<meta property="og:title" content="${escapeHtml(title)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:description" content=".*?" \/>/,
+        `<meta property="og:description" content="${escapeHtml(description)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:url" content=".*?" \/>/,
+        `<meta property="og:url" content="${escapeHtml(baseUrl)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:image" content=".*?" \/>/,
+        `<meta property="og:image" content="${escapeHtml(image)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:site_name" content=".*?" \/>/,
+        `<meta property="og:site_name" content="${escapeHtml(siteName)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="twitter:title" content=".*?" \/>/,
+        `<meta name="twitter:title" content="${escapeHtml(title)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="twitter:description" content=".*?" \/>/,
+        `<meta name="twitter:description" content="${escapeHtml(description)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="twitter:image" content=".*?" \/>/,
+        `<meta name="twitter:image" content="${escapeHtml(image)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<link rel="canonical" href=".*?" \/>/,
+        `<link rel="canonical" href="${escapeHtml(baseUrl)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<link rel="icon"[^>]*href=".*?"[^>]*\/>/,
+        `<link rel="icon" href="${escapeHtml(favicon)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<link rel="apple-touch-icon"[^>]*href=".*?"[^>]*\/>/,
+        `<link rel="apple-touch-icon" href="${escapeHtml(favicon)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<script type="application\/ld\+json">[\s\S]*?<\/script>/,
+        `<script type="application/ld+json">${schema}</script>`
+    );
+
+    return injectGoogleSiteVerification(nextHtml);
+};
+
+const injectHomeAppShell = async (req, res, next) => {
+    try {
+        const [html, profile] = await Promise.all([readSpaIndexHtml(), readProfile()]);
+        res.send(injectHomeSeoMeta(html, profile));
+    } catch (error) {
+        next(error);
+    }
 };
 
 const injectNoindexAppShell = async (req, res, next) => {
@@ -83,13 +231,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
-app.get('/', async (req, res, next) => {
-    try {
-        res.send(injectGoogleSiteVerification(await readSpaIndexHtml()));
-    } catch (error) {
-        next(error);
-    }
-});
+app.get('/', injectHomeAppShell);
 
 // Static Files
 app.use('/uploads', express.static(uploadDir));
