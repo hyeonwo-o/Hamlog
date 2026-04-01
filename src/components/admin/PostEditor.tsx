@@ -16,6 +16,7 @@ import { usePostRevisions } from '../../hooks/usePostRevisions';
 import { usePostEditorShortcuts } from '../../hooks/usePostEditorShortcuts';
 import { usePostEditorActions } from '../../hooks/usePostEditorActions';
 import { usePostStore } from '../../store/postStore';
+import type { AdminSidebarProps } from './sidebar/types';
 
 const MAX_UPLOAD_MB = 8;
 
@@ -28,9 +29,17 @@ interface PostEditorProps {
     onDeleteSuccess: () => void;
     categoryTree: CategoryTreeResult;
     onLoadCategories: () => void | Promise<void>;
+    sidebarProps: Omit<AdminSidebarProps, 'show'>;
 }
 
-const PostEditor: React.FC<PostEditorProps> = ({ post, onSaveSuccess, onDeleteSuccess, categoryTree, onLoadCategories }) => {
+const PostEditor: React.FC<PostEditorProps> = ({
+    post,
+    onSaveSuccess,
+    onDeleteSuccess,
+    categoryTree,
+    onLoadCategories,
+    sidebarProps
+}) => {
     const activeId = post?.id || null;
     const refreshPosts = usePostStore(state => state.fetchPosts);
 
@@ -225,6 +234,10 @@ const PostEditor: React.FC<PostEditorProps> = ({ post, onSaveSuccess, onDeleteSu
     });
 
     const groupedProps = {
+        sidebarProps: {
+            ...sidebarProps,
+            saving
+        },
         editorHandlers: {
             onTitleChange: handleTitleChange,
             onStatusChange: handleStatusChange,

@@ -9,6 +9,7 @@ import { TableOfContents } from '../../TableOfContents';
 import type { TocItem } from '../../TableOfContents';
 
 interface PostInspectorProps {
+  embedded?: boolean;
   activeId: string | null;
   draft: PostDraft;
   categoryTree: CategoryTreeResult;
@@ -62,6 +63,7 @@ const StatCard = ({ label, value }: { label: string; value: ReactNode }) => (
 );
 
 const PostInspector: React.FC<PostInspectorProps> = ({
+  embedded = false,
   activeId,
   draft,
   categoryTree,
@@ -81,10 +83,12 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   onTocLinkClick
 }) => {
   return (
-    <aside className="space-y-4 xl:sticky xl:top-28 self-start">
+    <aside className={embedded ? 'space-y-4' : 'space-y-4 xl:sticky xl:top-28 self-start'}>
       <PostInspectorSection
         title="발행과 메타"
         description="카테고리, 일정, 대표 이미지, 요약을 이 패널에서 관리합니다."
+        collapsible
+        defaultOpen
       >
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
@@ -114,6 +118,8 @@ const PostInspector: React.FC<PostInspectorProps> = ({
       <PostInspectorSection
         title="SEO"
         description="검색/공유에 노출되는 메타데이터를 조정합니다."
+        collapsible
+        defaultOpen={false}
       >
         <div className="space-y-3">
           <div className="space-y-1">
@@ -178,6 +184,8 @@ const PostInspector: React.FC<PostInspectorProps> = ({
       <PostInspectorSection
         title="태그와 통계"
         description="태그를 정리하고 문서 분량을 확인합니다."
+        collapsible
+        defaultOpen={false}
       >
         <div className="grid grid-cols-3 gap-3">
           <StatCard label="문자 수" value={contentStats.chars} />
@@ -222,6 +230,8 @@ const PostInspector: React.FC<PostInspectorProps> = ({
             </span>
           ) : undefined
         }
+        collapsible
+        defaultOpen={false}
       >
         {!activeId ? (
           <p className="text-xs text-[var(--text-muted)]">글을 먼저 저장하면 리비전이 생성됩니다.</p>

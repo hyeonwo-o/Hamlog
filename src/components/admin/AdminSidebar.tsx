@@ -11,6 +11,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function AdminSidebar({
   show,
+  embedded = false,
   searchQuery,
   onSearchChange,
   filterStatus,
@@ -62,7 +63,11 @@ export default function AdminSidebar({
   ];
 
   return (
-    <aside className="angular-panel flex h-full flex-col gap-5 overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] lg:sticky lg:top-24 lg:h-[calc(100vh-110px)]">
+    <aside className={`angular-panel flex flex-col gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] ${
+      embedded
+        ? ''
+        : 'h-full overflow-y-auto lg:sticky lg:top-24 lg:h-[calc(100vh-110px)]'
+    }`}>
       <SidebarSummary
         totalCount={totalCount}
         statusCount={statusCount}

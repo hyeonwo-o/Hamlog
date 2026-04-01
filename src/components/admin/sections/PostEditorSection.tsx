@@ -4,10 +4,12 @@ import type { PostRevision, PostStatus } from '../../../data/blogData';
 import type { PostDraft } from '../../../types/admin';
 import type { CategoryTreeResult } from '../../../utils/categoryTree';
 import { useEditorToc } from '../../../hooks/useEditorToc';
+import AdminSidebar from '../AdminSidebar';
 import PostCommandBar from '../post/PostCommandBar';
 import PostEditorCanvas from '../post/PostEditorCanvas';
 import PostEditorHeader from '../post/PostEditorHeader';
 import PostInspector from '../post/PostInspector';
+import type { AdminSidebarProps } from '../sidebar/types';
 
 export interface EditorHandlers {
   onTitleChange: (value: string) => void;
@@ -64,6 +66,7 @@ export interface EditorData {
 }
 
 interface PostEditorSectionProps {
+  sidebarProps: Omit<AdminSidebarProps, 'show'>;
   editorHandlers: EditorHandlers;
   tagHandlers: TagHandlers;
   mediaHandlers: MediaHandlers;
@@ -72,6 +75,7 @@ interface PostEditorSectionProps {
 }
 
 const PostEditorSection: React.FC<PostEditorSectionProps> = ({
+  sidebarProps,
   editorHandlers,
   tagHandlers,
   mediaHandlers,
@@ -131,7 +135,36 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <AdminSidebar
+            show
+            embedded
+            {...sidebarProps}
+          />
+
+          <PostInspector
+            embedded
+            activeId={activeId}
+            draft={draft}
+            categoryTree={categoryTree}
+            revisions={revisions}
+            revisionsLoading={revisionsLoading}
+            restoringRevisionId={restoringRevisionId}
+            contentStats={contentStats}
+            tagInput={tagInput}
+            onTagInputChange={onInputChange}
+            onTagKeyDown={onKeyDown}
+            onTagBlur={onBlur}
+            onRemoveTag={onRemove}
+            onUpdateDraft={updateDraft}
+            onCoverUpload={onCoverUpload}
+            onRestoreRevision={onRestoreRevision}
+            tocItems={tocItems}
+            onTocLinkClick={handleTocLinkClick}
+          />
+        </div>
+
         <div className="min-w-0 space-y-6">
           <div className="angular-panel rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
             <div className="space-y-6">
@@ -177,26 +210,6 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
             </div>
           </div>
         </div>
-
-        <PostInspector
-          activeId={activeId}
-          draft={draft}
-          categoryTree={categoryTree}
-          revisions={revisions}
-          revisionsLoading={revisionsLoading}
-          restoringRevisionId={restoringRevisionId}
-          contentStats={contentStats}
-          tagInput={tagInput}
-          onTagInputChange={onInputChange}
-          onTagKeyDown={onKeyDown}
-          onTagBlur={onBlur}
-          onRemoveTag={onRemove}
-          onUpdateDraft={updateDraft}
-          onCoverUpload={onCoverUpload}
-          onRestoreRevision={onRestoreRevision}
-          tocItems={tocItems}
-          onTocLinkClick={handleTocLinkClick}
-        />
       </div>
     </div>
   );

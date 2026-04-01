@@ -34,7 +34,7 @@ export default function SidebarPostList({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {posts.map(post => (
         <SidebarPostListItem
           key={post.id}

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import AdminNav from '../components/admin/AdminNav';
-import AdminSidebar from '../components/admin/AdminSidebar';
 import CategorySection from '../components/admin/sections/CategorySection';
 import DashboardSection from '../components/admin/sections/DashboardSection';
 import ProfileSection from '../components/admin/sections/ProfileSection';
@@ -184,7 +183,6 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const showPostSidebar = activeSection === 'posts';
   const activePost = activeId ? posts.find(p => p.id === activeId) || null : null;
 
   return (
@@ -215,51 +213,11 @@ const AdminPage: React.FC = () => {
           </div>
         </div>
       </header>
-      <main
-        className={`mx-auto grid max-w-[1700px] gap-6 px-4 py-8 ${showPostSidebar ? 'xl:grid-cols-[360px_minmax(0,1fr)]' : 'lg:grid-cols-1'}`}
-      >
-        <div className="col-span-full">
-          <AdminNav
-            activeSection={activeSection}
-            sections={ADMIN_SECTIONS}
-            onChange={(section) => updateAdminLocation({ section })}
-          />
-        </div>
-        <AdminSidebar
-          show={showPostSidebar}
-          searchQuery={searchQuery}
-          onSearchChange={(value) => {
-            setSearchQuery(value);
-            setPage(1);
-          }}
-          filterStatus={filterStatus}
-          onFilterStatusChange={(value) => {
-            setFilterStatus(value as PostStatus | 'all');
-            setPage(1);
-          }}
-          filterCategory={filterCategory}
-          onFilterCategoryChange={(value) => {
-            setFilterCategory(value);
-            setPage(1);
-          }}
-          filterCategoryIncludeDescendants={filterCategoryIncludeDescendants}
-          onFilterCategoryIncludeDescendantsChange={(value) => {
-            setFilterCategoryIncludeDescendants(value);
-            setPage(1);
-          }}
-          page={page}
-          onPageChange={setPage}
-          onNew={handleNew}
-          saving={false} // Loading state handled in editor
-          onSelect={handleSelect}
-          filteredPosts={filteredPosts}
-          activeId={activeId}
-          loading={loading}
-          error={error}
-          onReload={fetchPosts}
-          totalCount={filteredPosts.length}
-          statusCount={dashboardStats.statusCount}
-          categoryTree={categoryTree}
+      <main className="mx-auto max-w-[1700px] space-y-6 px-4 py-8">
+        <AdminNav
+          activeSection={activeSection}
+          sections={ADMIN_SECTIONS}
+          onChange={(section) => updateAdminLocation({ section })}
         />
 
         <section className="space-y-6">
@@ -313,6 +271,41 @@ const AdminPage: React.FC = () => {
               onDeleteSuccess={handleDeleteSuccess}
               categoryTree={categoryTree}
               onLoadCategories={loadCategories}
+              sidebarProps={{
+                searchQuery,
+                onSearchChange: (value) => {
+                  setSearchQuery(value);
+                  setPage(1);
+                },
+                filterStatus,
+                onFilterStatusChange: (value) => {
+                  setFilterStatus(value as PostStatus | 'all');
+                  setPage(1);
+                },
+                filterCategory,
+                onFilterCategoryChange: (value) => {
+                  setFilterCategory(value);
+                  setPage(1);
+                },
+                filterCategoryIncludeDescendants,
+                onFilterCategoryIncludeDescendantsChange: (value) => {
+                  setFilterCategoryIncludeDescendants(value);
+                  setPage(1);
+                },
+                page,
+                onPageChange: setPage,
+                onNew: handleNew,
+                saving: false,
+                onSelect: handleSelect,
+                filteredPosts,
+                activeId,
+                loading,
+                error,
+                onReload: fetchPosts,
+                totalCount: filteredPosts.length,
+                statusCount: dashboardStats.statusCount,
+                categoryTree
+              }}
             />
           )}
         </section>

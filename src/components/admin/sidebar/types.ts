@@ -9,6 +9,7 @@ export interface StatusFilterOption {
 
 export interface AdminSidebarProps {
   show: boolean;
+  embedded?: boolean;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   filterStatus: string;

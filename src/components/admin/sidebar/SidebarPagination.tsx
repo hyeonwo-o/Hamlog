@@ -15,7 +15,7 @@ export default function SidebarPagination({
         type="button"
         onClick={() => onPageChange(page - 1)}
         disabled={page === 1}
-        className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--text)] disabled:opacity-30"
+        className="rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--text)] disabled:opacity-30"
       >
         이전
       </button>
@@ -26,7 +26,7 @@ export default function SidebarPagination({
         type="button"
         onClick={() => onPageChange(page + 1)}
         disabled={page === totalPages}
-        className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--text)] disabled:opacity-30"
+        className="rounded-lg border border-[color:var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--text)] disabled:opacity-30"
       >
         다음
       </button>
