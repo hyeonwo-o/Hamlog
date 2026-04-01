@@ -1,0 +1,18 @@
+{
+  "id": "post-3d32956f-f998-4ebc-b6ea-63c7cb03f73a",
+  "slug": "temporary-reading-flow-check",
+  "title": "메인에서 이어지는 읽기 흐름 테스트",
+  "summary": "홈에서 포스트 상세로 넘어갈 때 같은 사이트 안에서 자연스럽게 이어지는지 확인하기 위한 임시 테스트 글입니다.",
+  "category": "미분류",
+  "contentHtml": "<p>이 글은 포스트 상세 화면의 첫인상과 읽기 흐름을 확인하려고 만든 임시 테스트 포스트입니다. 제목, 요약, 본문 패널, 카테고리 탐색, 목차가 한 화면에서 자연스럽게 이어지는지를 중점적으로 봐주세요.</p><h2>이번 확인 포인트</h2><p>기존에는 메인에서 포스트로 이동했을 때 문서 사이트로 갑자기 넘어온 것처럼 느껴졌습니다. 이번에는 상단 사이트 헤더와 하단 푸터를 다시 연결하고, 본문을 홈과 비슷한 패널 톤으로 정리해 이질감을 줄였습니다.</p><h3>탐색 흐름</h3><ul><li>상단에서 사이트 이름이 계속 보이는지</li><li>카테고리와 목차가 글 읽는 흐름을 방해하지 않는지</li><li>다른 글 읽기 영역까지 한 덩어리처럼 이어지는지</li></ul><h2>코드 블록 예시</h2><pre><code class=\"language-ts\">const impression = {\n  from: 'home',\n  to: 'post',\n  feeling: 'same-site'\n};\n\nconsole.log(impression);</code></pre><h2>마무리</h2><p>이 포스트는 테스트가 끝나면 바로 지워도 되는 임시 콘텐츠입니다. 다만 지금 단계에서는 포스트 페이지의 시각 톤과 정보 위계가 충분히 연결되는지 빠르게 확인하는 데 도움이 됩니다.</p>",
+  "status": "published",
+  "publishedAt": "2026-04-01",
+  "readingTime": "4분 읽기",
+  "tags": [
+    "ui",
+    "ux",
+    "test"
+  ],
+  "featured": false,
+  "sections": []
+}
