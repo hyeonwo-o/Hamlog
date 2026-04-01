@@ -20,7 +20,6 @@ import { DEFAULT_CATEGORY, normalizeCategoryKey } from '../utils/category';
 import { buildCategoryTree, getCategoryPathLabel } from '../utils/categoryTree';
 import { useSeo } from '../hooks/useSeo';
 import { useSchema } from '../hooks/useSchema';
-import { TableOfContents } from '../components/TableOfContents';
 import { siteMeta } from '../data/blogData';
 
 const normalizePageProfile = (profile: SiteMeta) => ({
@@ -186,7 +185,7 @@ const PostPage: React.FC = () => {
         />
 
         <div className="mx-auto max-w-6xl px-4 py-10 xl:py-12">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_220px] 2xl:grid-cols-[240px_minmax(0,1fr)_220px] xl:gap-8">
+          <div className="grid gap-6 2xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-8">
             <aside className="hidden 2xl:block relative">
               <div className="sticky top-8 space-y-8">
                 <CategorySidebar
@@ -261,14 +260,8 @@ const PostPage: React.FC = () => {
                   )}
                 </header>
 
-                <div className="xl:hidden">
-                  <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
-                    <TableOfContents contentSelector=".post-content" />
-                  </div>
-                </div>
-
-                <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7 lg:p-8">
-                  <div className="post-content prose prose-lg mx-auto w-full max-w-[96ch]">
+                <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7 lg:p-8 xl:px-10">
+                  <div className="post-content prose prose-lg max-w-none w-full">
                     <PostContent contentHtml={post.contentHtml} />
                   </div>
                 </div>
@@ -297,14 +290,6 @@ const PostPage: React.FC = () => {
                 </section>
               )}
             </main>
-
-            <aside className="hidden xl:block relative">
-              <div className="sticky top-8 space-y-8">
-                <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
-                  <TableOfContents contentSelector=".post-content" />
-                </div>
-              </div>
-            </aside>
           </div>
         </div>
 
