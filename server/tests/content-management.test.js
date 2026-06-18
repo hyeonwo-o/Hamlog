@@ -336,6 +336,54 @@ test('post revisions can be listed and restored', async () => {
     assert.ok(restoredRevisionsResponse.body.some(revision => revision.event === 'updated'));
 });
 
+test('post updates reject stale editor saves', async () => {
+    const cookies = await loginAsAdmin();
+
+    const createPostResponse = await withTrustedOrigin(request(app)
+        .post('/api/posts')
+        .set('Cookie', cookies))
+        .send({
+            slug: 'stale-save-post',
+            title: 'Stale Save Post',
+            summary: 'stale save summary',
+            category: 'Engineering',
+            contentJson: sampleContentJson,
+            publishedAt: '2026-03-06',
+            readingTime: '2분 읽기',
+            tags: ['editor'],
+            status: 'published',
+            sections: []
+        });
+
+    assert.equal(createPostResponse.status, 201);
+
+    const firstUpdateResponse = await withTrustedOrigin(request(app)
+        .put(`/api/posts/${createPostResponse.body.id}`)
+        .set('Cookie', cookies))
+        .send({
+            ...createPostResponse.body,
+            title: 'Fresh Update',
+            expectedUpdatedAt: createPostResponse.body.updatedAt
+        });
+
+    assert.equal(firstUpdateResponse.status, 200);
+
+    const staleUpdateResponse = await withTrustedOrigin(request(app)
+        .put(`/api/posts/${createPostResponse.body.id}`)
+        .set('Cookie', cookies))
+        .send({
+            ...createPostResponse.body,
+            title: 'Stale Update',
+            expectedUpdatedAt: createPostResponse.body.updatedAt
+        });
+
+    assert.equal(staleUpdateResponse.status, 409);
+    assert.match(staleUpdateResponse.body.message, /먼저 수정/);
+
+    const posts = await readPosts();
+    assert.equal(posts[0].title, 'Fresh Update');
+});
+
 test('profile update and uploads require authentication and persist', async () => {
     const unauthenticatedProfileUpdate = await request(app)
         .put('/api/profile')
@@ -384,6 +432,56 @@ test('profile update and uploads require authentication and persist', async () =
     assert.match(uploadResponse.body.url, /^\/uploads\/upload-.*\.webp$/);
 
     await access(path.join(uploadDir, uploadResponse.body.filename));
+});
+
+test('unused upload cleanup keeps referenced images and deletes selected unused files', async () => {
+    const cookies = await loginAsAdmin();
+
+    await writeFile(path.join(uploadDir, 'used.webp'), 'used image');
+    await writeFile(path.join(uploadDir, 'unused.webp'), 'unused image');
+    await writeFile(path.join(uploadDir, 'unused-two.webp'), 'unused image two');
+    await writePosts([
+        {
+            id: 'post-with-upload-reference',
+            slug: 'post-with-upload-reference',
+            title: 'Post With Upload Reference',
+            summary: 'upload reference',
+            category: 'Media',
+            contentHtml: '<p><img src="/uploads/used.webp" /></p>',
+            publishedAt: '2026-03-06',
+            readingTime: '1분 읽기',
+            tags: [],
+            status: 'published',
+            sections: []
+        }
+    ]);
+
+    const scanResponse = await request(app)
+        .get('/api/uploads/unused')
+        .set('Cookie', cookies);
+
+    assert.equal(scanResponse.status, 200);
+    assert.equal(scanResponse.body.totalFiles, 3);
+    assert.equal(scanResponse.body.referencedFiles, 1);
+    assert.deepEqual(
+        scanResponse.body.unused.map(file => file.filename).sort(),
+        ['unused-two.webp', 'unused.webp']
+    );
+
+    const deleteResponse = await withTrustedOrigin(request(app)
+        .delete('/api/uploads/unused')
+        .set('Cookie', cookies))
+        .send({ filenames: ['unused.webp', '../used.webp'] });
+
+    assert.equal(deleteResponse.status, 200);
+    assert.deepEqual(deleteResponse.body.deleted.map(file => file.filename), ['unused.webp']);
+
+    await access(path.join(uploadDir, 'used.webp'));
+    await access(path.join(uploadDir, 'unused-two.webp'));
+    await assert.rejects(
+        () => access(path.join(uploadDir, 'unused.webp')),
+        error => error.code === 'ENOENT'
+    );
 });
 
 test('profile route recreates a default profile when the profile file is corrupted', async () => {

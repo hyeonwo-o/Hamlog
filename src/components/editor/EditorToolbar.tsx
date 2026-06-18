@@ -86,8 +86,8 @@ export function EditorToolbar({
   });
 
   return (
-    <div className="sticky top-4 z-10">
-      <div className="flex flex-wrap items-center gap-1 rounded-[1.25rem] bg-[var(--surface)]/90 px-1 py-1 backdrop-blur">
+    <div className="sticky top-[129px] z-10 border-b border-[color:var(--border)] bg-white/95 py-2 backdrop-blur">
+      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-1 px-0">
         <ToolbarActionGroup actions={historyActions} />
         <ToolbarDivider />
 
@@ -194,10 +194,6 @@ export function EditorToolbar({
         options={CODE_LANGUAGES}
         onSelect={language => editor?.chain().focus().setCodeBlock({ language }).run()}
       />
-
-      <p className="mt-2 text-[10px] text-[var(--text-muted)]">
-        단축키: Ctrl/Cmd+S 저장 · Ctrl/Cmd+Shift+S 초안 저장 · Ctrl/Cmd+Enter 발행 · Alt+Shift+P 미리보기 전환
-      </p>
     </div>
   );
 }

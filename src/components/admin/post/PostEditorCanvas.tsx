@@ -1,5 +1,6 @@
 import { EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
+import type { ReactNode } from 'react';
 import PostContent from '../../PostContent';
 import { EditorActionContext } from '../../../contexts/EditorActionContext';
 import { ColumnBubbleMenu } from '../../editor/extensions/ColumnBubbleMenu';
@@ -20,6 +21,7 @@ interface PostEditorCanvasProps {
   onImageUpload: (file: File) => void;
   onSetCoverFromContent?: (src?: string) => void;
   uploadLocalImage?: (file: File) => Promise<{ url: string }>;
+  children?: ReactNode;
 }
 
 export default function PostEditorCanvas({
@@ -35,14 +37,12 @@ export default function PostEditorCanvas({
   fileInputRef,
   onImageUpload,
   onSetCoverFromContent,
-  uploadLocalImage
+  uploadLocalImage,
+  children
 }: PostEditorCanvasProps) {
   return (
     <>
-      <div
-        className={`angular-control rounded-xl border border-[color:var(--border)] bg-[var(--surface-muted)] p-3 ${previewMode ? 'pointer-events-none opacity-60' : ''}`}
-        aria-hidden={previewMode}
-      >
+      <div className={previewMode ? 'pointer-events-none opacity-60' : ''} aria-hidden={previewMode}>
         <EditorToolbar
           editor={editor}
           onLink={onLink}
@@ -69,7 +69,7 @@ export default function PostEditorCanvas({
       />
 
       {previewMode && (
-        <div className="angular-control min-h-[720px] rounded-xl border border-[color:var(--border)] bg-[var(--surface-muted)] p-6">
+        <div className="mx-auto min-h-[720px] w-full max-w-[980px] bg-white px-0 py-10 sm:px-4 lg:px-8">
           {contentHtml.trim() ? (
             <PostContent contentHtml={contentHtml} />
           ) : (
@@ -81,9 +81,10 @@ export default function PostEditorCanvas({
       )}
 
       <div
-        className={`angular-control min-h-[720px] rounded-xl border border-[color:var(--border)] bg-[linear-gradient(180deg,var(--surface),var(--surface-muted))] p-4 ${previewMode ? 'hidden' : ''}`}
+        className={`min-h-[720px] bg-white ${previewMode ? 'hidden' : ''}`}
         aria-hidden={previewMode}
       >
+        {children}
         <EditorActionContext.Provider
           value={{
             onSetCover: src => onSetCoverFromContent?.(src),
@@ -94,7 +95,7 @@ export default function PostEditorCanvas({
         >
           <EditorContent
             editor={editor}
-            className="border-none shadow-none outline-none ring-0 [&_.ProseMirror]:min-h-[660px] [&_.ProseMirror]:rounded-[3px] [&_.ProseMirror]:bg-[var(--surface)] [&_.ProseMirror]:px-6 [&_.ProseMirror]:py-6 [&_.ProseMirror]:shadow-[0_0_0_1px_rgba(29,25,22,0.08),10px_10px_0_rgba(11,35,32,0.16)]"
+            className="mx-auto w-full max-w-[980px] border-none px-0 shadow-none outline-none ring-0 sm:px-4 lg:px-8 [&_.ProseMirror]:min-h-[520px] [&_.ProseMirror]:bg-white [&_.ProseMirror]:px-0 [&_.ProseMirror]:py-8 [&_.ProseMirror]:shadow-none"
           />
           <TableBubbleMenu editor={editor} enabled={!previewMode} />
           <ColumnBubbleMenu editor={editor} enabled={!previewMode} />

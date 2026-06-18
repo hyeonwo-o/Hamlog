@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { PostDraft } from '../types/admin';
-import type { Post, PostInput, PostStatus } from '../data/blogData';
+import type { Post, PostStatus } from '../data/blogData';
+import type { SavePostInput } from '../api/postApi';
 import { usePostStore } from '../store/postStore';
 import { slugify } from '../utils/slugify';
 import { stripHtml } from '../utils/postContent';
@@ -139,7 +140,8 @@ export const usePostPersistence = ({
                 ? scheduledAtIso.slice(0, 10)
                 : draft.publishedAt || new Date().toISOString().slice(0, 10);
 
-        const payload: PostInput = {
+        const existingPost = activeId ? posts.find(post => post.id === activeId) : null;
+        const payload: SavePostInput = {
             slug,
             title,
             summary: draft.summary.trim() || '요약이 없습니다.',
@@ -158,7 +160,8 @@ export const usePostPersistence = ({
                 seo.title || seo.description || seo.ogImage || seo.canonicalUrl || seo.keywords
                     ? seo
                     : undefined,
-            sections: []
+            sections: [],
+            expectedUpdatedAt: activeId ? existingPost?.updatedAt ?? '' : undefined
         };
 
         setSaving(true);
