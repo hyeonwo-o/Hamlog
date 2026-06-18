@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 
 const loginPasswords = Array.from(new Set([
   process.env.ADMIN_PASSWORD,
-  'admin1234',
-  'e2e-password'
+  'e2e-password',
+  'admin1234'
 ].filter(Boolean))) as string[];
 
 test('admin can publish a simple post and view it publicly', async ({ page }) => {
@@ -18,13 +18,22 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
     const passwordInput = page.getByLabel('관리자 비밀번호');
     if (!(await passwordInput.isVisible().catch(() => false))) break;
 
+    await expect(passwordInput).toBeEnabled();
     await passwordInput.fill(password);
     await page.getByRole('button', { name: '로그인' }).click();
 
     const titleInput = page.getByPlaceholder('제목을 입력하세요');
-    const loginFailed = await page.getByText('비밀번호가 올바르지 않습니다.').isVisible()
-      .catch(() => false);
-    if (!loginFailed && await titleInput.isVisible().catch(() => false)) {
+    const loginError = page.getByText('비밀번호가 올바르지 않습니다.');
+
+    await Promise.race([
+      titleInput.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => undefined),
+      loginError.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => undefined),
+      passwordInput.waitFor({ state: 'attached', timeout: 5_000 }).then(async () => {
+        await expect(passwordInput).toBeEnabled({ timeout: 5_000 });
+      }).catch(() => undefined)
+    ]);
+
+    if (await titleInput.isVisible().catch(() => false)) {
       break;
     }
   }
