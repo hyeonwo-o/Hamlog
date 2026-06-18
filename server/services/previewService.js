@@ -1,5 +1,8 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { createSafeLookup } from '../utils/urlSafety.js';
+
+const safeLookup = createSafeLookup();
 
 export const fetchOpenGraphData = async (url) => {
     try {
@@ -12,7 +15,8 @@ export const fetchOpenGraphData = async (url) => {
             maxRedirects: 0,
             maxContentLength: 1024 * 1024,
             maxBodyLength: 1024 * 1024,
-            responseType: 'text'
+            responseType: 'text',
+            lookup: safeLookup
         });
 
         const $ = cheerio.load(data);

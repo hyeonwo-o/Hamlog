@@ -6,7 +6,14 @@ import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/pro
 import request from 'supertest';
 
 import app from '../app.js';
-import { dataDir, postsDir, postsFilePath, profileFilePath, uploadDir } from '../config/paths.js';
+import {
+    categoriesFilePath,
+    dataDir,
+    postsDir,
+    postsFilePath,
+    profileFilePath,
+    uploadDir
+} from '../config/paths.js';
 import { readCategories, writeCategories } from '../models/categoryModel.js';
 import { readComments, writeComments } from '../models/commentModel.js';
 import { ensurePostsFile, readPosts, writePosts } from '../models/postModel.js';
@@ -352,6 +359,7 @@ test('profile update and uploads require authentication and persist', async () =
             name: 'Hamwoo',
             role: 'Engineer',
             description: 'Operational profile ready for deployment checks.',
+            siteUrl: 'https://ops.hamwoo.co.kr/',
             display: {
                 showStack: false,
                 showLocation: false
@@ -363,6 +371,7 @@ test('profile update and uploads require authentication and persist', async () =
     const savedProfile = await readProfile();
     assert.equal(savedProfile.title, 'HamLog Ops');
     assert.equal(savedProfile.description, 'Operational profile ready for deployment checks.');
+    assert.equal(savedProfile.siteUrl, 'https://ops.hamwoo.co.kr');
     assert.equal(savedProfile.display.showStack, false);
     assert.equal(savedProfile.display.showLocation, false);
 
@@ -389,6 +398,46 @@ test('profile route recreates a default profile when the profile file is corrupt
     const savedProfile = await readProfile();
     assert.equal(savedProfile.title, defaultProfile.title);
     assert.equal(savedProfile.favicon, defaultProfile.favicon);
+});
+
+test('categories are rebuilt from posts when the category file is missing', async () => {
+    await writePosts([
+        {
+            id: 'post-category-rebuild-1',
+            slug: 'category-rebuild-1',
+            title: 'Category Rebuild 1',
+            summary: 'category rebuild',
+            category: 'Infra',
+            contentHtml: '<p>Infra body</p>',
+            publishedAt: '2026-03-06',
+            readingTime: '1분 읽기',
+            tags: [],
+            status: 'published',
+            sections: []
+        },
+        {
+            id: 'post-category-rebuild-2',
+            slug: 'category-rebuild-2',
+            title: 'Category Rebuild 2',
+            summary: 'category rebuild',
+            category: 'Kubernetes',
+            contentHtml: '<p>Kubernetes body</p>',
+            publishedAt: '2026-03-06',
+            readingTime: '1분 읽기',
+            tags: [],
+            status: 'published',
+            sections: []
+        }
+    ]);
+
+    await rm(categoriesFilePath, { force: true });
+
+    const response = await request(app).get('/api/categories');
+
+    assert.equal(response.status, 200);
+    assert.ok(response.body.categories.some(category => category.name === 'Infra'));
+    assert.ok(response.body.categories.some(category => category.name === 'Kubernetes'));
+    assert.ok(response.body.categories.some(category => category.name === '미분류'));
 });
 
 test('comments respect password verification on deletion', async () => {
@@ -566,9 +615,13 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             category: 'Testing',
             contentHtml: '<p>Visible body</p>',
             publishedAt: '2026-03-06',
+            updatedAt: '2026-03-08T04:05:06.000Z',
             readingTime: '1분 읽기',
             tags: ['meta'],
             status: 'published',
+            seo: {
+                keywords: ['openclaw', '기여']
+            },
             sections: []
         },
         {
@@ -628,6 +681,10 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     );
     assert.match(
         visibleMetaResponse.text,
+        /<meta name="keywords" content="openclaw, 기여" \/>/
+    );
+    assert.match(
+        visibleMetaResponse.text,
         /"@type":"BlogPosting"/
     );
     assert.match(
@@ -653,14 +710,20 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
 
     const rssResponse = await request(app).get('/rss.xml');
     assert.equal(rssResponse.status, 200);
+    assert.match(rssResponse.text, /<!\[CDATA\[A "quoted" <title>\]\]>/);
     assert.match(rssResponse.text, /meta-visible-post/);
     assert.match(rssResponse.text, /meta-scheduled-visible/);
     assert.doesNotMatch(rssResponse.text, /meta-future-post/);
     assert.doesNotMatch(rssResponse.text, /meta-draft-post/);
+    assert.match(
+        rssResponse.text,
+        new RegExp(new Date('2026-03-08T04:05:06.000Z').toUTCString())
+    );
 
     const sitemapResponse = await request(app).get('/sitemap.xml');
     assert.equal(sitemapResponse.status, 200);
     assert.match(sitemapResponse.text, /meta-visible-post/);
+    assert.match(sitemapResponse.text, /<lastmod>2026-03-08<\/lastmod>/);
     assert.match(sitemapResponse.text, /meta-scheduled-visible/);
     assert.doesNotMatch(sitemapResponse.text, /meta-future-post/);
     assert.doesNotMatch(sitemapResponse.text, /meta-draft-post/);

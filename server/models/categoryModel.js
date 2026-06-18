@@ -1,12 +1,40 @@
 import { readFile, mkdir } from 'fs/promises';
 import { categoriesFilePath, dataDir } from '../config/paths.js';
 import { writeJsonAtomic } from '../utils/fsUtils.js';
-import { normalizeCategoryList } from '../utils/normalizers/categoryNormalizers.js';
+import {
+    normalizeCategory,
+    normalizeCategoryList
+} from '../utils/normalizers/categoryNormalizers.js';
+import { readPosts } from './postModel.js';
+
+async function deriveCategoriesFromPosts() {
+    const posts = await readPosts();
+    const names = [];
+    const seen = new Set();
+
+    posts.forEach((post) => {
+        const category = normalizeCategory(post.category);
+        if (seen.has(category)) return;
+        seen.add(category);
+        names.push(category);
+    });
+
+    return names;
+}
 
 export async function readCategories() {
-    const raw = await readFile(categoriesFilePath, 'utf8');
-    const parsed = JSON.parse(raw);
-    return normalizeCategoryList(parsed);
+    try {
+        const raw = await readFile(categoriesFilePath, 'utf8');
+        const parsed = JSON.parse(raw);
+        return normalizeCategoryList(parsed);
+    } catch (error) {
+        if (error?.code !== 'ENOENT' && !(error instanceof SyntaxError)) {
+            throw error;
+        }
+
+        const derived = await deriveCategoriesFromPosts();
+        return writeCategories(derived);
+    }
 }
 
 export async function writeCategories(categories) {
@@ -18,26 +46,10 @@ export async function writeCategories(categories) {
 export async function ensureCategoriesFile() {
     await mkdir(dataDir, { recursive: true });
     try {
-        await import('fs/promises').then(fs => fs.access(categoriesFilePath)); // Clean way to check access? 
-        // access throws if not exists
         const existing = await readCategories();
         await writeCategories(existing);
     } catch {
-        // We need readPosts logic here? index.js fell back to deriving categories from posts.
-        // Circular dependency warning: PostModel needs CategoryModel?
-        // In index.js: ensureCategoriesFile calls readPosts.
-        // We should move ensure functions to a startup script or keep in index? 
-        // Or allow cross-model usage.
-        // For now, let's implement basic CRUD. Startup ensures might be better in a 'services/init.js' or just imports.
-
-        // Simplification for now: If categories.json missing, start with defaults.
-        // The "derive from posts" logic was for migration. 
-        // I will try to implement it if I can import readPosts.
-        const derived = []; // Fallback empty
+        const derived = await deriveCategoriesFromPosts();
         await writeCategories(derived);
     }
 }
-
-// ... other category manipulation functions (addCategoryIfMissing, etc) can be moved here or controller.
-// Logic like `addCategoryIfMissing` involves reading/writing, so Model/Service layer is appropriate.
-

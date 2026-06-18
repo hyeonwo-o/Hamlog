@@ -67,6 +67,7 @@ export interface Post {
     contentJson?: JSONContent;
     contentHtml?: string;
     publishedAt: string;
+    updatedAt?: string;
     readingTime: string;
     tags: string[];
     series?: string;

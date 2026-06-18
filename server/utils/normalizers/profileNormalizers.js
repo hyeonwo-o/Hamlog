@@ -1,6 +1,12 @@
 import { normalizeOptionalString, normalizeRequiredString } from './shared.js';
 
 const SOCIAL_KEYS = ['github', 'linkedin', 'twitter', 'instagram', 'threads', 'telegram'];
+const DEFAULT_SITE_URL = (process.env.SITE_URL?.trim() || 'https://tech.hamwoo.co.kr').replace(/\/+$/, '');
+
+function normalizeSiteUrl(value, fallback = DEFAULT_SITE_URL) {
+    const normalized = normalizeOptionalString(value, fallback).replace(/\/+$/, '');
+    return normalized || fallback;
+}
 
 export const defaultProfile = {
     title: 'Blog Title',
@@ -12,6 +18,7 @@ export const defaultProfile = {
     profileImage: '',
     favicon: '/avatar.jpg',
     email: '',
+    siteUrl: DEFAULT_SITE_URL,
     social: {
         github: '',
         linkedin: '',
@@ -94,6 +101,7 @@ export function normalizeProfile(raw) {
         profileImage: normalizeOptionalString(source.profileImage, defaultProfile.profileImage),
         favicon: normalizeOptionalString(source.favicon, defaultProfile.favicon),
         email: normalizeOptionalString(source.email, defaultProfile.email),
+        siteUrl: normalizeSiteUrl(source.siteUrl, defaultProfile.siteUrl),
         social: normalizeSocial(source.social, defaultProfile.social),
         stack,
         now: normalizeOptionalString(source.now, defaultProfile.now),
@@ -116,6 +124,7 @@ export function mergeProfile(current, input) {
         'profileImage',
         'favicon',
         'email',
+        'siteUrl',
         'now'
     ].forEach((field) => {
         if (Object.prototype.hasOwnProperty.call(input, field)) {

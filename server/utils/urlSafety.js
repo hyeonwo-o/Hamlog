@@ -72,6 +72,37 @@ function isBlockedHostname(hostname) {
     return false;
 }
 
+async function resolvePublicAddress(hostname, family = 0) {
+    if (isIP(hostname)) {
+        if (isBlockedIp(hostname)) {
+            throw createUrlSafetyError('blocked_url', 'Blocked IP address');
+        }
+
+        return { address: hostname, family: isIP(hostname) };
+    }
+
+    let resolved;
+    try {
+        resolved = await lookup(hostname, {
+            all: true,
+            verbatim: true,
+            family: family === 4 || family === 6 ? family : 0
+        });
+    } catch {
+        throw createUrlSafetyError('unresolvable_host', 'Host could not be resolved');
+    }
+
+    if (!Array.isArray(resolved) || resolved.length === 0) {
+        throw createUrlSafetyError('unresolvable_host', 'Host could not be resolved');
+    }
+
+    if (resolved.some(entry => isBlockedIp(entry.address))) {
+        throw createUrlSafetyError('blocked_url', 'Blocked destination address');
+    }
+
+    return resolved[0];
+}
+
 export async function assertSafePreviewUrl(rawUrl) {
     let parsed;
     try {
@@ -93,21 +124,21 @@ export async function assertSafePreviewUrl(rawUrl) {
         throw createUrlSafetyError('blocked_url', 'Blocked IP address');
     }
 
-    let resolved;
-    try {
-        resolved = await lookup(hostname, { all: true, verbatim: true });
-    } catch {
-        throw createUrlSafetyError('unresolvable_host', 'Host could not be resolved');
-    }
-
-    if (!Array.isArray(resolved) || resolved.length === 0) {
-        throw createUrlSafetyError('unresolvable_host', 'Host could not be resolved');
-    }
-
-    const hasBlockedAddress = resolved.some(entry => isBlockedIp(entry.address));
-    if (hasBlockedAddress) {
-        throw createUrlSafetyError('blocked_url', 'Blocked destination address');
-    }
+    await resolvePublicAddress(hostname);
 
     return parsed.toString();
+}
+
+export function createSafeLookup() {
+    return (hostname, options, callback) => {
+        const family = typeof options === 'number' ? options : options?.family;
+
+        resolvePublicAddress(normalizeHostname(String(hostname)), family)
+            .then(({ address, family: resolvedFamily }) => {
+                callback(null, address, resolvedFamily);
+            })
+            .catch(error => {
+                callback(error);
+            });
+    };
 }

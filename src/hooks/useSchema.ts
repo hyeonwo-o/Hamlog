@@ -1,23 +1,28 @@
 import { useEffect } from 'react';
 import type { Post } from '../types/blog';
+import { siteMeta } from '../data/blogData';
 
 interface UseSchemaProps {
     post: Post | undefined;
 }
 
-const BASE_URL = 'https://tech.hamwoo.co.kr';
+const getBaseUrl = () => (
+    typeof window !== 'undefined' ? window.location.origin : siteMeta.siteUrl
+);
 
 const toAbsoluteUrl = (value?: string) => {
     if (!value) return '';
     if (/^https?:\/\//i.test(value)) return value;
-    return `${BASE_URL}${value.startsWith('/') ? '' : '/'}${value}`;
+    const baseUrl = getBaseUrl();
+    return `${baseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
 };
 
 export const useSchema = ({ post }: UseSchemaProps) => {
     useEffect(() => {
         if (!post) return;
 
-        const canonicalUrl = post.seo?.canonicalUrl || `${BASE_URL}/posts/${post.slug}`;
+        const baseUrl = getBaseUrl();
+        const canonicalUrl = post.seo?.canonicalUrl || `${baseUrl}/posts/${post.slug}`;
         const imageUrl = toAbsoluteUrl(post.seo?.ogImage ?? post.cover);
 
         const schema = {
@@ -26,25 +31,25 @@ export const useSchema = ({ post }: UseSchemaProps) => {
             "headline": post.seo?.title ?? post.title,
             "image": imageUrl ? [imageUrl] : [],
             "datePublished": post.publishedAt,
-            "dateModified": post.publishedAt,
+            "dateModified": post.updatedAt ?? post.publishedAt,
             "mainEntityOfPage": canonicalUrl,
             "url": canonicalUrl,
             "author": {
                 "@type": "Person",
                 "name": "Hamwoo",
-                "url": BASE_URL
+                "url": baseUrl
             },
             "publisher": {
                 "@type": "Organization",
                 "name": "HamLog",
                 "logo": {
                     "@type": "ImageObject",
-                    "url": `${BASE_URL}/avatar.jpg`
+                    "url": `${baseUrl}/avatar.jpg`
                 }
             },
             "description": post.seo?.description ?? post.summary,
             "articleSection": post.category,
-            "keywords": post.tags.join(', ')
+            "keywords": (post.seo?.keywords?.length ? post.seo.keywords : post.tags).join(', ')
         };
 
         const script = document.createElement('script');

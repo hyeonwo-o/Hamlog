@@ -8,6 +8,7 @@ interface SeoProps {
     url?: string;
     type?: 'article' | 'website';
     favicon?: string;
+    twitterHandle?: string;
 }
 
 const toAbsoluteUrl = (value?: string) => {
@@ -25,6 +26,7 @@ export const useSeo = ({
     url,
     type = 'article',
     favicon,
+    twitterHandle,
 }: SeoProps) => {
     useEffect(() => {
         if (typeof document === 'undefined') return;
@@ -81,8 +83,10 @@ export const useSeo = ({
         setMetaTag('twitter:title', seoTitle, 'name');
         setMetaTag('twitter:description', seoDescription, 'name');
         setMetaTag('twitter:image', seoImage, 'name');
+        setMetaTag('twitter:site', twitterHandle ?? '', 'name');
+        setMetaTag('twitter:creator', twitterHandle ?? '', 'name');
         setLinkTag('canonical', canonicalUrl);
         setLinkTag('icon', seoFavicon);
         setLinkTag('apple-touch-icon', seoFavicon);
-    }, [title, description, image, keywords, url, type, favicon]);
+    }, [title, description, image, keywords, url, type, favicon, twitterHandle]);
 };

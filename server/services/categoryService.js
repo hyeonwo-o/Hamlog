@@ -12,8 +12,9 @@ import {
   moveCategoryPostsToDefault,
   replaceCategoryInPosts
 } from './category/categoryPostSync.js';
+import { runWithDataStoreLock } from '../utils/storeLock.js';
 
-export async function createCategory(name, parentId) {
+async function createCategoryInternal(name, parentId) {
   const categories = await readCategories();
   const validation = validateCategoryCreate(categories, name, parentId);
 
@@ -34,7 +35,7 @@ export async function createCategory(name, parentId) {
   return { categories: nextCategories, created: true, category: newCategory };
 }
 
-export async function reorderCategories(parentId, orderedIds) {
+async function reorderCategoriesInternal(parentId, orderedIds) {
   const categories = await readCategories();
   const validation = validateCategoryReorder(categories, parentId, orderedIds);
 
@@ -53,7 +54,7 @@ export async function reorderCategories(parentId, orderedIds) {
   return { updated: true, categories: saved };
 }
 
-export async function removeCategory(categoryIdentifier) {
+async function removeCategoryInternal(categoryIdentifier) {
   const categories = await readCategories();
   const target = findCategoryByIdentifier(categories, categoryIdentifier);
 
@@ -72,7 +73,7 @@ export async function removeCategory(categoryIdentifier) {
   return { categories: savedCategories, reassignedCount, removed: true, reparentedCount };
 }
 
-export async function updateCategory(id, updates) {
+async function updateCategoryInternal(id, updates) {
   const categories = await readCategories();
   const resolution = resolveCategoryUpdate(categories, id, updates);
 
@@ -101,3 +102,26 @@ export async function updateCategory(id, updates) {
     nextName: resolution.nextName
   };
 }
+
+export async function createCategory(name, parentId) {
+  return runWithDataStoreLock(() => createCategoryInternal(name, parentId));
+}
+
+export async function reorderCategories(parentId, orderedIds) {
+  return runWithDataStoreLock(() => reorderCategoriesInternal(parentId, orderedIds));
+}
+
+export async function removeCategory(categoryIdentifier) {
+  return runWithDataStoreLock(() => removeCategoryInternal(categoryIdentifier));
+}
+
+export async function updateCategory(id, updates) {
+  return runWithDataStoreLock(() => updateCategoryInternal(id, updates));
+}
+
+export {
+  createCategoryInternal as createCategoryUnlocked,
+  reorderCategoriesInternal as reorderCategoriesUnlocked,
+  removeCategoryInternal as removeCategoryUnlocked,
+  updateCategoryInternal as updateCategoryUnlocked
+};

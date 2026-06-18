@@ -7,7 +7,7 @@ export const siteMeta: SiteMeta = {
   name: 'Author Name',
   role: 'Role',
   tagline: 'Tagline',
-  description: '개인적으로 경험하고 탐구하고 학습했던 내용들을 기록하는 블로그입니다.',
+  description: '클라우드 엔지니어링, 인프라, DevOps, 개발 경험을 기록하는 기술 블로그입니다.',
   location: 'Location',
   profileImage: '/avatar.jpg',
   favicon: '/avatar.jpg',

@@ -148,6 +148,7 @@ export const useProfile = () => {
         profileImage: profileDraft.profileImage.trim(),
         favicon: profileDraft.favicon?.trim() || '/avatar.jpg',
         email: profileDraft.email.trim(),
+        siteUrl: profileDraft.siteUrl.trim(),
         now: profileDraft.now.trim(),
         stack: profileDraft.stack, // Use array directly
         social: {

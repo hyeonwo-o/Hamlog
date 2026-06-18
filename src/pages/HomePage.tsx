@@ -9,8 +9,6 @@ import { useSeo } from '../hooks/useSeo';
 import { useHomeData } from '../hooks/useHomeData';
 import { useHomePostFilter } from '../hooks/useHomePostFilter';
 
-import { siteMeta } from '../data/blogData';
-
 const HomePage = () => {
     // 1. Data Fetching Hook
     const {
@@ -39,11 +37,27 @@ const HomePage = () => {
         categoryTree
     } = useHomePostFilter({ posts, managedCategories });
 
+    const homeTitle = profile.title.includes('|')
+        ? profile.title
+        : `${profile.title} | 클라우드 엔지니어링과 개발 기록`;
+    const homeDescription = profile.description?.trim()
+        || '클라우드 엔지니어링, 인프라, DevOps, 개발 경험을 기록하는 기술 블로그입니다.';
+    const homeKeywords = Array.from(new Set([
+        '클라우드 엔지니어링',
+        'DevOps',
+        '인프라',
+        'AWS',
+        'GCP',
+        'Kubernetes',
+        ...profile.stack
+    ]));
+
     // 3. SEO Hook
     useSeo({
-        title: profile.title,
-        description: profile.description,
-        url: siteMeta.siteUrl,
+        title: homeTitle,
+        description: homeDescription,
+        keywords: homeKeywords,
+        url: profile.siteUrl,
         type: 'website',
         favicon: profile.favicon
     });

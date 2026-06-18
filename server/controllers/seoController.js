@@ -3,7 +3,7 @@ import { readProfile } from '../models/profileModel.js';
 import { filterPublicPosts, findPublicPostBySlug } from '../utils/postVisibility.js';
 import { readSpaIndexHtml, resolveSpaIndexPath } from '../utils/spaIndex.js';
 
-const BASE_URL = 'https://tech.hamwoo.co.kr';
+const DEFAULT_SITE_URL = (process.env.SITE_URL?.trim() || 'https://tech.hamwoo.co.kr').replace(/\/+$/, '');
 const SITE_NAME = 'Hamlog';
 const AUTHOR_NAME = 'Hamwoo';
 
@@ -14,10 +14,33 @@ const escapeHtml = (value = '') => String(value)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;');
 
-const toAbsoluteUrl = (value = '') => {
-  if (!value) return `${BASE_URL}/avatar.jpg`;
+const escapeXml = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&apos;');
+
+const wrapCdata = (value = '') => `<![CDATA[${String(value).replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
+const resolvePostKeywords = (post) => {
+  if (Array.isArray(post?.seo?.keywords) && post.seo.keywords.length > 0) {
+    return post.seo.keywords;
+  }
+  if (Array.isArray(post?.tags) && post.tags.length > 0) {
+    return post.tags;
+  }
+  return [];
+};
+
+const resolveBaseUrl = (profile) => {
+  const candidate = String(profile?.siteUrl || DEFAULT_SITE_URL).trim().replace(/\/+$/, '');
+  return /^https?:\/\//i.test(candidate) ? candidate : DEFAULT_SITE_URL;
+};
+
+const toAbsoluteUrl = (baseUrl, value = '') => {
+  if (!value) return `${baseUrl}/avatar.jpg`;
   if (/^https?:\/\//i.test(value)) return value;
-  return `${BASE_URL}${value.startsWith('/') ? '' : '/'}${value}`;
+  return `${baseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
 };
 
 const replaceHeadTag = (html, pattern, replacement) => (
@@ -26,11 +49,13 @@ const replaceHeadTag = (html, pattern, replacement) => (
     : html.replace('</head>', `  ${replacement}\n</head>`)
 );
 
+const removeHeadTag = (html, pattern) => html.replace(pattern, '');
 const setRobotsDirective = (html, content) => replaceHeadTag(
   html,
   /<meta name="robots" content=".*?" \/>/,
   `<meta name="robots" content="${escapeHtml(content)}" />`
 );
+
 const getArticleDate = (value = '') => {
   const timestamp = new Date(value);
   if (Number.isNaN(timestamp.getTime())) {
@@ -39,7 +64,7 @@ const getArticleDate = (value = '') => {
   return timestamp.toISOString();
 };
 
-const buildArticleSchema = (post, canonicalUrl, image) => {
+const buildArticleSchema = (post, canonicalUrl, image, baseUrl) => {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -53,14 +78,14 @@ const buildArticleSchema = (post, canonicalUrl, image) => {
     author: {
       '@type': 'Person',
       name: AUTHOR_NAME,
-      url: BASE_URL
+      url: baseUrl
     },
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,
       logo: {
         '@type': 'ImageObject',
-        url: `${BASE_URL}/avatar.jpg`
+        url: `${baseUrl}/avatar.jpg`
       }
     }
   };
@@ -69,8 +94,9 @@ const buildArticleSchema = (post, canonicalUrl, image) => {
     schema.articleSection = post.category;
   }
 
-  if (post.tags?.length) {
-    schema.keywords = post.tags.join(', ');
+  const keywords = resolvePostKeywords(post);
+  if (keywords.length > 0) {
+    schema.keywords = keywords.join(', ');
   }
 
   return JSON.stringify(schema).replace(/</g, '\\u003c');
@@ -79,13 +105,14 @@ const buildArticleSchema = (post, canonicalUrl, image) => {
 export const injectPostMeta = async (req, res) => {
   try {
     const { slug } = req.params;
-    const posts = await readPosts();
+    const [posts, profile] = await Promise.all([readPosts(), readProfile()]);
+    const baseUrl = resolveBaseUrl(profile);
     const post = findPublicPostBySlug(posts, slug);
 
     let html = await readSpaIndexHtml();
 
     if (!post) {
-      const requestedUrl = `${BASE_URL}${req.originalUrl}`;
+      const requestedUrl = `${baseUrl}${req.originalUrl}`;
       const notFoundTitle = `페이지를 찾을 수 없습니다 | ${SITE_NAME}`;
 
       html = replaceHeadTag(html, /<title>.*?<\/title>/, `<title>${escapeHtml(notFoundTitle)}</title>`);
@@ -104,23 +131,32 @@ export const injectPostMeta = async (req, res) => {
 
     const title = post.seo?.title || post.title;
     const description = post.seo?.description || post.summary;
-    const image = toAbsoluteUrl(post.seo?.ogImage || post.cover || '/avatar.jpg');
-    const fullUrl = `${BASE_URL}/posts/${post.slug}`;
-    const canonicalUrl = toAbsoluteUrl(post.seo?.canonicalUrl || fullUrl);
+    const image = toAbsoluteUrl(baseUrl, post.seo?.ogImage || post.cover || '/avatar.jpg');
+    const fullUrl = `${baseUrl}/posts/${post.slug}`;
+    const canonicalUrl = toAbsoluteUrl(baseUrl, post.seo?.canonicalUrl || fullUrl);
     const escapedTitle = escapeHtml(title);
     const escapedDescription = escapeHtml(description);
     const escapedImage = escapeHtml(image);
     const escapedFullUrl = escapeHtml(fullUrl);
     const escapedCanonicalUrl = escapeHtml(canonicalUrl);
-    const articleSchema = buildArticleSchema(post, canonicalUrl, image);
+    const escapedKeywords = escapeHtml(resolvePostKeywords(post).join(', '));
+    const articleSchema = buildArticleSchema(post, canonicalUrl, image, baseUrl);
 
+    // Update basic meta
     html = replaceHeadTag(html, /<title>.*?<\/title>/, `<title>${escapedTitle}</title>`);
     html = replaceHeadTag(
       html,
       /<meta name="description" content=".*?" \/>/,
       `<meta name="description" content="${escapedDescription}" />`
     );
+    html = replaceHeadTag(
+      html,
+      /<meta name="keywords" content=".*?" \/>/,
+      `<meta name="keywords" content="${escapedKeywords}" />`
+    );
     html = setRobotsDirective(html, 'index, follow');
+
+    // Update OG meta
     html = replaceHeadTag(
       html,
       /<meta property="og:title" content=".*?" \/>/,
@@ -146,6 +182,8 @@ export const injectPostMeta = async (req, res) => {
       /<meta property="og:image" content=".*?" \/>/,
       `<meta property="og:image" content="${escapedImage}" />`
     );
+
+    // Update Twitter meta
     html = replaceHeadTag(
       html,
       /<meta name="twitter:title" content=".*?" \/>/,
@@ -161,6 +199,9 @@ export const injectPostMeta = async (req, res) => {
       /<meta name="twitter:image" content=".*?" \/>/,
       `<meta name="twitter:image" content="${escapedImage}" />`
     );
+    html = removeHeadTag(html, /<meta name="twitter:site" content=".*?" \/>\s*/);
+    html = removeHeadTag(html, /<meta name="twitter:creator" content=".*?" \/>\s*/);
+
     html = replaceHeadTag(
       html,
       /<link rel="canonical" href=".*?" \/>/,
@@ -199,26 +240,27 @@ export const getRss = async (req, res) => {
   try {
     const posts = await readPosts();
     const profile = await readProfile();
+    const baseUrl = resolveBaseUrl(profile);
     const publishedPosts = filterPublicPosts(posts)
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
     const items = publishedPosts.map(post => `
     <item>
-      <title><![CDATA[${post.title}]]></title>
-      <link>${BASE_URL}/posts/${post.slug}</link>
-      <guid>${BASE_URL}/posts/${post.slug}</guid>
-      <pubDate>${new Date(post.publishedAt).toUTCString()}</pubDate>
-      <description><![CDATA[${post.summary}]]></description>
-      <content:encoded><![CDATA[${post.contentHtml || ''}]]></content:encoded>
-      ${post.category ? `<category>${post.category}</category>` : ''}
+      <title>${wrapCdata(post.title)}</title>
+      <link>${escapeXml(`${baseUrl}/posts/${post.slug}`)}</link>
+      <guid>${escapeXml(`${baseUrl}/posts/${post.slug}`)}</guid>
+      <pubDate>${new Date(post.updatedAt || post.publishedAt).toUTCString()}</pubDate>
+      <description>${wrapCdata(post.summary)}</description>
+      <content:encoded>${wrapCdata(post.contentHtml || '')}</content:encoded>
+      ${post.category ? `<category>${escapeXml(post.category)}</category>` : ''}
     </item>`).join('');
 
     const rss = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title>${profile.title}</title>
-    <link>${BASE_URL}</link>
-    <description>${profile.tagline}</description>
+    <title>${escapeXml(profile.title)}</title>
+    <link>${escapeXml(baseUrl)}</link>
+    <description>${escapeXml(profile.tagline)}</description>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     ${items}
   </channel>
@@ -234,13 +276,14 @@ export const getRss = async (req, res) => {
 
 export const getSitemap = async (req, res) => {
   try {
-    const posts = await readPosts();
+    const [posts, profile] = await Promise.all([readPosts(), readProfile()]);
+    const baseUrl = resolveBaseUrl(profile);
     const publishedPosts = filterPublicPosts(posts);
 
     const urls = publishedPosts.map(post => `
   <url>
-    <loc>${BASE_URL}/posts/${post.slug}</loc>
-    <lastmod>${post.publishedAt}</lastmod>
+    <loc>${escapeXml(`${baseUrl}/posts/${post.slug}`)}</loc>
+    <lastmod>${(post.updatedAt || post.publishedAt).slice(0, 10)}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>`).join('');
@@ -248,7 +291,7 @@ export const getSitemap = async (req, res) => {
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${BASE_URL}</loc>
+    <loc>${escapeXml(baseUrl)}</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>

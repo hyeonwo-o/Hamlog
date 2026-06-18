@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { dataDir } from '../config/paths.js';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import { runWithDataStoreLock } from '../utils/storeLock.js';
 
 const commentsFilePath = path.join(dataDir, 'comments.json');
 const BCRYPT_SALT_ROUNDS = 10;
@@ -43,43 +44,47 @@ export async function getCommentsByPostId(postId) {
 }
 
 export async function createComment(data) {
-    const all = await readComments();
-    const passwordHash = await bcrypt.hash(String(data.password), BCRYPT_SALT_ROUNDS);
-    const newComment = {
-        id: randomUUID(),
-        postId: data.postId,
-        author: data.author || 'Anonymous',
-        password: passwordHash,
-        content: data.content,
-        createdAt: new Date().toISOString()
-    };
-    await writeComments([...all, newComment]);
-    return newComment;
+    return runWithDataStoreLock(async () => {
+        const all = await readComments();
+        const passwordHash = await bcrypt.hash(String(data.password), BCRYPT_SALT_ROUNDS);
+        const newComment = {
+            id: randomUUID(),
+            postId: data.postId,
+            author: data.author || 'Anonymous',
+            password: passwordHash,
+            content: data.content,
+            createdAt: new Date().toISOString()
+        };
+        await writeComments([...all, newComment]);
+        return newComment;
+    });
 }
 
 export async function deleteComment(id, password) {
-    const all = await readComments();
-    const target = all.find(c => c.id === id);
+    return runWithDataStoreLock(async () => {
+        const all = await readComments();
+        const target = all.find(c => c.id === id);
 
-    if (!target) return { success: false, reason: 'not_found' };
-    const inputPassword = String(password ?? '');
-    const storedPassword = String(target.password ?? '');
+        if (!target) return { success: false, reason: 'not_found' };
+        const inputPassword = String(password ?? '');
+        const storedPassword = String(target.password ?? '');
 
-    let isPasswordMatched = false;
-    if (
-        storedPassword.startsWith('$2a$')
-        || storedPassword.startsWith('$2b$')
-        || storedPassword.startsWith('$2y$')
-    ) {
-        isPasswordMatched = await bcrypt.compare(inputPassword, storedPassword);
-    } else {
-        // Legacy compatibility for pre-hash comments.
-        isPasswordMatched = storedPassword === inputPassword;
-    }
+        let isPasswordMatched = false;
+        if (
+            storedPassword.startsWith('$2a$')
+            || storedPassword.startsWith('$2b$')
+            || storedPassword.startsWith('$2y$')
+        ) {
+            isPasswordMatched = await bcrypt.compare(inputPassword, storedPassword);
+        } else {
+            // Legacy compatibility for pre-hash comments.
+            isPasswordMatched = storedPassword === inputPassword;
+        }
 
-    if (!isPasswordMatched) return { success: false, reason: 'wrong_password' };
+        if (!isPasswordMatched) return { success: false, reason: 'wrong_password' };
 
-    const next = all.filter(c => c.id !== id);
-    await writeComments(next);
-    return { success: true };
+        const next = all.filter(c => c.id !== id);
+        await writeComments(next);
+        return { success: true };
+    });
 }
