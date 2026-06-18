@@ -212,7 +212,7 @@ const PostPage: React.FC = () => {
               </Link>
 
               <article className="space-y-8">
-                <header className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-6 lg:p-7">
+                <header className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 sm:p-6 lg:p-7">
                   <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)] sm:gap-4">
                     <button
                       type="button"
@@ -260,13 +260,13 @@ const PostPage: React.FC = () => {
                   )}
                 </header>
 
-                <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7 lg:p-8 xl:px-10">
+                <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:p-8 xl:px-10">
                   <div className="post-content prose prose-lg max-w-none w-full">
                     <PostContent contentHtml={post.contentHtml} />
                   </div>
                 </div>
 
-                <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] sm:p-7 lg:p-8">
+                <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:p-8">
                   <Comments postId={post.id} />
                 </div>
               </article>

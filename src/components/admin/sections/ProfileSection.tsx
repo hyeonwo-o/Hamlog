@@ -141,7 +141,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({
 
   if (profileLoading && !profileDraft) {
     return (
-      <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-8 shadow-[var(--shadow)]">
+      <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-8">
         <LoadingSpinner message="소개 정보를 불러오는 중..." />
       </div>
     );
@@ -149,7 +149,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({
 
   if (!profileDraft) {
     return (
-      <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-8 shadow-[var(--shadow)]">
+      <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-8">
         <p className="text-sm text-[var(--text-muted)]">
           소개 정보를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.
         </p>

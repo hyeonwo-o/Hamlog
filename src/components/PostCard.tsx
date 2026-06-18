@@ -72,8 +72,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
   const isFeatured = variant === 'featured';
 
   const containerClass = isFeatured
-    ? "angular-panel-strong group flex h-full flex-col gap-2.5 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-3.5 shadow-[var(--shadow)] transition duration-300 hover:translate-x-1 hover:-translate-y-1 hover:shadow-[var(--shadow-strong)] animate-slide-up"
-    : "angular-panel group flex flex-col gap-3 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-3.5 transition duration-300 hover:translate-x-1 hover:-translate-y-1 hover:shadow-[var(--shadow)] animate-slide-up";
+    ? "group flex h-full flex-col gap-2.5 border border-[color:var(--border)] bg-[var(--surface)] p-3.5 transition-colors hover:border-[color:var(--border-strong)] animate-slide-up"
+    : "group flex flex-col gap-3 border border-[color:var(--border)] bg-[var(--surface)] p-3.5 transition-colors hover:border-[color:var(--border-strong)] animate-slide-up";
 
   return (
     <Link

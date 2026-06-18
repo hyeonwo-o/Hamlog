@@ -18,7 +18,7 @@ export const ImageBubbleMenu: React.FC<ImageBubbleMenuProps> = ({
     return (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-20">
             {/* Size Controls */}
-            <div className="flex items-center gap-1 rounded-full bg-[var(--surface-overlay)] border border-[color:var(--border)] p-1 shadow-xl backdrop-blur-sm animate-fade-in">
+            <div className="flex items-center gap-1 rounded-full bg-[var(--surface-overlay)] border border-[color:var(--border)] p-1 backdrop-blur-sm animate-fade-in">
                 {['25%', '50%', '75%', '100%'].map((w) => (
                     <button
                         key={w}

@@ -90,7 +90,7 @@ const HomePage = () => {
 
                     {error && posts.length === 0 && (
                         <section className="mx-auto max-w-6xl px-4 py-12">
-                            <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 text-center shadow-[var(--shadow)]">
+                            <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 text-center">
                                 <p className="text-sm text-[var(--text-muted)]">{error}</p>
                                 <button
                                     type="button"

@@ -23,8 +23,8 @@ export default function SidebarPostListItem({
       onClick={() => onSelect(post)}
       className={`group relative flex flex-col gap-2 rounded-xl border p-3 text-left transition-all ${
         selected
-          ? 'border-[var(--accent)] bg-[var(--surface)] shadow-[0_18px_40px_-28px_rgba(8,46,41,0.55)] ring-1 ring-[var(--accent-soft)]'
-          : 'border-[color:var(--border)] bg-[var(--surface)] hover:border-[var(--accent-soft)] hover:shadow-[0_18px_40px_-30px_rgba(8,46,41,0.45)]'
+          ? 'border-[var(--accent)] bg-[var(--surface)] ring-1 ring-[var(--accent-soft)]'
+          : 'border-[color:var(--border)] bg-[var(--surface)] hover:border-[var(--accent-soft)]'
       }`}
     >
       <div className="flex items-start justify-between gap-3">

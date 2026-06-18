@@ -96,7 +96,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 text-[var(--text)]">
-        <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+        <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
           <LoadingSpinner message="관리자 인증 확인 중..." />
         </div>
       </div>
@@ -107,7 +107,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 text-[var(--text)]">
-      <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+      <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
         <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
           관리자 접근
         </p>

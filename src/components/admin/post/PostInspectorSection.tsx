@@ -21,7 +21,7 @@ const PostInspectorSection: React.FC<PostInspectorSectionProps> = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <section className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[0_18px_40px_-28px_rgba(9,42,36,0.45)]">
+    <section className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4">
       {collapsible ? (
         <button
           type="button"

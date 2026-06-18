@@ -24,7 +24,7 @@ export const LinkCardComponent: React.FC<LinkCardProps> = ({ node, selected }) =
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group flex overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--surface)] no-underline transition-all hover:border-[color:var(--accent)] hover:shadow-md ${selected ? 'ring-2 ring-[var(--accent)]' : ''
+                className={`group flex overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--surface)] no-underline transition-all hover:border-[color:var(--accent)] ${selected ? 'ring-2 ring-[var(--accent)]' : ''
                     }`}
                 contentEditable={false} // Make it read-only
                 draggable="false"

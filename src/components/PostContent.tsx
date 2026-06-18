@@ -102,7 +102,7 @@ const CodeBlock = ({ language, code }: { language: string; code: string }) => {
   };
 
   return (
-    <div className="group relative my-6 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[#1e1e1e] shadow-md">
+    <div className="group relative my-6 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[#1e1e1e]">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-4 py-2">
         <div className="flex items-center gap-2">

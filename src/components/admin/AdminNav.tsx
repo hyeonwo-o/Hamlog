@@ -8,7 +8,7 @@ interface AdminNavProps {
 }
 
 const AdminNav: React.FC<AdminNavProps> = ({ activeSection, sections, onChange }) => (
-  <div className="angular-panel rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
+  <div className="angular-panel rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4">
     <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
       관리 메뉴
     </p>

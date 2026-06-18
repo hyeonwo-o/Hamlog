@@ -120,7 +120,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4 py-6">
-      <div className="max-h-[calc(100vh-3rem)] w-full max-w-[820px] overflow-y-auto border border-[color:var(--border)] bg-white shadow-[0_18px_60px_rgba(15,23,42,0.18)]">
+      <div className="max-h-[calc(100vh-3rem)] w-full max-w-[820px] overflow-y-auto border border-[color:var(--border)] bg-white">
         <div className="flex items-center justify-between border-b border-black px-6 py-4">
           <h2 className="text-sm font-semibold text-[var(--text)]">발행</h2>
           <span className="text-xs text-[var(--text-muted)]">CCL 설정</span>
@@ -168,7 +168,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
                 defaultOptionLabel={DEFAULT_CATEGORY}
                 recentStorageKey="hamlog:admin:editor-categories"
                 triggerClassName="flex h-9 w-full items-center justify-between border border-[color:var(--border)] bg-white px-3 text-sm text-[var(--text)] transition hover:border-[color:var(--accent)]"
-                panelClassName="absolute left-0 top-full z-[60] mt-2 w-full min-w-[280px] border border-[color:var(--border)] bg-white p-4 shadow-2xl"
+                panelClassName="absolute left-0 top-full z-[60] mt-2 w-full min-w-[280px] border border-[color:var(--border)] bg-white p-4"
               />
             </div>
 

@@ -66,7 +66,7 @@ export const SlashCommandList = forwardRef<SlashCommandListHandle, SlashCommandL
     }));
 
     return (
-        <div className="z-50 min-w-[300px] overflow-hidden rounded-lg bg-[var(--surface)] p-1 shadow-xl border border-[color:var(--border)] text-[var(--text)]">
+        <div className="z-50 min-w-[300px] overflow-hidden rounded-lg bg-[var(--surface)] p-1 border border-[color:var(--border)] text-[var(--text)]">
             {props.items.length ? (
                 props.items.map((item, index) => (
                     <button

@@ -28,7 +28,7 @@ export const SectionCard = ({
   children
 }: SectionCardProps) => (
   <section
-    className={`rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] ${className}`}
+    className={`rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 ${className}`}
   >
     <div className="mb-5 space-y-2">
       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">

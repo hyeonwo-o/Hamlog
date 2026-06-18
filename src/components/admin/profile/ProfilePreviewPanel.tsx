@@ -16,7 +16,7 @@ const ProfilePreviewPanel = ({
   identityFallback
 }: ProfilePreviewPanelProps) => (
   <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
-    <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+    <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--surface)]">
       <div className="border-b border-[color:var(--border)] bg-[radial-gradient(circle_at_top_left,rgba(19,144,116,0.18),transparent_48%),linear-gradient(180deg,var(--surface-muted),var(--surface))] px-6 py-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
           라이브 미리보기
@@ -26,7 +26,7 @@ const ProfilePreviewPanel = ({
             <img
               src={profileDraft.profileImage}
               alt={`${profileDraft.name || profileDraft.title} 프로필 이미지`}
-              className="h-20 w-20 rounded-lg border border-white/40 object-cover shadow-[0_18px_40px_-24px_rgba(11,35,32,0.8)]"
+              className="h-20 w-20 rounded-lg border border-white/40 object-cover"
             />
           ) : (
             <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)] bg-[var(--surface)] font-display text-lg font-semibold text-[var(--text-muted)]">
@@ -192,7 +192,7 @@ const ProfilePreviewPanel = ({
       </div>
     </div>
 
-    <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+    <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
         작성 팁
       </p>

@@ -122,7 +122,7 @@ const CategoryTreeItem: React.FC<CategoryTreeItemProps> = ({
         <div
           className={`group flex flex-1 items-start justify-between gap-3 rounded-lg border p-3 transition-all ${
             isActive
-              ? 'border-[color:var(--accent)] bg-[var(--surface)] shadow-[0_18px_40px_-26px_rgba(10,43,40,0.65)] ring-1 ring-[color:var(--accent-soft)]'
+              ? 'border-[color:var(--accent)] bg-[var(--surface)] ring-1 ring-[color:var(--accent-soft)]'
               : 'border-[color:var(--border)] bg-[var(--surface-muted)] hover:border-[color:var(--accent)] hover:bg-[var(--surface)]'
           }`}
           onClick={() => onSelectCategory(node.id)}
@@ -216,7 +216,7 @@ const CategoryTreeItem: React.FC<CategoryTreeItemProps> = ({
       </div>
 
       {isEditing && (
-        <div className="mb-3 ml-8 rounded-lg border border-dashed border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-inner">
+        <div className="mb-3 ml-8 rounded-lg border border-dashed border-[color:var(--border)] bg-[var(--surface)] p-4">
           <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_auto]">
             <div className="space-y-1">
               <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">

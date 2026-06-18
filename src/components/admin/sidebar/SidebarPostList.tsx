@@ -25,7 +25,7 @@ export default function SidebarPostList({
         <button
           type="button"
           onClick={onReload}
-          className="mt-2 block w-full rounded-lg bg-white py-2 text-xs font-bold shadow-sm transition-transform hover:scale-[1.02]"
+          className="mt-2 block w-full rounded-lg bg-white py-2 text-xs font-bold transition-transform hover:scale-[1.02]"
         >
           다시 시도
         </button>

@@ -46,7 +46,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                             <div className="flex flex-wrap gap-3">
                                 <a
                                     href={`mailto:${profile.email}`}
-                                    className="angular-control group inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-transparent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-all hover:translate-x-1 hover:-translate-y-1 hover:border-[var(--text)] hover:text-[var(--text)] active:scale-95"
+                                    className="angular-control inline-flex items-center gap-2 border border-[color:var(--border)] bg-transparent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:border-[var(--text)] hover:text-[var(--text)]"
                                 >
                                     메일 보내기
                                 </a>
@@ -76,7 +76,7 @@ export const HomeHeader = ({ profile, postCount, tagCount, categoryCount, series
                     </div>
 
                     <div>
-                        <div className="angular-panel-strong space-y-4 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
+                        <div className="space-y-4 border border-[color:var(--border)] bg-[var(--surface)] p-4">
                             <div className="flex items-center gap-3">
                                 {profile.display.showProfileImage && profile.profileImage && (
                                     <img

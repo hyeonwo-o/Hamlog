@@ -17,7 +17,7 @@ const ProfileWorkspaceHeader = ({
   onReload,
   onSave
 }: ProfileWorkspaceHeaderProps) => (
-  <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+  <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">

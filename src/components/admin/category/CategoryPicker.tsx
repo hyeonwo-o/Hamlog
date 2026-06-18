@@ -254,7 +254,7 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
         <div
           className={
             panelClassName
-            ?? 'absolute left-0 top-full z-50 mt-2 w-full min-w-[280px] rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-2xl'
+            ?? 'absolute left-0 top-full z-50 mt-2 w-full min-w-[280px] rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4'
           }
         >
           <div className="space-y-4">

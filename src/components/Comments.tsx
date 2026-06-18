@@ -178,7 +178,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
             {/* Delete Modal (Simple Inline) */}
             {deleteTargetId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-[var(--bg)] rounded-xl p-6 w-full max-w-xs shadow-2xl border border-[var(--border)]">
+                    <div className="bg-[var(--bg)] rounded-xl p-6 w-full max-w-xs border border-[var(--border)]">
                         <h4 className="text-sm font-semibold mb-4">댓글 삭제</h4>
                         <input
                             type="password"

@@ -52,7 +52,7 @@ export function ToolbarDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-30 mt-1 max-h-60 min-w-[140px] w-full overflow-y-auto border border-[color:var(--border)] bg-white p-1 shadow-lg ring-1 ring-black/5">
+        <div className="absolute left-0 top-full z-30 mt-1 max-h-60 min-w-[140px] w-full overflow-y-auto border border-[color:var(--border)] bg-white p-1 ring-1 ring-black/5">
           {options.map(option => (
             <button
               key={option.value}

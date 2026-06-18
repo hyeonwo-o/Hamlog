@@ -90,7 +90,7 @@ export default function SidebarFilters({
             onIncludeDescendantsChange={onFilterCategoryIncludeDescendantsChange}
             recentStorageKey="hamlog:admin:sidebar-categories"
             triggerClassName="flex w-full items-center justify-between rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] transition hover:border-[color:var(--accent)]"
-            panelClassName="relative z-20 w-full rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 shadow-2xl"
+            panelClassName="relative z-20 w-full rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4"
           />
 
           {quickCategoryNodes.length > 0 && (

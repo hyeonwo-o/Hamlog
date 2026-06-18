@@ -72,7 +72,7 @@ export const ImageComponent = ({ node, updateAttributes, selected }: NodeViewPro
                         src={src}
                         alt={alt}
                         style={imgStyle}
-                        className={`rounded-lg transition-all ${selected ? 'ring-2 ring-[var(--accent)] shadow-lg' : ''}`}
+                        className={`rounded-lg transition-all ${selected ? 'ring-2 ring-[var(--accent)]' : ''}`}
                     />
 
                     {selected && (

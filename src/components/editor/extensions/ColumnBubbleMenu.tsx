@@ -53,7 +53,7 @@ export const ColumnBubbleMenu: React.FC<ColumnBubbleMenuProps> = ({ editor, enab
             editor={editor}
             tippyOptions={{ duration: 100, maxWidth: 400, placement: 'top' }}
             shouldShow={({ editor }) => enabled && editor.isActive('columns')}
-            className="flex flex-wrap items-center gap-1 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-1.5 shadow-lg animate-in fade-in zoom-in-95 duration-200"
+            className="flex flex-wrap items-center gap-1 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-1.5 animate-in fade-in zoom-in-95 duration-200"
         >
             <div className="flex items-center gap-0.5">
                 <MenuButton

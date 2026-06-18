@@ -25,7 +25,7 @@ const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   const [categoryOpen, setCategoryOpen] = useState(false);
 
   return (
-    <div className="rounded-3xl border border-[color:var(--border)] bg-[var(--surface-overlay)] p-4 shadow-[var(--shadow)]">
+    <div className="rounded-3xl border border-[color:var(--border)] bg-[var(--surface-overlay)] p-4">
       <div className="flex flex-col gap-4 md:flex-row md:items-end">
         <label className="flex-1 text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
           검색
@@ -60,7 +60,7 @@ const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             </button>
 
             {categoryOpen && (
-              <div className="absolute right-0 z-10 mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+              <div className="absolute right-0 z-10 mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[var(--surface)]">
                 <ul className="max-h-56 overflow-auto py-2" role="listbox">
                   <li>
                     <button
@@ -120,7 +120,7 @@ const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             </button>
 
             {tagOpen && (
-              <div className="absolute right-0 z-10 mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+              <div className="absolute right-0 z-10 mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[var(--surface)]">
                 <ul className="max-h-56 overflow-auto py-2" role="listbox">
                   <li>
                     <button

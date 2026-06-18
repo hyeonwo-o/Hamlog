@@ -50,7 +50,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   );
 
   return (
-    <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+    <div className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
       <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-[linear-gradient(135deg,rgba(6,55,48,0.08),rgba(255,255,255,0)_55%),linear-gradient(180deg,var(--surface),var(--surface))] p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-3">

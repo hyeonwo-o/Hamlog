@@ -61,7 +61,7 @@ export function ToolbarPaletteMenu({
       </ToolbarButton>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-44 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+        <div className="absolute left-0 top-full z-20 mt-1 w-44 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-2">
           <div className="grid grid-cols-5 gap-1">
             {colors.map(color => (
               <button

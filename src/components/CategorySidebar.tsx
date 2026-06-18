@@ -88,7 +88,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
 
     return (
         <aside className="space-y-3">
-            <div className="angular-panel rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-3.5 shadow-[var(--shadow)] lg:sticky lg:top-6">
+            <div className="border border-[color:var(--border)] bg-[var(--surface)] p-3.5 lg:sticky lg:top-6">
                 <div className="flex items-center justify-between">
                     <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">
                         카테고리
