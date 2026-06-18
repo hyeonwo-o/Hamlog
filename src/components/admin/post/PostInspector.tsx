@@ -22,7 +22,7 @@ interface PostInspectorProps {
   revisions: PostRevision[];
   revisionsLoading?: boolean;
   restoringRevisionId?: string | null;
-  contentStats: { chars: number; words: number; readingMinutes: number };
+  contentStats: { chars: number; words: number };
   tagInput: string;
   onTagInputChange: (value: string) => void;
   onTagKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -198,9 +198,8 @@ const PostInspector: React.FC<PostInspectorProps> = ({
         defaultOpen
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <StatCard label="상태" value={draft.status === 'draft' ? '초안' : draft.status === 'scheduled' ? '예약' : '발행'} />
-            <StatCard label="읽기 시간" value={draft.readingTime || `${contentStats.readingMinutes}분`} />
             <StatCard label="대표 이미지" value={draft.cover ? '설정됨' : '없음'} />
           </div>
           {draft.cover && (
@@ -343,10 +342,9 @@ const PostInspector: React.FC<PostInspectorProps> = ({
         collapsible
         defaultOpen={false}
       >
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <StatCard label="문자 수" value={contentStats.chars} />
           <StatCard label="단어 수" value={contentStats.words} />
-          <StatCard label="예상 읽기" value={`${contentStats.readingMinutes}분`} />
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {draft.tags.map(tag => (

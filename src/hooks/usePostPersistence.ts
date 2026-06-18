@@ -149,7 +149,6 @@ export const usePostPersistence = ({
             contentJson: draft.contentJson,
             contentHtml: hasContentJson ? undefined : contentHtml || undefined,
             publishedAt,
-            readingTime: draft.readingTime.trim() || '3분 읽기',
             tags,
             series: draft.series.trim() || undefined,
             featured: draft.featured,

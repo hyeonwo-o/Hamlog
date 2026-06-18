@@ -68,7 +68,6 @@ export interface Post {
     contentHtml?: string;
     publishedAt: string;
     updatedAt?: string;
-    readingTime: string;
     tags: string[];
     series?: string;
     featured?: boolean;

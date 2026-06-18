@@ -7,7 +7,6 @@ export function seedPosts() {
             summary: '로딩, 에러, 빈 상태까지 포함한 실전 체크리스트.',
             category: 'UI 설계',
             publishedAt: '2024-11-12',
-            readingTime: '6분 읽기',
             tags: ['리액트', '상태', 'UX'],
             series: 'UI 회복력',
             featured: true,
@@ -55,7 +54,6 @@ export function seedPosts() {
             summary: '로컬 개발 속도를 유지하면서 풀스택 프로토타입을 만드는 방법.',
             category: '개발 환경',
             publishedAt: '2024-10-28',
-            readingTime: '5분 읽기',
             tags: ['툴링', 'Vite', 'Node'],
             series: '배송 플레이북',
             featured: true,
@@ -102,7 +100,6 @@ export function seedPosts() {
             summary: '빠름의 기준을 정하고 UI를 그 예산에 맞추는 법.',
             category: '성능',
             publishedAt: '2024-09-18',
-            readingTime: '4분 읽기',
             tags: ['성능', '제품', '아키텍처'],
             cover:
                 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1400&q=80',
@@ -137,7 +134,6 @@ export function seedPosts() {
             summary: '토큰 시스템은 리듬을 유지하고 시각적 부채를 줄입니다.',
             category: '디자인 시스템',
             publishedAt: '2024-08-29',
-            readingTime: '5분 읽기',
             tags: ['디자인', 'CSS', '시스템'],
             cover:
                 'https://images.unsplash.com/photo-1504805572947-34fad45aed93?auto=format&fit=crop&w=1400&q=80',
@@ -177,7 +173,6 @@ export function seedPosts() {
             summary: '콘솔을 어지럽히지 않으면서 디버깅에 도움이 되는 로깅.',
             category: '관측성',
             publishedAt: '2024-07-30',
-            readingTime: '4분 읽기',
             tags: ['관측성', '디버깅', '타입스크립트'],
             cover:
                 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1400&q=80',
@@ -218,7 +213,6 @@ export function seedPosts() {
             summary: '사용자 의도에 따라 피드 경험을 선택하는 방법.',
             category: '제품 경험',
             publishedAt: '2024-06-18',
-            readingTime: '3분 읽기',
             tags: ['제품', 'UX', '프론트엔드'],
             cover:
                 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1400&q=80',

@@ -131,7 +131,6 @@ test('authenticated content routes persist posts and categories', async () => {
             category: 'DevOps',
             contentHtml: '<p>blocked</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: [],
             status: 'published',
             sections: []
@@ -161,7 +160,6 @@ test('authenticated content routes persist posts and categories', async () => {
         contentJson: sampleContentJson,
         contentHtml: '<p>stale html should not be stored</p>',
         publishedAt: '2026-03-06',
-        readingTime: '2분 읽기',
         tags: ['ci', 'deploy'],
         status: 'published',
         sections: []
@@ -256,10 +254,12 @@ test('ensurePostsFile backfills contentJson for legacy html-only posts', async (
     assert.equal(posts.length, 1);
     assert.deepEqual(posts[0].contentJson, parsedHtmlContentJson);
     assert.equal(posts[0].contentHtml, '<h1>Heading</h1><p>Body copy</p>');
+    assert.equal(Object.hasOwn(posts[0], 'readingTime'), false);
 
     const postFilePath = path.join(postsDir, 'legacy-html-post.json');
     const storedPost = JSON.parse(await readFile(postFilePath, 'utf8'));
     assert.deepEqual(storedPost.contentJson, parsedHtmlContentJson);
+    assert.equal(Object.hasOwn(storedPost, 'readingTime'), false);
 });
 
 test('post revisions can be listed and restored', async () => {
@@ -275,7 +275,6 @@ test('post revisions can be listed and restored', async () => {
             category: 'Engineering',
             contentJson: sampleContentJson,
             publishedAt: '2026-03-06',
-            readingTime: '2분 읽기',
             tags: ['editor'],
             status: 'published',
             sections: []
@@ -349,7 +348,6 @@ test('post updates reject stale editor saves', async () => {
             category: 'Engineering',
             contentJson: sampleContentJson,
             publishedAt: '2026-03-06',
-            readingTime: '2분 읽기',
             tags: ['editor'],
             status: 'published',
             sections: []
@@ -449,7 +447,6 @@ test('unused upload cleanup keeps referenced images and deletes selected unused 
             category: 'Media',
             contentHtml: '<p><img src="/uploads/used.webp" /></p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: [],
             status: 'published',
             sections: []
@@ -508,7 +505,6 @@ test('categories are rebuilt from posts when the category file is missing', asyn
             category: 'Infra',
             contentHtml: '<p>Infra body</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: [],
             status: 'published',
             sections: []
@@ -521,7 +517,6 @@ test('categories are rebuilt from posts when the category file is missing', asyn
             category: 'Kubernetes',
             contentHtml: '<p>Kubernetes body</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: [],
             status: 'published',
             sections: []
@@ -548,7 +543,6 @@ test('comments respect password verification on deletion', async () => {
             category: 'Testing',
             contentHtml: '<p>Hello comments</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: [],
             status: 'published',
             sections: []
@@ -608,7 +602,6 @@ test('authenticated write routes reject untrusted origins', async () => {
             category: 'Security',
             contentHtml: '<p>blocked</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: [],
             status: 'published',
             sections: []
@@ -632,7 +625,6 @@ test('public post endpoints hide drafts and future scheduled posts from unauthen
             category: 'Testing',
             contentHtml: '<p>public body</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: ['visible'],
             status: 'published',
             sections: []
@@ -645,7 +637,6 @@ test('public post endpoints hide drafts and future scheduled posts from unauthen
             category: 'Testing',
             contentHtml: '<p>scheduled visible body</p>',
             publishedAt: pastScheduledAt.slice(0, 10),
-            readingTime: '1분 읽기',
             tags: ['scheduled'],
             status: 'scheduled',
             scheduledAt: pastScheduledAt,
@@ -659,7 +650,6 @@ test('public post endpoints hide drafts and future scheduled posts from unauthen
             category: 'Testing',
             contentHtml: '<p>scheduled hidden body</p>',
             publishedAt: futureScheduledAt.slice(0, 10),
-            readingTime: '1분 읽기',
             tags: ['hidden'],
             status: 'scheduled',
             scheduledAt: futureScheduledAt,
@@ -673,7 +663,6 @@ test('public post endpoints hide drafts and future scheduled posts from unauthen
             category: 'Testing',
             contentHtml: '<p>draft body</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: ['draft'],
             status: 'draft',
             sections: []
@@ -714,7 +703,6 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             contentHtml: '<p>Visible body</p>',
             publishedAt: '2026-03-06',
             updatedAt: '2026-03-08T04:05:06.000Z',
-            readingTime: '1분 읽기',
             tags: ['meta'],
             status: 'published',
             seo: {
@@ -730,7 +718,6 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             category: 'Testing',
             contentHtml: '<p>visible scheduled body</p>',
             publishedAt: pastScheduledAt.slice(0, 10),
-            readingTime: '1분 읽기',
             tags: ['meta'],
             status: 'scheduled',
             scheduledAt: pastScheduledAt,
@@ -744,7 +731,6 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             category: 'Testing',
             contentHtml: '<p>draft body</p>',
             publishedAt: '2026-03-06',
-            readingTime: '1분 읽기',
             tags: ['draft'],
             status: 'draft',
             sections: []
@@ -757,7 +743,6 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             category: 'Testing',
             contentHtml: '<p>future body</p>',
             publishedAt: futureScheduledAt.slice(0, 10),
-            readingTime: '1분 읽기',
             tags: ['future'],
             status: 'scheduled',
             scheduledAt: futureScheduledAt,

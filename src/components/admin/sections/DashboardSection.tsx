@@ -76,7 +76,7 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
                     {post.title}
                   </p>
                   <p className="mt-1 text-xs text-[var(--text-muted)]">
-                    {formatDate(post.publishedAt)} · {post.readingTime}
+                    {formatDate(post.publishedAt)}
                   </p>
                 </button>
               </li>
