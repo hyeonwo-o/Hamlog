@@ -34,6 +34,13 @@ body {
   min-height: 100vh;
 }
 
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+}
+
 body::before {
   content: '';
   position: fixed;
@@ -87,6 +94,11 @@ body::before {
 .rich-content {
   display: block;
   color: var(--text);
+}
+
+.rich-content :where(p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th, span, a, strong, em, mark),
+.tiptap-editor :where(p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th, span, a, strong, em, mark) {
+  font-family: var(--font-body) !important;
 }
 
 .tiptap-editor {

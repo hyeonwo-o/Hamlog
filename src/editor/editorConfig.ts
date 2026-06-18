@@ -1,7 +1,6 @@
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Color from '@tiptap/extension-color';
-import FontFamily from '@tiptap/extension-font-family';
 import Highlight from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import LinkExtension from '@tiptap/extension-link';
@@ -38,7 +37,6 @@ export const getEditorExtensions = () => [
     TextStyle,
     Color,
     Highlight.configure({ multicolor: true }),
-    FontFamily,
     FontSize,
     Underline,
     LinkExtension.configure({

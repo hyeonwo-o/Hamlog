@@ -2,7 +2,6 @@ import type { Editor } from '@tiptap/react';
 import { Highlighter, Palette } from 'lucide-react';
 import {
   CODE_LANGUAGES,
-  FONT_FAMILIES,
   FONT_SIZES,
   HIGHLIGHT_COLORS,
   TEXT_COLORS
@@ -20,7 +19,6 @@ import {
   getActiveHighlightColor,
   getActiveTextColor,
   getCodeBlockLanguage,
-  getFontFamilyValue,
   getFontSizeValue,
   getHeadingValue,
   type ToolbarActionConfig
@@ -66,7 +64,6 @@ export function EditorToolbar({
   uploadingImage
 }: EditorToolbarProps) {
   const headingValue = getHeadingValue(editor);
-  const fontFamilyValue = getFontFamilyValue(editor);
   const fontSizeValue = getFontSizeValue(editor);
   const activeColor = getActiveTextColor(editor);
   const activeHighlight = getActiveHighlightColor(editor);
@@ -114,22 +111,6 @@ export function EditorToolbar({
                 .focus()
                 .toggleHeading({ level: Number(value.replace('h', '')) as 1 | 2 | 3 })
                 .run();
-            }}
-            disabled={!editor}
-          />
-
-          <ToolbarDropdown
-            label="글꼴"
-            value={fontFamilyValue}
-            width="w-28"
-            options={FONT_FAMILIES}
-            onSelect={value => {
-              if (!editor) return;
-              if (value === 'default') {
-                editor.chain().focus().unsetFontFamily().run();
-                return;
-              }
-              editor.chain().focus().setFontFamily(value).run();
             }}
             disabled={!editor}
           />

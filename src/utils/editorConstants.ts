@@ -11,13 +11,6 @@ export const CODE_LANGUAGES = [
     { value: 'sql', label: 'SQL' }
 ];
 
-export const FONT_FAMILIES = [
-    { value: 'default', label: '기본서체' },
-    { value: 'Nanum Gothic', label: '나눔고딕' },
-    { value: 'JetBrains Mono, monospace', label: '모노' },
-    { value: 'serif', label: 'Serif' }
-];
-
 export const FONT_SIZES = [
     { value: 'default', label: '본문' },
     { value: '12px', label: '12' },

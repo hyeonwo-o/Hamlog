@@ -54,10 +54,6 @@ export function getHeadingValue(editor: Editor | null) {
   return 'paragraph';
 }
 
-export function getFontFamilyValue(editor: Editor | null) {
-  return (editor?.getAttributes('textStyle') as { fontFamily?: string })?.fontFamily ?? 'default';
-}
-
 export function getFontSizeValue(editor: Editor | null) {
   return (editor?.getAttributes('textStyle') as { fontSize?: string })?.fontSize ?? 'default';
 }
