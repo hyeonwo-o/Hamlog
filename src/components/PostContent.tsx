@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import type { DOMNode, HTMLReactParserOptions, Element } from 'html-react-parser';
 import type { ChildNode } from 'domhandler';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Terminal } from 'lucide-react';
 
 interface PostContentProps {
@@ -39,6 +37,60 @@ const getCodeText = (node: HtmlNode): string => {
   }
   return content;
 };
+
+interface SyntaxHighlighterProps {
+  language: string;
+  children: string;
+  showLineNumbers: boolean;
+  customStyle: React.CSSProperties;
+  lineNumberStyle: React.CSSProperties;
+}
+
+type SyntaxHighlighterComponent = React.ComponentType<
+  SyntaxHighlighterProps & { style: unknown }
+> & {
+  registerLanguage: (name: string, language: unknown) => void;
+};
+
+const SyntaxHighlighter = lazy(async () => {
+  const [
+    syntaxModule,
+    styleModule,
+    markup,
+    bash,
+    css,
+    javascript,
+    json,
+    typescript
+  ] = await Promise.all([
+    import('react-syntax-highlighter/dist/esm/prism-light'),
+    import('react-syntax-highlighter/dist/esm/styles/prism'),
+    import('react-syntax-highlighter/dist/esm/languages/prism/markup'),
+    import('react-syntax-highlighter/dist/esm/languages/prism/bash'),
+    import('react-syntax-highlighter/dist/esm/languages/prism/css'),
+    import('react-syntax-highlighter/dist/esm/languages/prism/javascript'),
+    import('react-syntax-highlighter/dist/esm/languages/prism/json'),
+    import('react-syntax-highlighter/dist/esm/languages/prism/typescript')
+  ]);
+  const PrismHighlighter = syntaxModule.default as SyntaxHighlighterComponent;
+
+  PrismHighlighter.registerLanguage('markup', markup.default);
+  PrismHighlighter.registerLanguage('html', markup.default);
+  PrismHighlighter.registerLanguage('bash', bash.default);
+  PrismHighlighter.registerLanguage('shell', bash.default);
+  PrismHighlighter.registerLanguage('css', css.default);
+  PrismHighlighter.registerLanguage('javascript', javascript.default);
+  PrismHighlighter.registerLanguage('js', javascript.default);
+  PrismHighlighter.registerLanguage('json', json.default);
+  PrismHighlighter.registerLanguage('typescript', typescript.default);
+  PrismHighlighter.registerLanguage('ts', typescript.default);
+
+  return {
+    default: (props: SyntaxHighlighterProps) => (
+      <PrismHighlighter {...props} style={styleModule.vscDarkPlus} />
+    )
+  };
+});
 
 const CodeBlock = ({ language, code }: { language: string; code: string }) => {
   const [copied, setCopied] = useState(false);
@@ -80,26 +132,33 @@ const CodeBlock = ({ language, code }: { language: string; code: string }) => {
 
       {/* Editor Area */}
       <div className="relative text-sm">
-        <SyntaxHighlighter
-          language={language}
-          style={vscDarkPlus}
-          showLineNumbers={true}
-          customStyle={{
-            margin: 0,
-            padding: '1.5rem',
-            background: 'transparent',
-            fontSize: '0.875rem',
-            lineHeight: '1.5',
-          }}
-          lineNumberStyle={{
-            minWidth: '2.5em',
-            paddingRight: '1em',
-            color: '#6e7681',
-            textAlign: 'right'
-          }}
+        <Suspense
+          fallback={(
+            <pre className="m-0 overflow-x-auto bg-transparent p-6 text-sm leading-6 text-white/80">
+              <code>{code}</code>
+            </pre>
+          )}
         >
-          {code}
-        </SyntaxHighlighter>
+          <SyntaxHighlighter
+            language={language}
+            showLineNumbers={true}
+            customStyle={{
+              margin: 0,
+              padding: '1.5rem',
+              background: 'transparent',
+              fontSize: '0.875rem',
+              lineHeight: '1.5',
+            }}
+            lineNumberStyle={{
+              minWidth: '2.5em',
+              paddingRight: '1em',
+              color: '#6e7681',
+              textAlign: 'right'
+            }}
+          >
+            {code}
+          </SyntaxHighlighter>
+        </Suspense>
       </div>
     </div>
   );
