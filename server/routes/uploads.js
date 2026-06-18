@@ -1,5 +1,9 @@
 import express from 'express';
-import { uploadImage } from '../controllers/uploadController.js';
+import {
+  deleteUnusedUploadFiles,
+  getUnusedUploads,
+  uploadImage
+} from '../controllers/uploadController.js';
 
 import { authenticateToken } from '../middleware/auth.js';
 import { uploadRateLimiter } from '../middleware/rateLimit.js';
@@ -7,6 +11,8 @@ import { requireTrustedOrigin } from '../middleware/trustedOrigin.js';
 
 const router = express.Router();
 
+router.get('/unused', authenticateToken, getUnusedUploads);
+router.delete('/unused', authenticateToken, requireTrustedOrigin, deleteUnusedUploadFiles);
 router.post('/', uploadRateLimiter, authenticateToken, requireTrustedOrigin, uploadImage);
 
 export const uploadRouter = router;

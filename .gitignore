@@ -26,3 +26,5 @@ dist-ssr
 server/data/*.json
 server/data/posts/
 server/uploads/
+test-results/
+playwright-report/

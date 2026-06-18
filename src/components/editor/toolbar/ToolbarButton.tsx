@@ -25,7 +25,7 @@ export function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={label}
-      className={`inline-flex items-center justify-center rounded-lg border p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+      className={`inline-flex items-center justify-center border p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         active
           ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
           : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'

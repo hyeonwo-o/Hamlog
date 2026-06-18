@@ -87,6 +87,19 @@ export async function updatePostService(id, rawData) {
 
         const existing = allPosts[index];
 
+        if (rawData.expectedUpdatedAt !== undefined) {
+            const expectedUpdatedAt = String(rawData.expectedUpdatedAt ?? '');
+            const currentUpdatedAt = String(existing.updatedAt ?? '');
+
+            if (expectedUpdatedAt !== currentUpdatedAt) {
+                return {
+                    success: false,
+                    error: '다른 탭 또는 세션에서 글이 먼저 수정되었습니다. 최신 글을 다시 불러온 뒤 저장해 주세요.',
+                    code: 'edit_conflict'
+                };
+            }
+        }
+
         // 1. Normalize & Validate Input (merging with existing)
         const { error, data } = normalizePostData(rawData, existing);
 

@@ -5,25 +5,16 @@ interface PostEditorHeaderProps {
 }
 
 export default function PostEditorHeader({
-  activeId,
   title,
   onTitleChange
 }: PostEditorHeaderProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-          {activeId ? '글 편집' : '새 글'}
-        </span>
-        <span className="text-[11px] text-[var(--text-muted)]">
-          저장 `Ctrl/Cmd + S`
-        </span>
-      </div>
+    <div className="border-b border-[color:var(--border)] py-5">
       <input
         value={title}
         onChange={event => onTitleChange(event.target.value)}
         placeholder="제목을 입력하세요"
-        className="w-full bg-transparent text-3xl font-semibold leading-tight text-[var(--text)] placeholder-[var(--text-muted)] focus:outline-none lg:text-[2.5rem]"
+        className="w-full bg-transparent text-[2rem] font-normal leading-tight text-[var(--text)] outline-none placeholder:text-[#8b949e] sm:text-[2.4rem]"
       />
     </div>
   );

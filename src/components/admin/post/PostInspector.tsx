@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { PostDraft } from '../../../types/admin';
 import type { CategoryTreeResult } from '../../../utils/categoryTree';
@@ -7,6 +7,12 @@ import { PostMetadata } from '../PostMetadata';
 import PostInspectorSection from './PostInspectorSection';
 import { TableOfContents } from '../../TableOfContents';
 import type { TocItem } from '../../TableOfContents';
+import {
+  deleteUnusedUploads,
+  fetchUnusedUploads,
+  type UploadFileInfo,
+  type UnusedUploadsResponse
+} from '../../../api/uploadApi';
 
 interface PostInspectorProps {
   embedded?: boolean;
@@ -62,6 +68,14 @@ const StatCard = ({ label, value }: { label: string; value: ReactNode }) => (
   </div>
 );
 
+const formatBytes = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / (1024 ** exponent);
+  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+};
+
 const PostInspector: React.FC<PostInspectorProps> = ({
   embedded = false,
   activeId,
@@ -82,6 +96,99 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   tocItems,
   onTocLinkClick
 }) => {
+  const [unusedUploads, setUnusedUploads] = useState<UnusedUploadsResponse | null>(null);
+  const [selectedUploads, setSelectedUploads] = useState<Set<string>>(() => new Set());
+  const [uploadCleanupLoading, setUploadCleanupLoading] = useState(false);
+  const [uploadCleanupNotice, setUploadCleanupNotice] = useState('');
+
+  const loadUnusedUploads = async () => {
+    setUploadCleanupLoading(true);
+    setUploadCleanupNotice('');
+
+    try {
+      const response = await fetchUnusedUploads();
+      setUnusedUploads(response);
+      setSelectedUploads(new Set(response.unused.map(file => file.filename)));
+      setUploadCleanupNotice(
+        response.unused.length > 0
+          ? `미사용 이미지 ${response.unused.length}개를 찾았습니다.`
+          : '정리할 미사용 이미지가 없습니다.'
+      );
+    } catch (error) {
+      setUploadCleanupNotice(error instanceof Error
+        ? error.message
+        : '미사용 이미지를 확인하지 못했습니다.');
+    } finally {
+      setUploadCleanupLoading(false);
+    }
+  };
+
+  const toggleSelectedUpload = (filename: string) => {
+    setSelectedUploads(current => {
+      const next = new Set(current);
+      if (next.has(filename)) {
+        next.delete(filename);
+      } else {
+        next.add(filename);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteUnusedUploads = async () => {
+    if (!unusedUploads || selectedUploads.size === 0) return;
+    setUploadCleanupLoading(true);
+    setUploadCleanupNotice('');
+
+    try {
+      const response = await deleteUnusedUploads(Array.from(selectedUploads));
+      setUnusedUploads(current => current
+        ? {
+          ...current,
+          unused: response.remainingUnused,
+          unusedBytes: response.remainingUnused.reduce((sum, file) => sum + file.size, 0)
+        }
+        : null);
+      setSelectedUploads(new Set(response.remainingUnused.map(file => file.filename)));
+      setUploadCleanupNotice(
+        `${response.deleted.length}개 이미지(${formatBytes(response.deletedBytes)})를 삭제했습니다.`
+      );
+    } catch (error) {
+      setUploadCleanupNotice(error instanceof Error
+        ? error.message
+        : '미사용 이미지를 삭제하지 못했습니다.');
+    } finally {
+      setUploadCleanupLoading(false);
+    }
+  };
+
+  const renderUploadCleanupRow = (file: UploadFileInfo) => (
+    <label
+      key={file.filename}
+      className="flex items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2"
+    >
+      <input
+        type="checkbox"
+        checked={selectedUploads.has(file.filename)}
+        onChange={() => toggleSelectedUpload(file.filename)}
+        className="h-4 w-4"
+      />
+      <img
+        src={file.url}
+        alt=""
+        className="h-12 w-12 shrink-0 rounded object-cover"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-medium text-[var(--text)]">
+          {file.filename}
+        </span>
+        <span className="text-[11px] text-[var(--text-muted)]">
+          {formatBytes(file.size)}
+        </span>
+      </span>
+    </label>
+  );
+
   return (
     <aside className={embedded ? 'space-y-4' : 'space-y-4 xl:sticky xl:top-28 self-start'}>
       <PostInspectorSection
@@ -112,6 +219,55 @@ const PostInspector: React.FC<PostInspectorProps> = ({
             onCoverUpload={onCoverUpload}
             variant="inspector"
           />
+        </div>
+      </PostInspectorSection>
+
+      <PostInspectorSection
+        title="이미지 정리"
+        description="글, 리비전, 프로필에서 참조하지 않는 업로드 이미지를 찾아 삭제합니다."
+        collapsible
+        defaultOpen={false}
+      >
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard label="업로드" value={unusedUploads ? unusedUploads.totalFiles : '-'} />
+            <StatCard label="사용 중" value={unusedUploads ? unusedUploads.referencedFiles : '-'} />
+            <StatCard label="미사용" value={unusedUploads ? unusedUploads.unused.length : '-'} />
+          </div>
+
+          {uploadCleanupNotice && (
+            <p className="text-xs text-[var(--text-muted)]">{uploadCleanupNotice}</p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void loadUnusedUploads()}
+              disabled={uploadCleanupLoading}
+              className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:border-[color:var(--accent)] disabled:opacity-50"
+            >
+              {uploadCleanupLoading ? '확인 중...' : '미사용 이미지 확인'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDeleteUnusedUploads()}
+              disabled={uploadCleanupLoading || selectedUploads.size === 0}
+              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50 disabled:opacity-50"
+            >
+              선택 삭제
+            </button>
+          </div>
+
+          {unusedUploads && unusedUploads.unused.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-[var(--text-muted)]">
+                선택됨 {selectedUploads.size}개 / {formatBytes(unusedUploads.unusedBytes)}
+              </p>
+              <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                {unusedUploads.unused.map(renderUploadCleanupRow)}
+              </div>
+            </div>
+          )}
         </div>
       </PostInspectorSection>
 

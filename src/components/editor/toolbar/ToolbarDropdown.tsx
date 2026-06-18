@@ -45,14 +45,14 @@ export function ToolbarDropdown({
         type="button"
         onClick={() => !disabled && setIsOpen(prev => !prev)}
         disabled={disabled}
-        className={`flex items-center justify-between gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-muted)] disabled:opacity-50 ${width}`}
+        className={`flex items-center justify-between gap-2 border border-transparent bg-white px-2 py-1.5 text-xs font-medium text-[var(--text)] transition-colors hover:border-[color:var(--border)] disabled:opacity-50 ${width}`}
       >
         <span className="truncate">{currentLabel}</span>
         <ChevronDown size={14} className="opacity-50" />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-30 mt-1 max-h-60 min-w-[140px] w-full overflow-y-auto rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-1 shadow-lg ring-1 ring-black/5">
+        <div className="absolute left-0 top-full z-30 mt-1 max-h-60 min-w-[140px] w-full overflow-y-auto border border-[color:var(--border)] bg-white p-1 shadow-lg ring-1 ring-black/5">
           {options.map(option => (
             <button
               key={option.value}

@@ -5,6 +5,27 @@ interface UploadResponse {
   filename: string;
 }
 
+export interface UploadFileInfo {
+  filename: string;
+  url: string;
+  size: number;
+  modifiedAt: string;
+}
+
+export interface UnusedUploadsResponse {
+  totalFiles: number;
+  totalBytes: number;
+  referencedFiles: number;
+  unused: UploadFileInfo[];
+  unusedBytes: number;
+}
+
+export interface DeleteUnusedUploadsResponse {
+  deleted: UploadFileInfo[];
+  deletedBytes: number;
+  remainingUnused: UploadFileInfo[];
+}
+
 const fileToDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -24,5 +45,21 @@ export async function uploadLocalImage(file: File): Promise<UploadResponse> {
       dataUrl,
       filename: file.name
     })
+  });
+}
+
+export async function fetchUnusedUploads(): Promise<UnusedUploadsResponse> {
+  return requestJson<UnusedUploadsResponse>('/uploads/unused');
+}
+
+export async function deleteUnusedUploads(
+  filenames?: string[]
+): Promise<DeleteUnusedUploadsResponse> {
+  return requestJson<DeleteUnusedUploadsResponse>('/uploads/unused', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ filenames })
   });
 }

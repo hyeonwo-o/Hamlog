@@ -1,6 +1,10 @@
 import type { Post, PostInput, PostRevision } from '../data/blogData';
 import { requestJson, requestVoid } from './client';
 
+export type SavePostInput = PostInput & {
+  expectedUpdatedAt?: string;
+};
+
 interface PostListResponse {
   posts: Post[];
   total: number;
@@ -11,7 +15,7 @@ export async function fetchPosts(): Promise<Post[]> {
   return data.posts;
 }
 
-export async function createPost(payload: PostInput): Promise<Post> {
+export async function createPost(payload: SavePostInput): Promise<Post> {
   return requestJson<Post>('/posts', {
     method: 'POST',
     headers: {
@@ -21,7 +25,7 @@ export async function createPost(payload: PostInput): Promise<Post> {
   });
 }
 
-export async function updatePost(id: string, payload: PostInput): Promise<Post> {
+export async function updatePost(id: string, payload: SavePostInput): Promise<Post> {
   return requestJson<Post>(`/posts/${id}`, {
     method: 'PUT',
     headers: {
