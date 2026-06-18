@@ -58,15 +58,11 @@ export default function SidebarPostListItem({
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
-        <span>{post.readingTime}</span>
-        {post.series && (
-          <>
-            <span>•</span>
-            <span className="truncate">{post.series}</span>
-          </>
-        )}
-      </div>
+      {post.series && (
+        <div className="truncate text-[11px] text-[var(--text-muted)]">
+          {post.series}
+        </div>
+      )}
     </button>
   );
 }

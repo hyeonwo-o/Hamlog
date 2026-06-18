@@ -55,7 +55,6 @@ export interface UIState {
 export interface EditorData {
   draft: PostDraft;
   categoryTree: CategoryTreeResult;
-  contentStats: { chars: number; words: number; readingMinutes: number };
   currentCoverUrl?: string;
   editor: Editor | null;
 }
@@ -74,7 +73,6 @@ interface PublishDialogProps {
   categoryTree: CategoryTreeResult;
   status: PostStatus;
   saving: boolean;
-  contentStats: { chars: number; words: number; readingMinutes: number };
   tagInput: string;
   onTagInputChange: (value: string) => void;
   onTagKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -98,7 +96,6 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
   categoryTree,
   status,
   saving,
-  contentStats,
   tagInput,
   onTagInputChange,
   onTagKeyDown,
@@ -242,7 +239,6 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
                   />
                   추천글
                 </label>
-                <span>읽기 {draft.readingTime || `${contentStats.readingMinutes}분`}</span>
               </div>
             </div>
           </div>
@@ -307,7 +303,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
   uiState,
   data
 }) => {
-  const { draft, categoryTree, contentStats, currentCoverUrl, editor } = data;
+  const { draft, categoryTree, currentCoverUrl, editor } = data;
   const [publishDialogOpen, setPublishDialogOpen] = React.useState(false);
   const [publishStatus, setPublishStatus] = React.useState<PostStatus>(draft.status);
   const {
@@ -468,7 +464,6 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
         categoryTree={categoryTree}
         status={publishStatus}
         saving={saving}
-        contentStats={contentStats}
         tagInput={tagInput}
         onTagInputChange={onInputChange}
         onTagKeyDown={onKeyDown}

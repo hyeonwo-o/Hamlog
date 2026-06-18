@@ -17,10 +17,9 @@ const CategoryBadge: React.FC<{ category?: string; className?: string }> = ({ ca
 );
 
 const PostMeta: React.FC<{ post: Post; className?: string }> = ({ post, className }) => {
-  const meta = `${formatDate(post.publishedAt)} | ${post.readingTime}`;
   return (
     <p className={`text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)] ${className}`}>
-      {meta}
+      {formatDate(post.publishedAt)}
     </p>
   );
 };
@@ -117,9 +116,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
               <div className="mt-auto flex flex-wrap items-center gap-1.5">
                 <CategoryBadge category={post.category} className="px-2 py-0.5 text-[10px]" />
                 <TagList tags={post.tags} />
-                <span className="ml-auto text-xs font-medium uppercase tracking-[0.2em] text-[var(--accent-strong)]">
-                  읽기
-                </span>
               </div>
             </div>
           </div>

@@ -7,7 +7,6 @@ import PostEditorSection from './sections/PostEditorSection';
 import { useEditorImageControls } from '../../hooks/useEditorImageControls';
 import { uploadLocalImage } from '../../api/uploadApi';
 import type { Post, PostStatus } from '../../data/blogData';
-import { stripHtml } from '../../utils/postContent';
 import type { CategoryTreeResult } from '../../utils/categoryTree';
 import { usePostForm, toDraft } from '../../hooks/usePostForm';
 import { useAutosave } from '../../hooks/useAutosave';
@@ -182,17 +181,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
         }
     }, [editor, activeId, draft.contentHtml, draft.contentJson, draftContentJsonKey]);
 
-    const contentStats = useMemo(() => {
-        const plainText = stripHtml(draft.contentHtml || '');
-        const words = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
-        const readingMinutes = Math.max(1, Math.ceil(plainText.length / 450));
-        return {
-            chars: plainText.length,
-            words,
-            readingMinutes
-        };
-    }, [draft.contentHtml]);
-
     const handleImageUpload = async (file: File) => {
         await uploadImageToEditor(file);
     };
@@ -251,7 +239,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
         data: {
             draft,
             categoryTree,
-            contentStats,
             currentCoverUrl: draft.cover,
             editor
         }

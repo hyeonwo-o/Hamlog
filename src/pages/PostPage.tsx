@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { BookOpen, Calendar, ChevronLeft, Clock } from 'lucide-react';
+import { BookOpen, Calendar, ChevronLeft } from 'lucide-react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PostContent from '../components/PostContent';
@@ -224,11 +224,6 @@ const PostPage: React.FC = () => {
                     <span className="inline-flex items-center gap-1.5">
                       <Calendar className="h-4 w-4" />
                       {formatDate(post.publishedAt)}
-                    </span>
-                    <span className="opacity-30">|</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="h-4 w-4" />
-                      {post.readingTime}
                     </span>
                     {post.series && (
                       <>

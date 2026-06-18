@@ -21,7 +21,7 @@ export function normalizePostData(body, existing = {}) {
     // Destructure inputs, falling back to existing values if update, or undefined if create
     const {
         slug, title, summary, contentJson, contentHtml, category, status,
-        scheduledAt, seo, publishedAt, readingTime, tags,
+        scheduledAt, seo, publishedAt, tags,
         series, featured, cover, sections
     } = body;
 
@@ -89,7 +89,6 @@ export function normalizePostData(body, existing = {}) {
     const normalizedTags = tags !== undefined ? normalizeTags(tags) : existing.tags || [];
     const normalizedSeries = series !== undefined ? String(series).trim() : existing.series || '';
     const normalizedCover = cover !== undefined ? String(cover).trim() : existing.cover || '';
-    const normalizedReadingTime = readingTime !== undefined ? String(readingTime).trim() : existing.readingTime || '3분 읽기';
     const normalizedFeatured = featured !== undefined ? Boolean(featured) : existing.featured || false;
     const normalizedSeo = seo !== undefined ? normalizeSeo(seo) : normalizeSeo(existing.seo || {});
 
@@ -124,7 +123,6 @@ export function normalizePostData(body, existing = {}) {
             status: normalizedStatus,
             scheduledAt: normalizedScheduledAt || undefined,
             publishedAt: effectivePublishedAt,
-            readingTime: normalizedReadingTime,
             tags: normalizedTags,
             series: normalizedSeries || undefined,
             featured: normalizedFeatured,

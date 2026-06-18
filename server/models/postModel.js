@@ -16,8 +16,11 @@ import { parseHtmlToContentJson } from '../utils/contentRenderer.js';
 
 function normalizePost(post) {
     if (!post || typeof post !== 'object') return post;
+    const { readingTime, ...postWithoutReadingTime } = post;
+    void readingTime;
+
     return {
-        ...post,
+        ...postWithoutReadingTime,
         category: normalizeCategory(post.category),
         contentJson: normalizeContentJson(post.contentJson),
         status: normalizePostStatus(post.status),

@@ -11,7 +11,6 @@ export interface PostDraft {
   contentJson?: JSONContent;
   contentHtml: string;
   publishedAt: string;
-  readingTime: string;
   tags: string[];
   series: string;
   featured: boolean;
