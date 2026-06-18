@@ -7,13 +7,11 @@ interface PostListSectionProps {
     filteredPosts: Post[];
     categoryTree: CategoryTreeResult;
     selectedCategory: string | null;
-    selectedTag: string | null;
     searchQuery: string;
     hasLoaded: boolean;
     loading: boolean;
     error: string | null;
     onSelectCategory: (id: string | null) => void;
-    onClearTag: () => void;
     onClearSearch: () => void;
 }
 
@@ -21,13 +19,11 @@ export const PostListSection = ({
     filteredPosts,
     categoryTree,
     selectedCategory,
-    selectedTag,
     searchQuery,
     hasLoaded,
     loading,
     error,
     onSelectCategory,
-    onClearTag,
     onClearSearch
 }: PostListSectionProps) => {
     return (
@@ -64,18 +60,9 @@ export const PostListSection = ({
                                 조건에 맞는 글이 없어요
                             </h3>
                             <p className="mt-2 text-sm text-[var(--text-muted)]">
-                                태그를 바꾸거나 검색어를 지우고 다시 확인해 보세요.
+                                카테고리를 바꾸거나 검색어를 지우고 다시 확인해 보세요.
                             </p>
                             <div className="mt-6 flex flex-wrap justify-center gap-2">
-                                {selectedTag && (
-                                    <button
-                                        type="button"
-                                        onClick={onClearTag}
-                                        className="angular-control rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]"
-                                    >
-                                        태그 해제
-                                    </button>
-                                )}
                                 {selectedCategory && (
                                     <button
                                         type="button"

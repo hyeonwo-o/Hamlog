@@ -31,3 +31,10 @@ export const previewRateLimiter = rateLimit({
     max: parsePositiveInt(process.env.RATE_LIMIT_PREVIEW_MAX, 120),
     message: { message: '미리보기 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' }
 });
+
+export const commentRateLimiter = rateLimit({
+    ...commonOptions,
+    windowMs: 10 * 60 * 1000,
+    max: parsePositiveInt(process.env.RATE_LIMIT_COMMENT_MAX, 20),
+    message: { message: '댓글 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' }
+});

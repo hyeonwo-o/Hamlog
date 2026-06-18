@@ -13,7 +13,6 @@ interface UsePostFilterProps {
 }
 
 export function useHomePostFilter({ posts, managedCategories }: UsePostFilterProps) {
-    const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -52,12 +51,6 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
         () => sortedPosts.filter(post => post.featured),
         [sortedPosts]
     );
-
-    const availableTags = useMemo(() => {
-        const tagSet = new Set<string>();
-        sortedPosts.forEach(post => post.tags.forEach(tag => tagSet.add(tag)));
-        return Array.from(tagSet).sort();
-    }, [sortedPosts]);
 
     const newSince = useMemo(
         () => Date.now() - NEW_BADGE_DAYS * 24 * 60 * 60 * 1000,
@@ -103,10 +96,6 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
             );
         }
 
-        if (selectedTag) {
-            result = result.filter(post => post.tags.includes(selectedTag));
-        }
-
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
             result = result.filter(post => {
@@ -122,11 +111,9 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
         }
 
         return result;
-    }, [sortedPosts, selectedCategoryKeys, selectedTag, searchQuery]);
+    }, [sortedPosts, selectedCategoryKeys, searchQuery]);
 
     return {
-        selectedTag,
-        setSelectedTag,
         selectedCategory,
         selectCategory,
         searchQuery,
@@ -134,7 +121,6 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
         sortedPosts,
         featuredPosts,
         filteredPosts,
-        availableTags,
         categoryTree
     };
 }

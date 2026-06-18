@@ -71,6 +71,7 @@ npm run test
 - `RATE_LIMIT_LOGIN_MAX` (optional, default: `10`)
 - `RATE_LIMIT_UPLOAD_MAX` (optional, default: `30`)
 - `RATE_LIMIT_PREVIEW_MAX` (optional, default: `120`)
+- `RATE_LIMIT_COMMENT_MAX` (optional, default: `20`)
 - `GOOGLE_SITE_VERIFICATION` (optional)
   - Search Console의 HTML 태그 인증을 사용할 때 메타 태그 content 값
   - 예: Search Console이 `<meta name="google-site-verification" content="abc123" />`를 주면 `abc123`

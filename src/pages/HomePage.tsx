@@ -23,8 +23,6 @@ const HomePage = () => {
 
     // 2. Filtering & Logic Hook
     const {
-        selectedTag,
-        setSelectedTag,
         selectedCategory,
         selectCategory,
         searchQuery,
@@ -105,13 +103,11 @@ const HomePage = () => {
                         filteredPosts={filteredPosts}
                         categoryTree={categoryTree}
                         selectedCategory={selectedCategory}
-                        selectedTag={selectedTag}
                         searchQuery={searchQuery}
                         hasLoaded={hasLoaded}
                         loading={loading}
                         error={error}
                         onSelectCategory={selectCategory}
-                        onClearTag={() => setSelectedTag(null)}
                         onClearSearch={() => setSearchQuery('')}
                     />
                 </main>
