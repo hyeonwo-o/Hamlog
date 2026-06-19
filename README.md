@@ -58,6 +58,13 @@ npm run build
 npm run test
 ```
 
+### 5) Data Integrity Check
+`posts.json` 인덱스와 `server/data/posts/*.json` 개별 글 파일이 서로 맞는지 확인합니다.
+
+```bash
+npm run verify:data
+```
+
 ## Environment Variables
 ### Backend (`server`)
 - `PORT` (default: `4000`)
@@ -75,6 +82,12 @@ npm run test
 - `GOOGLE_SITE_VERIFICATION` (optional)
   - Search Console의 HTML 태그 인증을 사용할 때 메타 태그 content 값
   - 예: Search Console이 `<meta name="google-site-verification" content="abc123" />`를 주면 `abc123`
+- `NAVER_SITE_VERIFICATION` (optional)
+  - 네이버 서치어드바이저 HTML 태그 인증의 content 값
+- `DAUM_SITE_VERIFICATION` (optional)
+  - 다음/카카오 검색 등록에서 HTML 메타 태그 인증을 사용할 때의 content 값
+- `DAUM_WEBMASTER_PIN` (optional)
+  - 다음 웹마스터도구 PIN 인증을 사용할 때 `/robots.txt`에 `DaumWebMasterTool: <PIN>` 형식으로 노출
 - `COOKIE_SAME_SITE` (optional: `lax`, `strict`, `none`)
   - 미설정 시 `CORS_ORIGINS`가 있으면 `none`, 아니면 `lax`
 - `COOKIE_SECURE` (optional: `true`, `false`)

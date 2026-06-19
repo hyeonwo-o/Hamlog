@@ -10,6 +10,7 @@
     "lint:server": "eslint server/",
     "test": "NODE_ENV=test JWT_SECRET=test-secret ADMIN_PASSWORD=test-password node --test --test-concurrency=1 server/tests/*.test.js",
     "test:e2e": "ADMIN_PASSWORD=e2e-password JWT_SECRET=e2e-secret playwright test",
+    "verify:data": "node scripts/verify-data.js",
     "preview": "vite preview",
     "server": "node server/index.js"
   },

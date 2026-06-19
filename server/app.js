@@ -21,8 +21,9 @@ import { commentRouter } from './routes/comments.js';
 import { authRouter } from './routes/auth.js';
 import { previewRouter } from './routes/preview.js';
 import { searchPosts } from './controllers/searchController.js';
-import { injectPostMeta } from './controllers/seoController.js';
+import { getRobots, injectPostMeta } from './controllers/seoController.js';
 import { readSpaIndexHtml, resolveSpaIndexPath } from './utils/spaIndex.js';
+import { injectSearchVerificationMeta } from './utils/searchVerification.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,20 +86,6 @@ const buildHomeSchema = (profile, baseUrl, description) => JSON.stringify({
     },
     inLanguage: 'ko-KR'
 }).replace(/</g, '\\u003c');
-
-const injectGoogleSiteVerification = (html) => {
-    const verification = String(process.env.GOOGLE_SITE_VERIFICATION ?? '').trim();
-
-    if (!verification) {
-        return html;
-    }
-
-    return replaceHeadTag(
-        html,
-        /<meta name="google-site-verification" content=".*?" \/>/,
-        `<meta name="google-site-verification" content="${escapeHtml(verification)}" />`
-    );
-};
 
 const injectHomeSeoMeta = (html, profile) => {
     const baseUrl = resolveBaseUrl(profile);
@@ -189,7 +176,7 @@ const injectHomeSeoMeta = (html, profile) => {
         `<script type="application/ld+json">${schema}</script>`
     );
 
-    return injectGoogleSiteVerification(nextHtml);
+    return injectSearchVerificationMeta(nextHtml);
 };
 
 const injectHomeAppShell = async (req, res, next) => {
@@ -204,7 +191,7 @@ const injectHomeAppShell = async (req, res, next) => {
 const injectNoindexAppShell = async (req, res, next) => {
     try {
         let html = await readSpaIndexHtml();
-        html = injectGoogleSiteVerification(html);
+        html = injectSearchVerificationMeta(html);
         html = replaceHeadTag(
             html,
             /<meta name="robots" content=".*?" \/>/,
@@ -232,6 +219,7 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
 app.get('/', injectHomeAppShell);
+app.get('/robots.txt', getRobots);
 
 // Static Files
 app.use('/uploads', express.static(uploadDir));
