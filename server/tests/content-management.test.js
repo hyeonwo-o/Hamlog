@@ -816,9 +816,15 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.deepEqual(searchResponse.body.map(post => post.slug), ['meta-scheduled-visible']);
 });
 
-test('home page reflects profile SEO metadata and google site verification', async () => {
-    const previousVerification = process.env.GOOGLE_SITE_VERIFICATION;
+test('home page reflects profile SEO metadata and search engine verification', async () => {
+    const previousGoogleVerification = process.env.GOOGLE_SITE_VERIFICATION;
+    const previousNaverVerification = process.env.NAVER_SITE_VERIFICATION;
+    const previousDaumVerification = process.env.DAUM_SITE_VERIFICATION;
+    const previousDaumPin = process.env.DAUM_WEBMASTER_PIN;
     process.env.GOOGLE_SITE_VERIFICATION = 'google-verification-token';
+    process.env.NAVER_SITE_VERIFICATION = 'naver-verification-token';
+    process.env.DAUM_SITE_VERIFICATION = 'daum-verification-token';
+    process.env.DAUM_WEBMASTER_PIN = 'daum-pin-token';
 
     try {
         await writeProfile({
@@ -856,11 +862,45 @@ test('home page reflects profile SEO metadata and google site verification', asy
             response.text,
             /<meta name="google-site-verification" content="google-verification-token" \/>/
         );
+        assert.match(
+            response.text,
+            /<meta name="naver-site-verification" content="naver-verification-token" \/>/
+        );
+        assert.match(
+            response.text,
+            /<meta name="daum-site-verification" content="daum-verification-token" \/>/
+        );
+
+        const robotsResponse = await request(app).get('/robots.txt');
+        assert.equal(robotsResponse.status, 200);
+        assert.match(robotsResponse.headers['content-type'], /text\/plain/);
+        assert.match(robotsResponse.text, /User-agent: \*/);
+        assert.match(robotsResponse.text, /Allow: \//);
+        assert.match(robotsResponse.text, /DaumWebMasterTool: daum-pin-token/);
+        assert.match(robotsResponse.text, /Sitemap: https:\/\/tech\.hamwoo\.co\.kr\/sitemap\.xml/);
     } finally {
-        if (previousVerification === undefined) {
+        if (previousGoogleVerification === undefined) {
             delete process.env.GOOGLE_SITE_VERIFICATION;
         } else {
-            process.env.GOOGLE_SITE_VERIFICATION = previousVerification;
+            process.env.GOOGLE_SITE_VERIFICATION = previousGoogleVerification;
+        }
+
+        if (previousNaverVerification === undefined) {
+            delete process.env.NAVER_SITE_VERIFICATION;
+        } else {
+            process.env.NAVER_SITE_VERIFICATION = previousNaverVerification;
+        }
+
+        if (previousDaumVerification === undefined) {
+            delete process.env.DAUM_SITE_VERIFICATION;
+        } else {
+            process.env.DAUM_SITE_VERIFICATION = previousDaumVerification;
+        }
+
+        if (previousDaumPin === undefined) {
+            delete process.env.DAUM_WEBMASTER_PIN;
+        } else {
+            process.env.DAUM_WEBMASTER_PIN = previousDaumPin;
         }
     }
 });

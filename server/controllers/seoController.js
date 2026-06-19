@@ -2,6 +2,7 @@ import { readPosts } from '../models/postModel.js';
 import { readProfile } from '../models/profileModel.js';
 import { filterPublicPosts, findPublicPostBySlug } from '../utils/postVisibility.js';
 import { readSpaIndexHtml, resolveSpaIndexPath } from '../utils/spaIndex.js';
+import { buildRobotsTxt, injectSearchVerificationMeta } from '../utils/searchVerification.js';
 
 const DEFAULT_SITE_URL = (process.env.SITE_URL?.trim() || 'https://tech.hamwoo.co.kr').replace(/\/+$/, '');
 const SITE_NAME = 'Hamlog';
@@ -223,7 +224,7 @@ export const injectPostMeta = async (req, res) => {
       `<script type="application/ld+json">${articleSchema}</script>`
     );
 
-    res.send(html);
+    res.send(injectSearchVerificationMeta(html));
   } catch (error) {
     console.error('Meta injection error:', error);
     // Fallback to regular file if injection fails
@@ -303,5 +304,19 @@ export const getSitemap = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).send('Error generating Sitemap');
+  }
+};
+
+export const getRobots = async (req, res) => {
+  try {
+    const profile = await readProfile();
+    const baseUrl = resolveBaseUrl(profile);
+
+    res
+      .set('Content-Type', 'text/plain; charset=utf-8')
+      .send(buildRobotsTxt(baseUrl));
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error generating robots.txt');
   }
 };
