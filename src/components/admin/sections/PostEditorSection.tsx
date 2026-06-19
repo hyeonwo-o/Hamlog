@@ -352,8 +352,9 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
     });
   })();
 
-  const categoryOptions = categoryTree.allNames.length > 0
-    ? categoryTree.allNames
+  const rootCategoryOptions = categoryTree.roots.map(category => category.name);
+  const categoryOptions = rootCategoryOptions.length > 0
+    ? rootCategoryOptions
     : [draft.category || '미분류'];
 
   const openPublishDialog = () => {
