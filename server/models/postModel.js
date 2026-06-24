@@ -6,6 +6,7 @@ import {
     normalizeContentJson,
     hasContentJsonContent,
     normalizePostStatus,
+    normalizePostViews,
     normalizeScheduledAt,
     normalizeSeo
 } from '../utils/normalizers/postNormalizers.js';
@@ -23,6 +24,7 @@ function normalizePost(post) {
         ...postWithoutReadingTime,
         category: normalizeCategory(post.category),
         contentJson: normalizeContentJson(post.contentJson),
+        views: normalizePostViews(post.views),
         status: normalizePostStatus(post.status),
         scheduledAt: normalizeScheduledAt(post.scheduledAt) || undefined,
         seo: normalizeSeo(post.seo)

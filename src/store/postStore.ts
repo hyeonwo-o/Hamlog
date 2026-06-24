@@ -4,7 +4,8 @@ import {
   fetchPosts as fetchPostsRequest,
   createPost as createPostRequest,
   updatePost as updatePostRequest,
-  deletePost as deletePostRequest
+  deletePost as deletePostRequest,
+  recordPostView as recordPostViewRequest
 } from '../api/postApi';
 
 interface PostState {
@@ -16,6 +17,7 @@ interface PostState {
   addPost: (post: PostInput) => Promise<Post>;
   updatePost: (id: string, post: PostInput) => Promise<Post>;
   deletePost: (id: string) => Promise<void>;
+  recordPostView: (slug: string) => Promise<number>;
 }
 
 const normalizeError = (error: unknown, fallback: string) => {
@@ -89,5 +91,15 @@ export const usePostStore = create<PostState>((set, get) => ({
       set({ loading: false, error: normalizeError(error, 'Failed to delete post.') });
       throw error;
     }
+  },
+
+  recordPostView: async (slug) => {
+    const result = await recordPostViewRequest(slug);
+    set(state => ({
+      posts: state.posts.map(post => (
+        post.slug === result.slug ? { ...post, views: result.views } : post
+      ))
+    }));
+    return result.views;
   }
 }));

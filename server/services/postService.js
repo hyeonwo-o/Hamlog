@@ -7,7 +7,8 @@ import {
 } from '../models/revisionModel.js';
 import { createCategoryUnlocked } from './categoryService.js';
 import { normalizePostData } from '../utils/postHelpers.js';
-import { filterPublicPosts } from '../utils/postVisibility.js';
+import { filterPublicPosts, isPostPublicVisible } from '../utils/postVisibility.js';
+import { normalizePostViews } from '../utils/normalizers/postNormalizers.js';
 import { runWithDataStoreLock } from '../utils/storeLock.js';
 
 const serializeComparablePost = (post) => JSON.stringify(post ?? null);
@@ -74,6 +75,40 @@ export async function getPostRevisionsService(id) {
 
     const revisions = await readPostRevisions(id);
     return { success: true, data: revisions.map(toRevisionSummary) };
+}
+
+export async function recordPostViewService(slug) {
+    return runWithDataStoreLock(async () => {
+        const normalizedSlug = String(slug ?? '').trim();
+        if (!normalizedSlug) {
+            return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
+        }
+
+        const allPosts = await readPosts();
+        const index = allPosts.findIndex(post => post.slug === normalizedSlug);
+
+        if (index === -1 || !isPostPublicVisible(allPosts[index])) {
+            return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
+        }
+
+        const currentViews = normalizePostViews(allPosts[index].views);
+        const nextViews = currentViews + 1;
+        const updatedPost = {
+            ...allPosts[index],
+            views: nextViews
+        };
+
+        allPosts[index] = updatedPost;
+        await writePosts(allPosts);
+
+        return {
+            success: true,
+            data: {
+                slug: updatedPost.slug,
+                views: nextViews
+            }
+        };
+    });
 }
 
 export async function updatePostService(id, rawData) {

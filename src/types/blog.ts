@@ -71,6 +71,7 @@ export interface Post {
     tags: string[];
     series?: string;
     featured?: boolean;
+    views?: number;
     cover?: string;
     status?: PostStatus;
     scheduledAt?: string;

@@ -39,7 +39,7 @@ export default function SidebarPostListItem({
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
             {post.featured && (
               <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-strong)]">
-                추천
+                인기
               </span>
             )}
             <span>{post.category || '미분류'}</span>

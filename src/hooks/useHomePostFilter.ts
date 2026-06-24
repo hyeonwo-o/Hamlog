@@ -6,6 +6,7 @@ import { DEFAULT_CATEGORY, normalizeCategoryKey } from '../utils/category';
 import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree';
 
 const NEW_BADGE_DAYS = 7;
+const POPULAR_POST_LIMIT = 3;
 
 interface UsePostFilterProps {
     posts: Post[];
@@ -47,9 +48,25 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
         [visiblePosts]
     );
 
-    const featuredPosts = useMemo(
-        () => sortedPosts.filter(post => post.featured),
-        [sortedPosts]
+    const popularPosts = useMemo(
+        () => {
+            const viewedPosts = [...visiblePosts]
+                .filter(post => (post.views ?? 0) > 0)
+                .sort((a, b) => {
+                    const viewDiff = (b.views ?? 0) - (a.views ?? 0);
+                    if (viewDiff !== 0) return viewDiff;
+                    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+                });
+
+            if (viewedPosts.length > 0) {
+                return viewedPosts.slice(0, POPULAR_POST_LIMIT);
+            }
+
+            return sortedPosts
+                .filter(post => post.featured)
+                .slice(0, POPULAR_POST_LIMIT);
+        },
+        [sortedPosts, visiblePosts]
     );
 
     const newSince = useMemo(
@@ -119,7 +136,7 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
         searchQuery,
         setSearchQuery,
         sortedPosts,
-        featuredPosts,
+        popularPosts,
         filteredPosts,
         categoryTree
     };

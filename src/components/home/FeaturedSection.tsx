@@ -13,7 +13,7 @@ export const FeaturedSection = ({ posts }: FeaturedSectionProps) => {
             <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h2 className="font-display text-xl font-semibold">
-                        추천 글
+                        인기글
                     </h2>
                 </div>
                 <span className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">

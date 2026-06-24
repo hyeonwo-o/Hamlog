@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BookOpen, Calendar, ChevronLeft } from 'lucide-react';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -44,8 +44,10 @@ const PostPage: React.FC = () => {
   const error = usePostStore(state => state.error);
   const hasLoaded = usePostStore(state => state.hasLoaded);
   const fetchPosts = usePostStore(state => state.fetchPosts);
+  const recordPostView = usePostStore(state => state.recordPostView);
   const [categories, setCategories] = useState<Category[]>([]);
   const [profile, setProfile] = useState<SiteMeta>(siteMeta);
+  const recordedViewSlugRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchCategories().then(setCategories).catch(console.error);
@@ -75,6 +77,25 @@ const PostPage: React.FC = () => {
 
   const visiblePosts = useMemo(() => posts.filter(post => isPostVisible(post)), [posts]);
   const post = useMemo(() => visiblePosts.find(item => item.slug === slug), [visiblePosts, slug]);
+
+  useEffect(() => {
+    if (!post?.slug) return;
+    if (typeof window === 'undefined') return;
+    if (recordedViewSlugRef.current === post.slug) return;
+
+    const storageKey = `hamlog:viewed:${post.slug}`;
+    try {
+      if (window.sessionStorage.getItem(storageKey)) return;
+      window.sessionStorage.setItem(storageKey, '1');
+    } catch {
+      // If sessionStorage is unavailable, still record the page view once for this mount.
+    }
+
+    recordedViewSlugRef.current = post.slug;
+    void recordPostView(post.slug).catch(error => {
+      console.error('Failed to record post view', error);
+    });
+  }, [post?.slug, recordPostView]);
 
   const categoryTree = useMemo(
     () =>

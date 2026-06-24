@@ -28,7 +28,7 @@ const HomePage = () => {
         searchQuery,
         setSearchQuery,
         sortedPosts,
-        featuredPosts,
+        popularPosts,
         filteredPosts,
         categoryTree
     } = useHomePostFilter({ posts, managedCategories });
@@ -97,7 +97,7 @@ const HomePage = () => {
                         </section>
                     )}
 
-                    <FeaturedSection posts={featuredPosts} />
+                    <FeaturedSection posts={popularPosts} />
 
                     <PostListSection
                         filteredPosts={filteredPosts}

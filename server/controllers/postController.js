@@ -4,7 +4,8 @@ import {
     updatePostService,
     deletePostService,
     getPostRevisionsService,
-    restorePostRevisionService
+    restorePostRevisionService,
+    recordPostViewService
 } from '../services/postService.js';
 
 export const getPosts = async (req, res) => {
@@ -32,6 +33,22 @@ export const createPost = async (req, res) => {
     } catch (error) {
         console.error('Failed to create post', error);
         res.status(500).json({ message: '포스트 생성에 실패했습니다.' });
+    }
+};
+
+export const recordPostView = async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const result = await recordPostViewService(slug);
+
+        if (!result.success) {
+            return res.status(404).json({ message: result.error });
+        }
+
+        res.json(result.data);
+    } catch (error) {
+        console.error('Failed to record post view', error);
+        res.status(500).json({ message: '조회수를 기록하지 못했습니다.' });
     }
 };
 

@@ -688,6 +688,86 @@ test('public post endpoints hide drafts and future scheduled posts from unauthen
     );
 });
 
+test('public post views increment only for visible posts', async () => {
+    const now = Date.now();
+    const futureScheduledAt = new Date(now + 60 * 60 * 1000).toISOString();
+
+    await writePosts([
+        {
+            id: 'post-public',
+            slug: 'public-post',
+            title: 'Public Post',
+            summary: 'Visible to everyone',
+            category: 'Testing',
+            contentHtml: '<p>public body</p>',
+            publishedAt: '2026-03-06',
+            updatedAt: '2026-03-06T00:00:00.000Z',
+            tags: ['visible'],
+            status: 'published',
+            views: 2,
+            sections: []
+        },
+        {
+            id: 'post-scheduled-hidden',
+            slug: 'scheduled-hidden-post',
+            title: 'Scheduled Hidden Post',
+            summary: 'Should stay hidden',
+            category: 'Testing',
+            contentHtml: '<p>scheduled hidden body</p>',
+            publishedAt: futureScheduledAt.slice(0, 10),
+            tags: ['hidden'],
+            status: 'scheduled',
+            scheduledAt: futureScheduledAt,
+            views: 5,
+            sections: []
+        },
+        {
+            id: 'post-draft',
+            slug: 'draft-post',
+            title: 'Draft Post',
+            summary: 'Should never be public',
+            category: 'Testing',
+            contentHtml: '<p>draft body</p>',
+            publishedAt: '2026-03-06',
+            tags: ['draft'],
+            status: 'draft',
+            views: 7,
+            sections: []
+        }
+    ]);
+
+    const firstViewResponse = await request(app).post('/api/posts/public-post/view');
+    assert.equal(firstViewResponse.status, 200);
+    assert.deepEqual(firstViewResponse.body, { slug: 'public-post', views: 3 });
+
+    const secondViewResponse = await request(app).post('/api/posts/public-post/view');
+    assert.equal(secondViewResponse.status, 200);
+    assert.deepEqual(secondViewResponse.body, { slug: 'public-post', views: 4 });
+
+    const hiddenScheduledResponse = await request(app).post('/api/posts/scheduled-hidden-post/view');
+    assert.equal(hiddenScheduledResponse.status, 404);
+
+    const draftResponse = await request(app).post('/api/posts/draft-post/view');
+    assert.equal(draftResponse.status, 404);
+
+    const storedPosts = await readPosts();
+    const publicPost = storedPosts.find(post => post.slug === 'public-post');
+    const scheduledPost = storedPosts.find(post => post.slug === 'scheduled-hidden-post');
+    const draftPost = storedPosts.find(post => post.slug === 'draft-post');
+
+    assert.equal(publicPost.views, 4);
+    assert.equal(publicPost.updatedAt, '2026-03-06T00:00:00.000Z');
+    assert.equal(scheduledPost.views, 5);
+    assert.equal(draftPost.views, 7);
+
+    const publicPostsResponse = await request(app).get('/api/posts');
+    assert.equal(publicPostsResponse.status, 200);
+    assert.deepEqual(
+        publicPostsResponse.body.posts.map(post => ({ slug: post.slug, views: post.views })),
+        [{ slug: 'public-post', views: 4 }]
+    );
+});
+
 test('seo routes ignore non-public posts, escape meta values, and include visible scheduled posts in feeds', async () => {
     const now = Date.now();
     const pastScheduledAt = new Date(now - 60_000).toISOString();

@@ -260,7 +260,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
                     checked={draft.featured}
                     onChange={event => onUpdateDraft({ featured: event.target.checked })}
                   />
-                  추천글
+                  인기글
                 </label>
               </div>
             </div>

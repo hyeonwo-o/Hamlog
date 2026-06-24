@@ -96,7 +96,7 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
 
             {/* Summary - Full Width */}
             <div className={isInspector ? '' : 'md:col-span-12'}>
-                <label className="block text-[10px] text-[var(--text-muted)] mb-1">요약 / Featured</label>
+                <label className="block text-[10px] text-[var(--text-muted)] mb-1">요약 / 인기글</label>
                 <div className="flex gap-2">
                     <textarea
                         value={draft.summary}
@@ -107,7 +107,7 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
                     />
                     <label className={`angular-control flex cursor-pointer items-center gap-2 rounded-xl border px-3 transition-colors ${draft.featured ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]' : `border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} text-[var(--text-muted)]`}`}>
                         <input type="checkbox" checked={draft.featured} onChange={(e) => updateDraft({ featured: e.target.checked })} className="hidden" />
-                        <span className="text-xs font-bold">추천</span>
+                        <span className="text-xs font-bold">인기</span>
                     </label>
                 </div>
             </div>

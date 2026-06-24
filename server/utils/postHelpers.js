@@ -6,7 +6,8 @@ import {
     normalizeSections,
     normalizeContentHtml,
     normalizeContentJson,
-    hasContentJsonContent
+    hasContentJsonContent,
+    normalizePostViews
 } from './normalizers/postNormalizers.js';
 import { normalizeCategory } from './normalizers/categoryNormalizers.js';
 import { parseHtmlToContentJson, renderContentJsonToHtml } from './contentRenderer.js';
@@ -90,6 +91,7 @@ export function normalizePostData(body, existing = {}) {
     const normalizedSeries = series !== undefined ? String(series).trim() : existing.series || '';
     const normalizedCover = cover !== undefined ? String(cover).trim() : existing.cover || '';
     const normalizedFeatured = featured !== undefined ? Boolean(featured) : existing.featured || false;
+    const normalizedViews = normalizePostViews(existing.views);
     const normalizedSeo = seo !== undefined ? normalizeSeo(seo) : normalizeSeo(existing.seo || {});
 
     // 5. Scheduling & Publishing
@@ -126,6 +128,7 @@ export function normalizePostData(body, existing = {}) {
             tags: normalizedTags,
             series: normalizedSeries || undefined,
             featured: normalizedFeatured,
+            views: normalizedViews,
             cover: normalizedCover || undefined,
             seo: normalizedSeo,
             sections: normalizedSections

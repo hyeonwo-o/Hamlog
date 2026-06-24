@@ -10,6 +10,11 @@ interface PostListResponse {
   total: number;
 }
 
+interface PostViewResponse {
+  slug: string;
+  views: number;
+}
+
 export async function fetchPosts(): Promise<Post[]> {
   const data = await requestJson<PostListResponse>('/posts');
   return data.posts;
@@ -37,6 +42,12 @@ export async function updatePost(id: string, payload: SavePostInput): Promise<Po
 
 export async function deletePost(id: string): Promise<void> {
   await requestVoid(`/posts/${id}`, { method: 'DELETE' });
+}
+
+export async function recordPostView(slug: string): Promise<PostViewResponse> {
+  return requestJson<PostViewResponse>(`/posts/${encodeURIComponent(slug)}/view`, {
+    method: 'POST'
+  });
 }
 
 export async function fetchPostRevisions(id: string): Promise<PostRevision[]> {

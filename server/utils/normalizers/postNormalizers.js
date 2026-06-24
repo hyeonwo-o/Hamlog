@@ -21,6 +21,11 @@ export function normalizePostStatus(status) {
     return 'published';
 }
 
+export function normalizePostViews(value) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 export function normalizeScheduledAt(value) {
     if (!value) return '';
     const timestamp = new Date(String(value)).getTime();
