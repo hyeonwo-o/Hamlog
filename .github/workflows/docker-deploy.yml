@@ -74,6 +74,7 @@ jobs:
         runner-label: [blog, minecraft]
     runs-on: [self-hosted, "${{ matrix.runner-label }}"]
     if: github.ref == 'refs/heads/main'
+    environment: production
     
     steps:
       - name: Cleanup self-hosted runner logs
