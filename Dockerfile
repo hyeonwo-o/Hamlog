@@ -15,6 +15,9 @@ COPY . .
 # Build frontend
 RUN npm run build
 
+# Keep only runtime dependencies for the production image
+RUN npm prune --omit=dev
+
 # Production Stage
 FROM node:20-alpine
 
@@ -23,13 +26,9 @@ WORKDIR /app
 # Install PM2
 RUN npm install -g pm2
 
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --only=production
-
 # Copy built assets and server code from builder
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 
