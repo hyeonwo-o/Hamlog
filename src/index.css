@@ -319,6 +319,30 @@ body::before {
   color: var(--text);
 }
 
+.admin-compact .tiptap-editor h1 {
+  font-size: 1.65rem;
+  line-height: 1.35;
+  letter-spacing: 0;
+  margin-top: 1.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.admin-compact .tiptap-editor h2 {
+  font-size: 1.4rem;
+  line-height: 1.4;
+  letter-spacing: 0;
+  margin-top: 1.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.admin-compact .tiptap-editor h3 {
+  font-size: 1.2rem;
+  line-height: 1.45;
+  letter-spacing: 0;
+  margin-top: 1.2rem;
+  margin-bottom: 0.45rem;
+}
+
 .rich-content p,
 .tiptap-editor p {
   font-size: 1.05rem;
