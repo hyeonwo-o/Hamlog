@@ -88,6 +88,13 @@ body::before {
 
   .admin-compact {
     --admin-header-offset: 56px;
+    --admin-post-command-offset: 42px;
+  }
+
+  @media (max-width: 1023px) {
+    .admin-compact {
+      --admin-post-command-offset: 76px;
+    }
   }
 
   @media (max-width: 767px) {

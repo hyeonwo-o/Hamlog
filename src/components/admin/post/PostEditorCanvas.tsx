@@ -40,9 +40,14 @@ export default function PostEditorCanvas({
   uploadLocalImage,
   children
 }: PostEditorCanvasProps) {
+  const toolbarStateClass = previewMode ? 'pointer-events-none opacity-60' : '';
+
   return (
     <>
-      <div className={previewMode ? 'pointer-events-none opacity-60' : ''} aria-hidden={previewMode}>
+      <div
+        className={`sticky top-[calc(var(--admin-header-offset)+var(--admin-post-command-offset))] z-20 ${toolbarStateClass}`}
+        aria-hidden={previewMode}
+      >
         <EditorToolbar
           editor={editor}
           onLink={onLink}
