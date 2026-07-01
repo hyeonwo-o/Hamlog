@@ -83,6 +83,12 @@ const PostEditor: React.FC<PostEditorProps> = ({
     const previewToggleTimeoutRef = useRef<number | null>(null);
     const loadDraftSnapshot = useCallback(() => toDraft(post || undefined), [post]);
 
+    // Reset post-scoped UI before autosave checks can surface a restorable draft notice.
+    useEffect(() => {
+        setNotice('');
+        setPreviewMode(false);
+    }, [post]);
+
     // 2. Auto-save Logic (extracted)
     const {
         clearAutosave,
@@ -97,12 +103,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
         setNotice,
         onLoadDraft: loadDraftSnapshot
     });
-
-    // Reset UI on post change
-    useEffect(() => {
-        setNotice('');
-        setPreviewMode(false);
-    }, [post]);
 
     // 3. Persistence Logic (extracted)
     const {
@@ -124,11 +124,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
             void onLoadCategories();
         }, [setSlugTouched, setTagInput, clearAutosave, onLoadCategories])
     });
-
-    // Reset notice when post changes
-    useEffect(() => {
-        setNotice('');
-    }, [post, setNotice]);
 
     const {
         fileInputRef,
