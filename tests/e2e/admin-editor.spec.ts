@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const backendOrigin = `http://127.0.0.1:${process.env.PORT ?? '4000'}`;
 const loginPasswords = Array.from(new Set([
@@ -7,7 +7,7 @@ const loginPasswords = Array.from(new Set([
   'e2e-password'
 ].filter(Boolean))) as string[];
 
-async function openAdminEditor(page: import('@playwright/test').Page) {
+async function openAdminEditor(page: Page) {
   await page.goto('/admin?section=posts');
 
   for (const password of loginPasswords) {
@@ -26,6 +26,33 @@ async function openAdminEditor(page: import('@playwright/test').Page) {
   }
 
   await expect(page.getByPlaceholder('제목을 입력하세요')).toBeVisible();
+}
+
+function createParagraphDocument(text: string) {
+  return {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text
+          }
+        ]
+      }
+    ]
+  };
+}
+
+async function deletePostFromAdmin(page: Page, postId: string) {
+  await page.evaluate(async (id) => {
+    localStorage.removeItem(`hamlog_draft_${id}`);
+    await fetch(`/api/posts/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+  }, postId);
 }
 
 test('backend exposes robots and baseline security headers', async ({ request }) => {
@@ -61,11 +88,90 @@ test('admin editor toolbar is grouped and accessible', async ({ page }) => {
   await expect(toolbar.getByRole('button', { name: '굵게' })).toHaveAttribute('aria-pressed', 'false');
   await expect(toolbar.getByRole('button', { name: /본문:/ })).toHaveAttribute('aria-expanded', 'false');
 
-  const toolbarOverflow = await toolbar.locator('> div').evaluate(node => ({
+  const toolbarOverflow = await toolbar.getByTestId('editor-toolbar-scroll').evaluate(node => ({
     scrollWidth: node.scrollWidth,
     clientWidth: node.clientWidth
   }));
   expect(toolbarOverflow.scrollWidth).toBeGreaterThan(toolbarOverflow.clientWidth);
+});
+
+test('admin editor detects autosave drafts with metadata-only changes', async ({ page }) => {
+  const uniqueId = Date.now();
+  const title = `E2E Autosave Metadata ${uniqueId}`;
+  const slug = `e2e-autosave-metadata-${uniqueId}`;
+  const summary = 'Metadata autosave regression test summary.';
+  const publishedAt = '2026-07-01';
+  const body = `Metadata autosave body ${uniqueId}.`;
+  const contentJson = createParagraphDocument(body);
+  let postId: string | null = null;
+
+  await openAdminEditor(page);
+
+  try {
+    const created = await page.evaluate(async (payload) => {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json() as Promise<{ id: string }>;
+    }, {
+      slug,
+      title,
+      summary,
+      category: '미분류',
+      contentJson,
+      publishedAt,
+      tags: ['e2e'],
+      status: 'draft',
+      sections: []
+    });
+
+    postId = created.id;
+
+    const draft = {
+      title,
+      slug,
+      summary,
+      category: '미분류',
+      contentJson,
+      contentHtml: '',
+      publishedAt,
+      tags: ['e2e'],
+      series: '',
+      featured: false,
+      cover: '',
+      status: 'draft',
+      scheduledAt: '',
+      seoTitle: '',
+      seoDescription: '자동저장 SEO 설명만 변경됨',
+      seoOgImage: '',
+      seoCanonicalUrl: '',
+      seoKeywords: ''
+    };
+
+    await page.evaluate(({ id, autosaveDraft }) => {
+      localStorage.setItem(`hamlog_draft_${id}`, JSON.stringify({
+        draft: autosaveDraft,
+        updatedAt: '2026-07-01T00:00:00.000Z'
+      }));
+    }, { id: postId, autosaveDraft: draft });
+
+    await page.goto(`/admin?section=posts&post=${postId}`);
+    await expect(page.getByText('임시 저장본이 있습니다. 복구 또는 삭제를 선택하세요.')).toBeVisible();
+  } finally {
+    if (postId) {
+      await deletePostFromAdmin(page, postId);
+    }
+  }
 });
 
 test('admin can publish a simple post and view it publicly', async ({ page }) => {
