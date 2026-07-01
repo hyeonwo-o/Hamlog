@@ -3,6 +3,8 @@ import { normalizeCategoryKey } from '../../../utils/category';
 import CategoryPicker from '../category/CategoryPicker';
 import type { SidebarFiltersProps } from './types';
 
+const SEARCH_QUERY_MAX_LENGTH = 120;
+
 export default function SidebarFilters({
   searchQuery,
   onSearchChange,
@@ -33,6 +35,7 @@ export default function SidebarFilters({
           placeholder="제목 또는 슬러그 검색"
           value={searchQuery}
           onChange={event => onSearchChange(event.target.value)}
+          maxLength={SEARCH_QUERY_MAX_LENGTH}
           className="w-full rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-4 py-2.5 text-sm outline-none transition focus:border-[var(--accent)]"
         />
       </div>

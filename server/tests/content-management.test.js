@@ -20,6 +20,7 @@ import { ensurePostsFile, readPosts, writePosts } from '../models/postModel.js';
 import { readProfile, writeProfile } from '../models/profileModel.js';
 import { readPostRevisions } from '../models/revisionModel.js';
 import { COMMENT_LIMITS } from '../services/commentService.js';
+import { SEARCH_QUERY_MAX_LENGTH, SEARCH_RESULT_LIMIT } from '../controllers/searchController.js';
 import { defaultProfile } from '../utils/normalizers/profileNormalizers.js';
 
 const adminPassword = process.env.ADMIN_PASSWORD ?? 'test-password';
@@ -1093,6 +1094,64 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     const searchResponse = await request(app).get('/api/search?q=scheduled');
     assert.equal(searchResponse.status, 200);
     assert.deepEqual(searchResponse.body.map(post => post.slug), ['meta-scheduled-visible']);
+});
+
+test('public search normalizes queries, limits results, and rejects oversized input', async () => {
+    const matchingPosts = Array.from({ length: SEARCH_RESULT_LIMIT + 5 }, (_, index) => ({
+        id: `search-public-${index}`,
+        slug: `search-public-${index}`,
+        title: `Limit Search Match ${index}`,
+        summary: 'search result target',
+        category: 'Testing',
+        contentHtml: `<p>Search body ${index}</p>`,
+        publishedAt: `2026-04-${String(index + 1).padStart(2, '0')}`,
+        tags: ['search'],
+        status: 'published',
+        sections: []
+    }));
+
+    await writePosts([
+        {
+            id: 'search-draft',
+            slug: 'search-draft',
+            title: 'Limit Search Match Hidden',
+            summary: 'hidden search result',
+            category: 'Testing',
+            contentHtml: '<p>Hidden search body</p>',
+            publishedAt: '2026-05-01',
+            tags: ['search'],
+            status: 'draft',
+            sections: []
+        },
+        ...matchingPosts
+    ]);
+
+    const oversizedSearchResponse = await request(app)
+        .get('/api/search')
+        .query({ q: 'a'.repeat(SEARCH_QUERY_MAX_LENGTH + 1) });
+
+    assert.equal(oversizedSearchResponse.status, 400);
+    assert.match(oversizedSearchResponse.body.message, /검색어/);
+
+    const normalizedSearchResponse = await request(app)
+        .get('/api/search')
+        .query({ q: '  limit   search  ' });
+
+    assert.equal(normalizedSearchResponse.status, 200);
+    assert.equal(normalizedSearchResponse.body.length, SEARCH_RESULT_LIMIT);
+    assert.equal(normalizedSearchResponse.body[0].slug, `search-public-${SEARCH_RESULT_LIMIT + 4}`);
+    assert.equal(
+        normalizedSearchResponse.body[SEARCH_RESULT_LIMIT - 1].slug,
+        `search-public-${5}`
+    );
+    assert.ok(!normalizedSearchResponse.body.some(post => post.slug === 'search-draft'));
+
+    const emptySearchResponse = await request(app)
+        .get('/api/search')
+        .query({ q: '\u0000   ' });
+
+    assert.equal(emptySearchResponse.status, 200);
+    assert.deepEqual(emptySearchResponse.body, []);
 });
 
 test('home page reflects profile SEO metadata and search engine verification', async () => {

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const SEARCH_QUERY_MAX_LENGTH = 120;
+
 interface SearchAndFilterProps {
   onTagFilter: (tag: string | null) => void;
   availableTags: string[];
@@ -34,6 +36,7 @@ const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="글, 태그, 시리즈로 검색"
+            maxLength={SEARCH_QUERY_MAX_LENGTH}
             className="mt-2 w-full rounded-2xl border border-[color:var(--border)] bg-[var(--surface-muted)] px-4 py-3 text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-soft)]"
           />
         </label>

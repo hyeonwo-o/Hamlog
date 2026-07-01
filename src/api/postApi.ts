@@ -1,6 +1,8 @@
 import type { Post, PostInput, PostRevision } from '../data/blogData';
 import { requestJson, requestVoid } from './client';
 
+const SEARCH_QUERY_MAX_LENGTH = 120;
+
 export type SavePostInput = PostInput & {
   expectedUpdatedAt?: string;
 };
@@ -61,5 +63,6 @@ export async function restorePostRevision(id: string, revisionId: string): Promi
 }
 
 export async function searchPosts(query: string): Promise<Post[]> {
-  return requestJson<Post[]>(`/search?q=${encodeURIComponent(query)}`);
+  const normalizedQuery = query.replace(/\s+/g, ' ').trim().slice(0, SEARCH_QUERY_MAX_LENGTH);
+  return requestJson<Post[]>(`/search?q=${encodeURIComponent(normalizedQuery)}`);
 }
