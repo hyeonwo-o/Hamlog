@@ -15,6 +15,17 @@ import {
 } from '../utils/normalizers/categoryNormalizers.js';
 import { parseHtmlToContentJson } from '../utils/contentRenderer.js';
 
+function getPostFilePath(slug) {
+    const postsRoot = path.resolve(postsDir);
+    const postPath = path.resolve(postsRoot, `${slug}.json`);
+
+    if (!postPath.startsWith(`${postsRoot}${path.sep}`)) {
+        throw new Error(`Invalid post slug path: ${slug}`);
+    }
+
+    return postPath;
+}
+
 function normalizePost(post) {
     if (!post || typeof post !== 'object') return post;
     const { readingTime, ...postWithoutReadingTime } = post;
@@ -88,7 +99,7 @@ export async function writePosts(posts) {
     // 2. Update individual files
     await mkdir(postsDir, { recursive: true });
     for (const post of normalized) {
-        const postPath = path.join(postsDir, `${post.slug}.json`);
+        const postPath = getPostFilePath(post.slug);
         await writeJsonAtomic(postPath, post);
     }
 

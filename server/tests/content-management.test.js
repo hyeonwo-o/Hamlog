@@ -229,6 +229,60 @@ test('authenticated content routes persist posts and categories', async () => {
     assert.deepEqual(await readPostRevisions(createPostResponse.body.id), []);
 });
 
+test('post slugs are normalized before file persistence', async () => {
+    const cookies = await loginAsAdmin();
+    const originalProfile = JSON.parse(await readFile(profileFilePath, 'utf8'));
+
+    const createResponse = await withTrustedOrigin(request(app)
+        .post('/api/posts')
+        .set('Cookie', cookies))
+        .send({
+            slug: '../profile',
+            title: 'Path Traversal Post',
+            summary: 'slug normalization summary',
+            category: 'Security',
+            contentJson: sampleContentJson,
+            publishedAt: '2026-03-06',
+            tags: [],
+            status: 'published',
+            sections: []
+        });
+
+    assert.equal(createResponse.status, 201);
+    assert.equal(createResponse.body.slug, 'profile');
+
+    const profileAfterCreate = JSON.parse(await readFile(profileFilePath, 'utf8'));
+    assert.equal(profileAfterCreate.title, originalProfile.title);
+    assert.equal(profileAfterCreate.favicon, originalProfile.favicon);
+
+    const storedCreatedPost = JSON.parse(await readFile(path.join(postsDir, 'profile.json'), 'utf8'));
+    assert.equal(storedCreatedPost.slug, 'profile');
+    assert.equal(storedCreatedPost.title, 'Path Traversal Post');
+
+    const updateResponse = await withTrustedOrigin(request(app)
+        .put(`/api/posts/${createResponse.body.id}`)
+        .set('Cookie', cookies))
+        .send({
+            ...createResponse.body,
+            slug: '../../uploads/evil-post',
+            title: 'Normalized Path Traversal Post',
+            expectedUpdatedAt: createResponse.body.updatedAt
+        });
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updateResponse.body.slug, 'uploads-evil-post');
+
+    const storedUpdatedPost = JSON.parse(
+        await readFile(path.join(postsDir, 'uploads-evil-post.json'), 'utf8')
+    );
+    assert.equal(storedUpdatedPost.slug, 'uploads-evil-post');
+
+    await assert.rejects(
+        () => access(path.join(uploadDir, 'evil-post.json')),
+        error => error.code === 'ENOENT'
+    );
+});
+
 test('ensurePostsFile backfills contentJson for legacy html-only posts', async () => {
     await rm(postsDir, { recursive: true, force: true });
 

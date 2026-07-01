@@ -12,6 +12,14 @@ import {
 import { normalizeCategory } from './normalizers/categoryNormalizers.js';
 import { parseHtmlToContentJson, renderContentJsonToHtml } from './contentRenderer.js';
 
+const normalizeSlug = (value) => (
+    String(value ?? '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9가-힣]+/gu, '-')
+        .replace(/^-+|-+$/g, '')
+);
+
 /**
  * Normalizes and validates post data for creation or update.
  * @param {Object} body - Request body
@@ -27,7 +35,9 @@ export function normalizePostData(body, existing = {}) {
     } = body;
 
     // 1. Basic Fields
-    const normalizedSlug = slug !== undefined ? String(slug).trim() : existing.slug || '';
+    const normalizedSlug = slug !== undefined
+        ? normalizeSlug(slug)
+        : normalizeSlug(existing.slug || '');
     const normalizedTitle = title !== undefined ? String(title).trim() : existing.title || '';
 
     // Validation: Slug and Title are required
