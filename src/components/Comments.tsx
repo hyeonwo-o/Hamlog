@@ -3,6 +3,11 @@ import { formatDate } from '../utils/formatDate';
 import type { Comment } from '../types/comment';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const COMMENT_LIMITS = {
+    author: 80,
+    password: 72,
+    content: 2000
+};
 
 interface CommentsProps {
     postId: string;
@@ -17,6 +22,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
     const [password, setPassword] = useState('');
     const [content, setContent] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     // Delete State
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -47,9 +53,10 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!author || !password || !content) return;
+        if (!author.trim() || !password.trim() || !content.trim()) return;
 
         setSubmitting(true);
+        setSubmitError('');
         try {
             const res = await fetch(`${API_BASE}/comments`, {
                 method: 'POST',
@@ -62,11 +69,12 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
                 setPassword('');
                 setContent('');
             } else {
-                alert('댓글 등록에 실패했습니다.');
+                const data = await res.json().catch(() => null);
+                setSubmitError(data?.message || '댓글 등록에 실패했습니다.');
             }
         } catch (error) {
             console.error(error);
-            alert('오류가 발생했습니다.');
+            setSubmitError('오류가 발생했습니다.');
         } finally {
             setSubmitting(false);
         }
@@ -98,6 +106,8 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
             setDeleting(false);
         }
     };
+
+    const canSubmit = Boolean(author.trim() && password.trim() && content.trim()) && !submitting;
 
     return (
         <div className="mt-16 border-t border-[var(--border)] pt-10">
@@ -137,14 +147,15 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4 bg-[var(--surface-muted)] p-6 rounded-2xl">
+            <form onSubmit={handleSubmit} className="space-y-3 rounded-lg bg-[var(--surface-muted)] p-4">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">댓글 쓰기</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-3 sm:grid-cols-2">
                     <input
                         type="text"
                         placeholder="이름"
                         value={author}
                         onChange={e => setAuthor(e.target.value)}
+                        maxLength={COMMENT_LIMITS.author}
                         className="w-full bg-[var(--bg)] border border-[var(--border)] rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
                         required
                     />
@@ -153,6 +164,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
                         placeholder="비밀번호"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
+                        maxLength={COMMENT_LIMITS.password}
                         className="w-full bg-[var(--bg)] border border-[var(--border)] rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
                         required
                     />
@@ -161,13 +173,24 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
                     placeholder="내용을 입력하세요..."
                     value={content}
                     onChange={e => setContent(e.target.value)}
+                    maxLength={COMMENT_LIMITS.content}
+                    aria-describedby="comment-form-help"
                     className="w-full bg-[var(--bg)] border border-[var(--border)] rounded px-3 py-2 text-sm h-24 resize-none focus:outline-none focus:border-[var(--accent)]"
                     required
                 />
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-h-4">
+                        {submitError ? (
+                            <p id="comment-form-help" className="text-xs text-red-500">{submitError}</p>
+                        ) : (
+                            <p id="comment-form-help" className="text-xs text-[var(--text-muted)]">
+                                {content.length}/{COMMENT_LIMITS.content}
+                            </p>
+                        )}
+                    </div>
                     <button
                         type="submit"
-                        disabled={submitting}
+                        disabled={!canSubmit}
                         className="bg-[var(--text)] text-[var(--bg)] px-4 py-2 rounded text-xs font-bold uppercase tracking-wider hover:opacity-80 disabled:opacity-50"
                     >
                         {submitting ? '등록 중...' : '등록'}
@@ -185,6 +208,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
                             placeholder="비밀번호 입력"
                             value={deletePassword}
                             onChange={e => setDeletePassword(e.target.value)}
+                            maxLength={COMMENT_LIMITS.password}
                             className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded px-3 py-2 text-sm mb-2 focus:outline-none"
                             autoFocus
                         />

@@ -19,6 +19,8 @@ import { readComments, writeComments } from '../models/commentModel.js';
 import { ensurePostsFile, readPosts, writePosts } from '../models/postModel.js';
 import { readProfile, writeProfile } from '../models/profileModel.js';
 import { readPostRevisions } from '../models/revisionModel.js';
+import { COMMENT_LIMITS } from '../services/commentService.js';
+import { SEARCH_QUERY_MAX_LENGTH, SEARCH_RESULT_LIMIT } from '../controllers/searchController.js';
 import { defaultProfile } from '../utils/normalizers/profileNormalizers.js';
 
 const adminPassword = process.env.ADMIN_PASSWORD ?? 'test-password';
@@ -227,6 +229,90 @@ test('authenticated content routes persist posts and categories', async () => {
     const postsAfterDelete = await readPosts();
     assert.equal(postsAfterDelete.length, 0);
     assert.deepEqual(await readPostRevisions(createPostResponse.body.id), []);
+});
+
+test('post slugs are normalized before file persistence', async () => {
+    const cookies = await loginAsAdmin();
+    const originalProfile = JSON.parse(await readFile(profileFilePath, 'utf8'));
+
+    const createResponse = await withTrustedOrigin(request(app)
+        .post('/api/posts')
+        .set('Cookie', cookies))
+        .send({
+            slug: '../profile',
+            title: 'Path Traversal Post',
+            summary: 'slug normalization summary',
+            category: 'Security',
+            contentJson: sampleContentJson,
+            publishedAt: '2026-03-06',
+            tags: [],
+            status: 'published',
+            sections: []
+        });
+
+    assert.equal(createResponse.status, 201);
+    assert.equal(createResponse.body.slug, 'profile');
+
+    const profileAfterCreate = JSON.parse(await readFile(profileFilePath, 'utf8'));
+    assert.equal(profileAfterCreate.title, originalProfile.title);
+    assert.equal(profileAfterCreate.favicon, originalProfile.favicon);
+
+    const storedCreatedPost = JSON.parse(await readFile(path.join(postsDir, 'profile.json'), 'utf8'));
+    assert.equal(storedCreatedPost.slug, 'profile');
+    assert.equal(storedCreatedPost.title, 'Path Traversal Post');
+
+    const updateResponse = await withTrustedOrigin(request(app)
+        .put(`/api/posts/${createResponse.body.id}`)
+        .set('Cookie', cookies))
+        .send({
+            ...createResponse.body,
+            slug: '../../uploads/evil-post',
+            title: 'Normalized Path Traversal Post',
+            expectedUpdatedAt: createResponse.body.updatedAt
+        });
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updateResponse.body.slug, 'uploads-evil-post');
+
+    const storedUpdatedPost = JSON.parse(
+        await readFile(path.join(postsDir, 'uploads-evil-post.json'), 'utf8')
+    );
+    assert.equal(storedUpdatedPost.slug, 'uploads-evil-post');
+
+    await assert.rejects(
+        () => access(path.join(uploadDir, 'evil-post.json')),
+        error => error.code === 'ENOENT'
+    );
+});
+
+test('post contentHtml is derived from contentJson for public feeds', async () => {
+    await writePosts([
+        {
+            id: 'post-content-json-source',
+            slug: 'content-json-source',
+            title: 'Content JSON Source',
+            summary: 'content json source summary',
+            category: 'Security',
+            contentJson: sampleContentJson,
+            contentHtml: '<p><img src=x onerror="alert(1)"></p><script>alert(1)</script>',
+            publishedAt: '2026-03-06',
+            tags: [],
+            status: 'published',
+            sections: []
+        }
+    ]);
+
+    const posts = await readPosts();
+    assert.equal(posts[0].contentHtml, '<h1>Heading</h1><p>Body copy</p>');
+
+    const storedPost = JSON.parse(await readFile(path.join(postsDir, 'content-json-source.json'), 'utf8'));
+    assert.equal(storedPost.contentHtml, '<h1>Heading</h1><p>Body copy</p>');
+
+    const rssResponse = await request(app).get('/rss.xml');
+    assert.equal(rssResponse.status, 200);
+    assert.match(rssResponse.text, /<!\[CDATA\[<h1>Heading<\/h1><p>Body copy<\/p>\]\]>/);
+    assert.doesNotMatch(rssResponse.text, /onerror/);
+    assert.doesNotMatch(rssResponse.text, /<script>/);
 });
 
 test('ensurePostsFile backfills contentJson for legacy html-only posts', async () => {
@@ -586,6 +672,120 @@ test('comments respect password verification on deletion', async () => {
     assert.equal(remainingComments.length, 0);
 });
 
+test('comments normalize public input and reject oversized fields', async () => {
+    await writePosts([
+        {
+            id: 'post-comment-limits',
+            slug: 'comment-limits-post',
+            title: 'Comment Limits Post',
+            summary: 'comment target',
+            category: 'Testing',
+            contentHtml: '<p>Hello comments</p>',
+            publishedAt: '2026-03-06',
+            tags: [],
+            status: 'published',
+            sections: []
+        }
+    ]);
+
+    const normalizedCommentResponse = await request(app)
+        .post('/api/comments')
+        .send({
+            postId: 'post-comment-limits',
+            author: ' Reader    Name ',
+            password: ' secret-password ',
+            content: '\u0000Hello\r\n\r\n\r\nWorld\u007F'
+        });
+
+    assert.equal(normalizedCommentResponse.status, 201);
+    assert.equal(normalizedCommentResponse.body.comment.author, 'Reader Name');
+    assert.equal(normalizedCommentResponse.body.comment.content, 'Hello\n\nWorld');
+
+    const deletedNormalizedCommentResponse = await request(app)
+        .delete(`/api/comments/${normalizedCommentResponse.body.comment.id}`)
+        .send({ password: 'secret-password' });
+
+    assert.equal(deletedNormalizedCommentResponse.status, 200);
+
+    const oversizedAuthorResponse = await request(app)
+        .post('/api/comments')
+        .send({
+            postId: 'post-comment-limits',
+            author: 'a'.repeat(COMMENT_LIMITS.author + 1),
+            password: 'secret-password',
+            content: 'Valid comment'
+        });
+
+    assert.equal(oversizedAuthorResponse.status, 400);
+    assert.match(oversizedAuthorResponse.body.message, /이름/);
+
+    const oversizedContentResponse = await request(app)
+        .post('/api/comments')
+        .send({
+            postId: 'post-comment-limits',
+            author: 'Reader',
+            password: 'secret-password',
+            content: 'a'.repeat(COMMENT_LIMITS.content + 1)
+        });
+
+    assert.equal(oversizedContentResponse.status, 400);
+    assert.match(oversizedContentResponse.body.message, /댓글/);
+
+    const storedComments = await readComments();
+    assert.equal(storedComments.length, 0);
+});
+
+test('comments only attach to public visible posts', async () => {
+    const futureScheduledAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    await writePosts([
+        {
+            id: 'post-draft-comments',
+            slug: 'draft-comments-post',
+            title: 'Draft Comments Post',
+            summary: 'hidden comment target',
+            category: 'Testing',
+            contentHtml: '<p>Hidden comments</p>',
+            publishedAt: '2026-03-06',
+            tags: [],
+            status: 'draft',
+            sections: []
+        },
+        {
+            id: 'post-future-comments',
+            slug: 'future-comments-post',
+            title: 'Future Comments Post',
+            summary: 'scheduled comment target',
+            category: 'Testing',
+            contentHtml: '<p>Future comments</p>',
+            publishedAt: futureScheduledAt.slice(0, 10),
+            scheduledAt: futureScheduledAt,
+            tags: [],
+            status: 'scheduled',
+            sections: []
+        }
+    ]);
+
+    for (const postId of ['post-draft-comments', 'post-future-comments', 'post-missing-comments']) {
+        const createCommentResponse = await request(app)
+            .post('/api/comments')
+            .send({
+                postId,
+                author: 'Reader',
+                password: 'secret-password',
+                content: 'Hidden target'
+            });
+
+        assert.equal(createCommentResponse.status, 404);
+
+        const listCommentsResponse = await request(app).get(`/api/comments?postId=${postId}`);
+        assert.equal(listCommentsResponse.status, 404);
+    }
+
+    const storedComments = await readComments();
+    assert.equal(storedComments.length, 0);
+});
+
 test('authenticated write routes reject untrusted origins', async () => {
     const cookies = await loginAsAdmin();
 
@@ -894,6 +1094,64 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     const searchResponse = await request(app).get('/api/search?q=scheduled');
     assert.equal(searchResponse.status, 200);
     assert.deepEqual(searchResponse.body.map(post => post.slug), ['meta-scheduled-visible']);
+});
+
+test('public search normalizes queries, limits results, and rejects oversized input', async () => {
+    const matchingPosts = Array.from({ length: SEARCH_RESULT_LIMIT + 5 }, (_, index) => ({
+        id: `search-public-${index}`,
+        slug: `search-public-${index}`,
+        title: `Limit Search Match ${index}`,
+        summary: 'search result target',
+        category: 'Testing',
+        contentHtml: `<p>Search body ${index}</p>`,
+        publishedAt: `2026-04-${String(index + 1).padStart(2, '0')}`,
+        tags: ['search'],
+        status: 'published',
+        sections: []
+    }));
+
+    await writePosts([
+        {
+            id: 'search-draft',
+            slug: 'search-draft',
+            title: 'Limit Search Match Hidden',
+            summary: 'hidden search result',
+            category: 'Testing',
+            contentHtml: '<p>Hidden search body</p>',
+            publishedAt: '2026-05-01',
+            tags: ['search'],
+            status: 'draft',
+            sections: []
+        },
+        ...matchingPosts
+    ]);
+
+    const oversizedSearchResponse = await request(app)
+        .get('/api/search')
+        .query({ q: 'a'.repeat(SEARCH_QUERY_MAX_LENGTH + 1) });
+
+    assert.equal(oversizedSearchResponse.status, 400);
+    assert.match(oversizedSearchResponse.body.message, /검색어/);
+
+    const normalizedSearchResponse = await request(app)
+        .get('/api/search')
+        .query({ q: '  limit   search  ' });
+
+    assert.equal(normalizedSearchResponse.status, 200);
+    assert.equal(normalizedSearchResponse.body.length, SEARCH_RESULT_LIMIT);
+    assert.equal(normalizedSearchResponse.body[0].slug, `search-public-${SEARCH_RESULT_LIMIT + 4}`);
+    assert.equal(
+        normalizedSearchResponse.body[SEARCH_RESULT_LIMIT - 1].slug,
+        `search-public-${5}`
+    );
+    assert.ok(!normalizedSearchResponse.body.some(post => post.slug === 'search-draft'));
+
+    const emptySearchResponse = await request(app)
+        .get('/api/search')
+        .query({ q: '\u0000   ' });
+
+    assert.equal(emptySearchResponse.status, 200);
+    assert.deepEqual(emptySearchResponse.body, []);
 });
 
 test('home page reflects profile SEO metadata and search engine verification', async () => {

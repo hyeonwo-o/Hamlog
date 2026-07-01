@@ -25,7 +25,9 @@ export function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={label}
-      className={`inline-flex h-7 w-7 items-center justify-center border p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+      aria-label={label}
+      aria-pressed={active === undefined ? undefined : active}
+      className={`relative inline-flex h-7 w-7 shrink-0 items-center justify-center border p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         active
           ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
           : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'

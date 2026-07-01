@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 
@@ -38,13 +39,21 @@ export function ToolbarDropdown({
   }, []);
 
   const currentLabel = options.find(option => option.value === value)?.label || label;
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative" ref={containerRef} onKeyDown={handleKeyDown}>
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(prev => !prev)}
         disabled={disabled}
+        aria-label={`${label}: ${currentLabel}`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
         className={`flex h-7 items-center justify-between gap-1.5 border border-transparent bg-white px-1.5 text-[11px] font-medium text-[var(--text)] transition-colors hover:border-[color:var(--border)] disabled:opacity-50 ${width}`}
       >
         <span className="truncate">{currentLabel}</span>
@@ -52,11 +61,17 @@ export function ToolbarDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-30 mt-1 max-h-60 min-w-[140px] w-full overflow-y-auto border border-[color:var(--border)] bg-white p-1 ring-1 ring-black/5">
+        <div
+          className="absolute left-0 top-full z-40 mt-1 max-h-60 w-full min-w-[140px] overflow-y-auto border border-[color:var(--border)] bg-white p-1 ring-1 ring-black/5"
+          role="listbox"
+          aria-label={label}
+        >
           {options.map(option => (
             <button
               key={option.value}
               type="button"
+              role="option"
+              aria-selected={value === option.value}
               onClick={() => {
                 onSelect(option.value);
                 setIsOpen(false);

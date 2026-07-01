@@ -5,6 +5,7 @@ import { writeJsonAtomic } from '../utils/fsUtils.js';
 import {
     normalizeContentJson,
     hasContentJsonContent,
+    normalizeContentHtml,
     normalizePostStatus,
     normalizePostViews,
     normalizeScheduledAt,
@@ -13,17 +14,39 @@ import {
 import {
     normalizeCategory
 } from '../utils/normalizers/categoryNormalizers.js';
-import { parseHtmlToContentJson } from '../utils/contentRenderer.js';
+import { parseHtmlToContentJson, renderContentJsonToHtml } from '../utils/contentRenderer.js';
+
+function getPostFilePath(slug) {
+    const postsRoot = path.resolve(postsDir);
+    const postPath = path.resolve(postsRoot, `${slug}.json`);
+
+    if (!postPath.startsWith(`${postsRoot}${path.sep}`)) {
+        throw new Error(`Invalid post slug path: ${slug}`);
+    }
+
+    return postPath;
+}
 
 function normalizePost(post) {
     if (!post || typeof post !== 'object') return post;
     const { readingTime, ...postWithoutReadingTime } = post;
     void readingTime;
+    const contentJson = normalizeContentJson(post.contentJson);
+    let contentHtml = normalizeContentHtml(post.contentHtml) || undefined;
+
+    if (hasContentJsonContent(contentJson)) {
+        try {
+            contentHtml = renderContentJsonToHtml(contentJson) || undefined;
+        } catch (error) {
+            console.error(`[PostModel] Failed to render contentJson for "${post.slug}":`, error);
+        }
+    }
 
     return {
         ...postWithoutReadingTime,
         category: normalizeCategory(post.category),
-        contentJson: normalizeContentJson(post.contentJson),
+        contentJson,
+        contentHtml,
         views: normalizePostViews(post.views),
         status: normalizePostStatus(post.status),
         scheduledAt: normalizeScheduledAt(post.scheduledAt) || undefined,
@@ -88,7 +111,7 @@ export async function writePosts(posts) {
     // 2. Update individual files
     await mkdir(postsDir, { recursive: true });
     for (const post of normalized) {
-        const postPath = path.join(postsDir, `${post.slug}.json`);
+        const postPath = getPostFilePath(post.slug);
         await writeJsonAtomic(postPath, post);
     }
 

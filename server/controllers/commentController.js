@@ -4,13 +4,20 @@ import {
     deleteCommentService
 } from '../services/commentService.js';
 
+const getCommentErrorStatus = (code) => (
+    code === 'not_found' ? 404
+        : code === 'forbidden' ? 403
+            : code === 'validation_error' ? 400
+                : 500
+);
+
 export const getComments = async (req, res) => {
     try {
         const { postId } = req.query;
         const result = await getCommentsService(postId);
 
         if (!result.success) {
-            return res.status(400).json({ message: result.error });
+            return res.status(getCommentErrorStatus(result.code)).json({ message: result.error });
         }
 
         res.json({ comments: result.data });
@@ -25,7 +32,7 @@ export const createComment = async (req, res) => {
         const result = await createCommentService(req.body);
 
         if (!result.success) {
-            return res.status(400).json({ message: result.error });
+            return res.status(getCommentErrorStatus(result.code)).json({ message: result.error });
         }
 
         res.status(201).json({ comment: result.data });
@@ -43,11 +50,7 @@ export const deleteComment = async (req, res) => {
         const result = await deleteCommentService(id, password);
 
         if (!result.success) {
-            const status = result.code === 'not_found' ? 404
-                : result.code === 'forbidden' ? 403
-                    : result.code === 'validation_error' ? 400
-                        : 500;
-            return res.status(status).json({ message: result.error });
+            return res.status(getCommentErrorStatus(result.code)).json({ message: result.error });
         }
 
         res.json({ success: true });

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Ban } from 'lucide-react';
 import { ToolbarButton } from './ToolbarButton';
@@ -42,8 +42,14 @@ export function ToolbarPaletteMenu({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative" ref={containerRef} onKeyDown={handleKeyDown}>
       <ToolbarButton
         label={label}
         onClick={() => !disabled && setIsOpen(prev => !prev)}
@@ -61,12 +67,17 @@ export function ToolbarPaletteMenu({
       </ToolbarButton>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-44 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-2">
+        <div
+          className="absolute left-0 top-full z-40 mt-1 w-44 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-2"
+          role="menu"
+          aria-label={label}
+        >
           <div className="grid grid-cols-5 gap-1">
             {colors.map(color => (
               <button
                 key={color}
                 type="button"
+                role="menuitem"
                 onClick={() => {
                   onSelect(color);
                   setIsOpen(false);
@@ -74,16 +85,19 @@ export function ToolbarPaletteMenu({
                 className="h-6 w-6 rounded-full border border-[color:var(--border)] transition-transform hover:scale-110"
                 style={{ backgroundColor: color }}
                 title={color}
+                aria-label={`${label} ${color}`}
               />
             ))}
             <button
               type="button"
+              role="menuitem"
               onClick={() => {
                 onClear();
                 setIsOpen(false);
               }}
               className="flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--border)] bg-gray-100 text-gray-500 hover:bg-gray-200"
               title={clearLabel}
+              aria-label={clearLabel}
             >
               <Ban size={12} />
             </button>

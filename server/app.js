@@ -22,6 +22,7 @@ import { authRouter } from './routes/auth.js';
 import { previewRouter } from './routes/preview.js';
 import { searchPosts } from './controllers/searchController.js';
 import { getRobots, injectPostMeta } from './controllers/seoController.js';
+import { searchRateLimiter } from './middleware/rateLimit.js';
 import { readSpaIndexHtml, resolveSpaIndexPath } from './utils/spaIndex.js';
 import { injectSearchVerificationMeta } from './utils/searchVerification.js';
 
@@ -256,7 +257,7 @@ app.use('/api/uploads', uploadRouter);
 app.use('/api/comments', commentRouter);
 app.use('/api/auth', authRouter);
 app.use('/api', previewRouter);
-app.get('/api/search', searchPosts);
+app.get('/api/search', searchRateLimiter, searchPosts);
 app.get(/^\/admin(?:\/.*)?$/, injectNoindexAppShell);
 app.get(['/posts/:slug', '/p/:slug'], injectPostMeta);
 app.use('/', seoRouter);

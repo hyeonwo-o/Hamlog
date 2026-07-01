@@ -9,8 +9,9 @@ import {
   Code,
   Code2,
   Image as ImageIcon,
+  ImageUp,
   Italic,
-  Link as LinkIcon,
+  Link2,
   List,
   ListOrdered,
   Minus,
@@ -234,7 +235,7 @@ export function buildInsertActions({
     {
       key: 'link',
       label: '링크',
-      icon: <LinkIcon size={16} />,
+      icon: <Link2 size={16} />,
       onClick: onLink,
       active: editor?.isActive('link'),
       disabled: !editor
@@ -242,7 +243,7 @@ export function buildInsertActions({
     {
       key: 'image-upload',
       label: '이미지 업로드',
-      icon: <ImageIcon size={16} />,
+      icon: <ImageUp size={16} />,
       onClick: onToolbarImageUpload,
       disabled: !editor || uploadingImage,
       className: uploadingImage ? 'animate-pulse' : ''
@@ -250,7 +251,7 @@ export function buildInsertActions({
     {
       key: 'image-url',
       label: '이미지 URL',
-      icon: <LinkIcon size={14} />,
+      icon: <ImageIcon size={14} />,
       onClick: onInsertImageUrl,
       disabled: !editor,
       children: <span className="ml-0.5 text-[10px]">URL</span>

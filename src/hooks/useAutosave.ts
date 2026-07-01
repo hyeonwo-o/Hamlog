@@ -14,8 +14,25 @@ interface AutosavePayload {
     updatedAt: string;
 }
 
-const getRichContentSignature = (draft: PostDraft) =>
-    draft.contentJson ? JSON.stringify(draft.contentJson) : draft.contentHtml;
+const getDraftAutosaveSignature = (draft: PostDraft) => JSON.stringify({
+    title: draft.title,
+    slug: draft.slug,
+    summary: draft.summary,
+    category: draft.category,
+    content: draft.contentJson ? JSON.stringify(draft.contentJson) : draft.contentHtml,
+    publishedAt: draft.publishedAt,
+    tags: draft.tags,
+    series: draft.series,
+    featured: draft.featured,
+    cover: draft.cover,
+    status: draft.status,
+    scheduledAt: draft.scheduledAt,
+    seoTitle: draft.seoTitle,
+    seoDescription: draft.seoDescription,
+    seoOgImage: draft.seoOgImage,
+    seoCanonicalUrl: draft.seoCanonicalUrl,
+    seoKeywords: draft.seoKeywords
+});
 
 const parseAutosavePayload = (raw: string): AutosavePayload | null => {
     try {
@@ -42,10 +59,7 @@ const parseAutosavePayload = (raw: string): AutosavePayload | null => {
 };
 
 const isDraftDifferent = (left: PostDraft, right: PostDraft) =>
-    left.title !== right.title
-    || getRichContentSignature(left) !== getRichContentSignature(right)
-    || left.summary !== right.summary
-    || left.tags.join(',') !== right.tags.join(',');
+    getDraftAutosaveSignature(left) !== getDraftAutosaveSignature(right);
 
 export const useAutosave = ({
     activeId,
