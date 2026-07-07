@@ -627,7 +627,7 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                     <svg
                         viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
                         preserveAspectRatio="xMidYMid meet"
-                        className="h-[360px] w-full sm:h-[420px]"
+                        className="block h-[360px] w-full sm:h-[420px]"
                         role="img"
                         aria-label="글, 카테고리, 시리즈 관계 그래프"
                     >
@@ -700,7 +700,7 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                     </svg>
                 </div>
 
-                <aside className="angular-panel border border-[color:var(--border)] bg-[var(--surface)] p-4">
+                <aside className="angular-panel border border-[color:var(--border)] bg-[var(--surface)] p-4 lg:max-h-[420px] lg:overflow-y-auto lg:[scrollbar-gutter:stable]">
                     <div className="grid grid-cols-2 gap-2">
                         <div className="angular-chip border border-[color:var(--border)] bg-[var(--surface-muted)] px-2.5 py-2">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">글</p>
