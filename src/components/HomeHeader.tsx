@@ -24,7 +24,7 @@ export const HomeHeader = ({ profile, postCount, categoryCount }: HomeHeaderProp
         <header className="border-b border-[color:var(--border)]">
             <div className="mx-auto max-w-6xl px-4 py-6">
                 <nav className="flex flex-wrap items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                    <span className="font-display text-base font-semibold text-[var(--text)]">
+                    <span className="font-display text-base font-semibold text-[var(--accent)]">
                         {profile.title}
                     </span>
                 </nav>
@@ -53,11 +53,11 @@ export const HomeHeader = ({ profile, postCount, categoryCount }: HomeHeaderProp
 
                         <div>
                             <dl className="grid grid-cols-2 gap-3 border-t border-[color:var(--border)] pt-4">
-                                <div className="angular-control border border-[color:var(--border)] bg-[var(--surface-muted)] p-2.5">
+                                <div className="angular-control flex min-h-[72px] flex-col justify-center border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2">
                                     <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Post</dt>
                                     <dd className="mt-0.5 font-display text-lg font-bold text-[var(--text)]">{postCount}</dd>
                                 </div>
-                                <div className="angular-control border border-[color:var(--border)] bg-[var(--surface-muted)] p-2.5">
+                                <div className="angular-control flex min-h-[72px] flex-col justify-center border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2">
                                     <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Category</dt>
                                     <dd className="mt-0.5 font-display text-lg font-bold text-[var(--text)]">{categoryCount}</dd>
                                 </div>

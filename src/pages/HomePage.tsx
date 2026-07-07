@@ -3,6 +3,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { HomeHeader } from '../components/HomeHeader';
 import { HomeFooter } from '../components/HomeFooter';
 import { FeaturedSection } from '../components/home/FeaturedSection';
+import { PostGraphSection } from '../components/home/PostGraphSection';
 import { PostListSection } from '../components/home/PostListSection';
 
 import { useSeo } from '../hooks/useSeo';
@@ -98,6 +99,7 @@ const HomePage = () => {
                     )}
 
                     <FeaturedSection posts={popularPosts} />
+                    <PostGraphSection posts={sortedPosts} />
 
                     <PostListSection
                         filteredPosts={filteredPosts}
