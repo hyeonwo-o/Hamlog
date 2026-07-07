@@ -611,7 +611,7 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                 </div>
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="angular-panel overflow-hidden border border-[color:var(--border)] bg-[var(--surface)]">
                     <svg
                         viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
