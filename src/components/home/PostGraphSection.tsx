@@ -1,6 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type CSSProperties,
+    type KeyboardEvent,
+    type PointerEvent
+} from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Folder, Layers3, Network, RotateCcw, type LucideIcon } from 'lucide-react';
+import { FileText, Folder, Layers3, Network, RotateCcw, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react';
 import type { Post } from '../../types/blog';
 
 type GraphNodeType = 'post' | 'category' | 'series';
@@ -32,6 +41,12 @@ interface GraphEdge {
     type: 'category' | 'series' | 'link';
 }
 
+interface GraphViewport {
+    zoom: number;
+    centerX: number;
+    centerY: number;
+}
+
 interface GraphData {
     nodes: GraphNode[];
     edges: GraphEdge[];
@@ -47,11 +62,20 @@ interface PostGraphSectionProps {
 const GRAPH_WIDTH = 1000;
 const GRAPH_HEIGHT = 420;
 const GRAPH_PADDING = 42;
+const GRAPH_MIN_ZOOM = 0.72;
+const GRAPH_MAX_ZOOM = 2.4;
+const GRAPH_ZOOM_STEP = 0.18;
+const GRAPH_PAN_MARGIN = 140;
 const MAX_POST_NODES = 36;
 const LAYOUT_ITERATIONS = 76;
 const ANIMATION_FRAME_LIMIT = 190;
 const ANIMATION_MIN_FRAMES = 72;
 const ANIMATION_SETTLE_SPEED = 0.028;
+const initialGraphViewport: GraphViewport = {
+    zoom: 1,
+    centerX: GRAPH_WIDTH / 2,
+    centerY: GRAPH_HEIGHT / 2
+};
 const nodeTypeLabel: Record<GraphNodeType, string> = {
     post: '글',
     category: '카테고리',
@@ -121,6 +145,54 @@ const getRelationPosition = (label: string, index: number, total: number) => {
 };
 
 const clampPosition = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const clampGraphZoom = (zoom: number) => clampPosition(zoom, GRAPH_MIN_ZOOM, GRAPH_MAX_ZOOM);
+
+const clampGraphViewport = (viewport: GraphViewport): GraphViewport => {
+    const zoom = clampGraphZoom(viewport.zoom);
+    const viewBoxWidth = GRAPH_WIDTH / zoom;
+    const viewBoxHeight = GRAPH_HEIGHT / zoom;
+
+    return {
+        zoom,
+        centerX: clampPosition(
+            viewport.centerX,
+            GRAPH_PAN_MARGIN - viewBoxWidth / 2,
+            GRAPH_WIDTH - GRAPH_PAN_MARGIN + viewBoxWidth / 2
+        ),
+        centerY: clampPosition(
+            viewport.centerY,
+            GRAPH_PAN_MARGIN - viewBoxHeight / 2,
+            GRAPH_HEIGHT - GRAPH_PAN_MARGIN + viewBoxHeight / 2
+        )
+    };
+};
+
+const getGraphViewBox = (viewport: GraphViewport) => {
+    const viewBoxWidth = GRAPH_WIDTH / viewport.zoom;
+    const viewBoxHeight = GRAPH_HEIGHT / viewport.zoom;
+    const x = viewport.centerX - viewBoxWidth / 2;
+    const y = viewport.centerY - viewBoxHeight / 2;
+
+    return `${x} ${y} ${viewBoxWidth} ${viewBoxHeight}`;
+};
+
+const getGraphPoint = (clientX: number, clientY: number, svg: SVGSVGElement, viewport: GraphViewport) => {
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+        return {
+            x: viewport.centerX,
+            y: viewport.centerY
+        };
+    }
+
+    const viewBoxWidth = GRAPH_WIDTH / viewport.zoom;
+    const viewBoxHeight = GRAPH_HEIGHT / viewport.zoom;
+
+    return {
+        x: viewport.centerX - viewBoxWidth / 2 + ((clientX - rect.left) / rect.width) * viewBoxWidth,
+        y: viewport.centerY - viewBoxHeight / 2 + ((clientY - rect.top) / rect.height) * viewBoxHeight
+    };
+};
 
 const applyGraphLayout = (nodes: GraphNode[], edges: GraphEdge[]) => {
     const layoutNodes = nodes.map(node => ({
@@ -500,6 +572,20 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState<GraphFilter>('all');
     const [showLabels, setShowLabels] = useState(true);
+    const [graphViewport, setGraphViewport] = useState<GraphViewport>(initialGraphViewport);
+    const [isPanning, setIsPanning] = useState(false);
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const dragRef = useRef<{
+        pointerId: number;
+        startX: number;
+        startY: number;
+        centerX: number;
+        centerY: number;
+        zoom: number;
+        viewBoxWidth: number;
+        viewBoxHeight: number;
+    } | null>(null);
+    const didPanRef = useRef(false);
     const activeNodeId = hoveredNodeId ?? selectedNodeId;
     const animatedGraph = useAnimatedGraphLayout(graph, activeFilter, activeNodeId);
     const hubNodes = useMemo(() => (
@@ -510,6 +596,44 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
             ))
             .slice(0, 6)
     ), [graph]);
+
+    const changeGraphZoom = useCallback((delta: number, anchor?: { x: number; y: number }) => {
+        setGraphViewport(previousViewport => {
+            const zoom = clampGraphZoom(previousViewport.zoom + delta);
+            const previousViewBoxWidth = GRAPH_WIDTH / previousViewport.zoom;
+            const previousViewBoxHeight = GRAPH_HEIGHT / previousViewport.zoom;
+            const nextViewBoxWidth = GRAPH_WIDTH / zoom;
+            const nextViewBoxHeight = GRAPH_HEIGHT / zoom;
+            const zoomAnchor = anchor ?? {
+                x: previousViewport.centerX,
+                y: previousViewport.centerY
+            };
+            const relativeX = (zoomAnchor.x - (previousViewport.centerX - previousViewBoxWidth / 2)) / previousViewBoxWidth;
+            const relativeY = (zoomAnchor.y - (previousViewport.centerY - previousViewBoxHeight / 2)) / previousViewBoxHeight;
+
+            return clampGraphViewport({
+                zoom,
+                centerX: zoomAnchor.x - (relativeX - 0.5) * nextViewBoxWidth,
+                centerY: zoomAnchor.y - (relativeY - 0.5) * nextViewBoxHeight
+            });
+        });
+    }, []);
+
+    useEffect(() => {
+        const svg = svgRef.current;
+        if (!svg) return undefined;
+
+        const handleWheel = (event: globalThis.WheelEvent) => {
+            event.preventDefault();
+            const anchor = getGraphPoint(event.clientX, event.clientY, svg, graphViewport);
+
+            changeGraphZoom(event.deltaY > 0 ? -GRAPH_ZOOM_STEP : GRAPH_ZOOM_STEP, anchor);
+        };
+
+        svg.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => svg.removeEventListener('wheel', handleWheel);
+    }, [changeGraphZoom, graphViewport]);
 
     if (graph.nodes.length === 0) return null;
 
@@ -544,6 +668,7 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
     };
 
     const selectNode = (nodeId: string) => {
+        if (didPanRef.current) return;
         setSelectedNodeId(nodeId);
         setHoveredNodeId(null);
     };
@@ -553,6 +678,60 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         setHoveredNodeId(null);
         setActiveFilter('all');
         setShowLabels(true);
+        setGraphViewport(initialGraphViewport);
+    };
+
+    const handleGraphPointerDown = (event: PointerEvent<SVGSVGElement>) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+        dragRef.current = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            centerX: graphViewport.centerX,
+            centerY: graphViewport.centerY,
+            zoom: graphViewport.zoom,
+            viewBoxWidth: GRAPH_WIDTH / graphViewport.zoom,
+            viewBoxHeight: GRAPH_HEIGHT / graphViewport.zoom
+        };
+        didPanRef.current = false;
+        event.currentTarget.setPointerCapture(event.pointerId);
+    };
+
+    const handleGraphPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+        const drag = dragRef.current;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+
+        const deltaX = event.clientX - drag.startX;
+        const deltaY = event.clientY - drag.startY;
+        if (Math.hypot(deltaX, deltaY) < 3) return;
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        event.preventDefault();
+        didPanRef.current = true;
+        setIsPanning(true);
+        setGraphViewport(clampGraphViewport({
+            zoom: drag.zoom,
+            centerX: drag.centerX - (deltaX / rect.width) * drag.viewBoxWidth,
+            centerY: drag.centerY - (deltaY / rect.height) * drag.viewBoxHeight
+        }));
+    };
+
+    const releaseGraphPointer = (event: PointerEvent<SVGSVGElement>) => {
+        const drag = dragRef.current;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        dragRef.current = null;
+        setIsPanning(false);
+        window.setTimeout(() => {
+            didPanRef.current = false;
+        }, 0);
     };
 
     const handleNodeKeyDown = (event: KeyboardEvent<SVGGElement>, nodeId: string) => {
@@ -560,6 +739,9 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         event.preventDefault();
         selectNode(nodeId);
     };
+
+    const graphViewBox = getGraphViewBox(graphViewport);
+    const graphZoomPercent = Math.round(graphViewport.zoom * 100);
 
     return (
         <section id="graph" className="mx-auto max-w-6xl px-4 py-8">
@@ -599,6 +781,31 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1" role="group" aria-label="그래프 확대 축소">
+                        <button
+                            type="button"
+                            onClick={() => changeGraphZoom(-GRAPH_ZOOM_STEP)}
+                            disabled={graphViewport.zoom <= GRAPH_MIN_ZOOM + 0.01}
+                            title="축소"
+                            aria-label="그래프 축소"
+                            className="angular-control inline-flex h-9 w-9 items-center justify-center border border-[color:var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            <ZoomOut size={14} aria-hidden="true" />
+                        </button>
+                        <span className="angular-control inline-flex h-9 w-14 items-center justify-center border border-[color:var(--border)] bg-[var(--surface)] text-xs font-semibold text-[var(--text-muted)]">
+                            {graphZoomPercent}%
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => changeGraphZoom(GRAPH_ZOOM_STEP)}
+                            disabled={graphViewport.zoom >= GRAPH_MAX_ZOOM - 0.01}
+                            title="확대"
+                            aria-label="그래프 확대"
+                            className="angular-control inline-flex h-9 w-9 items-center justify-center border border-[color:var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            <ZoomIn size={14} aria-hidden="true" />
+                        </button>
+                    </div>
                     <label className="angular-control inline-flex h-9 cursor-pointer items-center gap-2 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs font-semibold text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--text)]">
                         <input
                             type="checkbox"
@@ -625,11 +832,16 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                     style={graphStageStyle}
                 >
                     <svg
-                        viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
+                        ref={svgRef}
+                        viewBox={graphViewBox}
                         preserveAspectRatio="xMidYMid meet"
-                        className="block h-[360px] w-full sm:h-[420px]"
+                        className={`block h-[360px] w-full touch-none sm:h-[420px] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
                         role="img"
                         aria-label="글, 카테고리, 시리즈 관계 그래프"
+                        onPointerDown={handleGraphPointerDown}
+                        onPointerMove={handleGraphPointerMove}
+                        onPointerUp={releaseGraphPointer}
+                        onPointerCancel={releaseGraphPointer}
                     >
                         <g>
                             {graph.edges.map(edge => {
