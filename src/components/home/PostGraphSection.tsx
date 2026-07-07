@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Folder, Layers3, Network, RotateCcw, type LucideIcon } from 'lucide-react';
 import type { Post } from '../../types/blog';
@@ -72,6 +72,14 @@ const edgeStroke: Record<GraphEdge['type'], string> = {
     category: 'var(--accent-strong)',
     series: 'var(--text-muted)',
     link: 'var(--accent)'
+};
+const graphStageStyle: CSSProperties = {
+    backgroundColor: 'var(--surface-muted)',
+    backgroundImage: [
+        'linear-gradient(rgba(17, 17, 17, 0.035) 1px, transparent 1px)',
+        'linear-gradient(90deg, rgba(17, 17, 17, 0.035) 1px, transparent 1px)'
+    ].join(', '),
+    backgroundSize: '40px 40px'
 };
 
 const normalizeKey = (value = '') => value.trim().toLowerCase();
@@ -611,8 +619,11 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                 </div>
             </div>
 
-            <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-                <div className="angular-panel overflow-hidden border border-[color:var(--border)] bg-[var(--surface)]">
+            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <div
+                    className="angular-panel overflow-hidden border border-[color:var(--border)] bg-[var(--surface-muted)]"
+                    style={graphStageStyle}
+                >
                     <svg
                         viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
                         preserveAspectRatio="xMidYMid meet"
@@ -620,14 +631,6 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                         role="img"
                         aria-label="글, 카테고리, 시리즈 관계 그래프"
                     >
-                        <defs>
-                            <pattern id="graph-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--border)" strokeWidth="0.8" opacity="0.35" />
-                            </pattern>
-                        </defs>
-                        <rect width={GRAPH_WIDTH} height={GRAPH_HEIGHT} fill="var(--surface-muted)" />
-                        <rect width={GRAPH_WIDTH} height={GRAPH_HEIGHT} fill="url(#graph-grid)" />
-
                         <g>
                             {graph.edges.map(edge => {
                                 const source = animatedGraph.nodeById.get(edge.source);
