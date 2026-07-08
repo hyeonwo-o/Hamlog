@@ -4,6 +4,8 @@ import type { GraphEdge, GraphFilter, GraphNodeType, GraphViewport } from './typ
 export const GRAPH_WIDTH = 1000;
 export const GRAPH_HEIGHT = 420;
 export const GRAPH_PADDING = 42;
+export const GRAPH_ASPECT_RATIO = GRAPH_WIDTH / GRAPH_HEIGHT;
+export const GRAPH_FIT_PADDING = 132;
 export const GRAPH_MIN_ZOOM = 0.72;
 export const GRAPH_MAX_ZOOM = 2.4;
 export const GRAPH_ZOOM_STEP = 0.18;

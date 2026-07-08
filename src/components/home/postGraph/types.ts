@@ -14,6 +14,17 @@ export interface GraphNode {
     relatedPostIds: string[];
 }
 
+export interface GraphNodePosition {
+    x: number;
+    y: number;
+}
+
+export type GraphNodePositions = Record<string, GraphNodePosition>;
+
+export interface DraggedGraphNode extends GraphNodePosition {
+    id: string;
+}
+
 export interface SimulationNode extends GraphNode {
     vx: number;
     vy: number;

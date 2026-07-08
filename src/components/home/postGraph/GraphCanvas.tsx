@@ -12,6 +12,7 @@ interface GraphCanvasProps {
     activeNodeId: string | null;
     activeNeighborIds: Set<string>;
     selectedNodeId: string | null;
+    draggingNodeId: string | null;
     showLabels: boolean;
     isPanning: boolean;
     viewBox: string;
@@ -20,6 +21,9 @@ interface GraphCanvasProps {
     isNodeDimmed: (node: GraphNode) => boolean;
     onSelectNode: (nodeId: string) => void;
     onNodeKeyDown: (event: KeyboardEvent<SVGGElement>, nodeId: string) => void;
+    onNodePointerDown: (event: PointerEvent<SVGGElement>, nodeId: string) => void;
+    onNodePointerMove: (event: PointerEvent<SVGGElement>) => void;
+    onNodePointerUp: (event: PointerEvent<SVGGElement>) => void;
     onNodeEnter: (nodeId: string) => void;
     onNodeLeave: () => void;
     onPointerDown: (event: PointerEvent<SVGSVGElement>) => void;
@@ -33,6 +37,7 @@ export const GraphCanvas = ({
     activeNodeId,
     activeNeighborIds,
     selectedNodeId,
+    draggingNodeId,
     showLabels,
     isPanning,
     viewBox,
@@ -41,6 +46,9 @@ export const GraphCanvas = ({
     isNodeDimmed,
     onSelectNode,
     onNodeKeyDown,
+    onNodePointerDown,
+    onNodePointerMove,
+    onNodePointerUp,
     onNodeEnter,
     onNodeLeave,
     onPointerDown,
@@ -55,7 +63,7 @@ export const GraphCanvas = ({
             ref={svgRef}
             viewBox={viewBox}
             preserveAspectRatio="xMidYMid meet"
-            className={`block h-[360px] w-full touch-none sm:h-[420px] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`block h-[300px] w-full touch-none sm:h-[420px] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
             role="img"
             aria-label="글, 카테고리, 시리즈 관계 그래프"
             onPointerDown={onPointerDown}
@@ -92,6 +100,7 @@ export const GraphCanvas = ({
                     const active = Boolean(activeNodeId)
                         && (node.id === activeNodeId || activeNeighborIds.has(node.id));
                     const selected = node.id === selectedNodeId;
+                    const dragging = node.id === draggingNodeId;
                     const dimmed = isNodeDimmed(node);
                     const showNodeLabel = showLabels || active || selected;
 
@@ -104,6 +113,10 @@ export const GraphCanvas = ({
                             className="outline-none"
                             onClick={() => onSelectNode(node.id)}
                             onKeyDown={event => onNodeKeyDown(event, node.id)}
+                            onPointerDown={event => onNodePointerDown(event, node.id)}
+                            onPointerMove={onNodePointerMove}
+                            onPointerUp={onNodePointerUp}
+                            onPointerCancel={onNodePointerUp}
                             onMouseEnter={() => onNodeEnter(node.id)}
                             onMouseLeave={onNodeLeave}
                         >
@@ -111,9 +124,9 @@ export const GraphCanvas = ({
                                 cx={node.x}
                                 cy={node.y}
                                 r={selected ? node.radius + 4 : node.radius}
-                                className={getNodeClasses(node, selected || node.id === activeNodeId, dimmed)}
+                                className={getNodeClasses(node, selected || node.id === activeNodeId, dimmed, dragging)}
                                 stroke={getNodeStroke(node, selected)}
-                                strokeWidth={selected ? 3 : 1.5}
+                                strokeWidth={dragging ? 3 : selected ? 3 : 1.5}
                             />
                             {showNodeLabel && (
                                 <text

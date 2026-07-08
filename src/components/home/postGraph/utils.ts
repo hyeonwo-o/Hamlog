@@ -18,10 +18,15 @@ export const hashString = (value: string) => {
 
 export const clampPosition = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-export const getNodeClasses = (node: GraphNode, isActive: boolean, isDimmed: boolean) => {
-    const base = 'transition duration-200';
+export const getNodeClasses = (
+    node: GraphNode,
+    isActive: boolean,
+    isDimmed: boolean,
+    isDragging = false
+) => {
+    const base = isDragging ? '' : 'transition duration-200';
     const opacity = isDimmed ? 'opacity-25' : 'opacity-100';
-    const cursor = 'cursor-pointer';
+    const cursor = isDragging ? 'cursor-grabbing' : 'cursor-grab';
 
     if (node.type === 'post') {
         return `${base} ${opacity} ${cursor} ${isActive ? 'fill-[var(--accent)]' : 'fill-[var(--text)]'}`;

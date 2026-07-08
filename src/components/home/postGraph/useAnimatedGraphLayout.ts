@@ -7,7 +7,14 @@ import {
     GRAPH_PADDING,
     GRAPH_WIDTH
 } from './constants';
-import type { GraphData, GraphFilter, GraphNode, SimulationNode } from './types';
+import type {
+    DraggedGraphNode,
+    GraphData,
+    GraphFilter,
+    GraphNode,
+    GraphNodePositions,
+    SimulationNode
+} from './types';
 import { clampPosition, hashString } from './utils';
 
 const toGraphNode = (node: SimulationNode): GraphNode => ({
@@ -46,7 +53,9 @@ const usePrefersReducedMotion = () => {
 export const useAnimatedGraphLayout = (
     graph: GraphData,
     activeFilter: GraphFilter,
-    activeNodeId: string | null
+    activeNodeId: string | null,
+    customNodePositions: GraphNodePositions,
+    draggedNode: DraggedGraphNode | null
 ) => {
     const prefersReducedMotion = usePrefersReducedMotion();
     const [animatedNodes, setAnimatedNodes] = useState<GraphNode[]>(graph.nodes);
@@ -68,16 +77,20 @@ export const useAnimatedGraphLayout = (
         const previousNodes = new Map(simulationRef.current.map(node => [node.id, node]));
         const nextSimulationNodes: SimulationNode[] = graph.nodes.map(node => {
             const previous = previousNodes.get(node.id);
+            const customPosition = customNodePositions[node.id];
+            const dragPosition = draggedNode?.id === node.id ? draggedNode : null;
+            const targetX = dragPosition?.x ?? customPosition?.x ?? node.x;
+            const targetY = dragPosition?.y ?? customPosition?.y ?? node.y;
             const seed = ((hashString(node.id) % 1000) / 1000) - 0.5;
 
             return {
                 ...node,
-                x: previous?.x ?? node.x + seed * 18,
-                y: previous?.y ?? node.y - seed * 14,
-                vx: previous?.vx ?? seed * 0.18,
-                vy: previous?.vy ?? -seed * 0.14,
-                targetX: node.x,
-                targetY: node.y,
+                x: dragPosition?.x ?? previous?.x ?? targetX + seed * 18,
+                y: dragPosition?.y ?? previous?.y ?? targetY - seed * 14,
+                vx: dragPosition ? 0 : previous?.vx ?? seed * 0.18,
+                vy: dragPosition ? 0 : previous?.vy ?? -seed * 0.14,
+                targetX,
+                targetY,
                 seed
             };
         });
@@ -85,7 +98,7 @@ export const useAnimatedGraphLayout = (
         simulationRef.current = nextSimulationNodes;
 
         if (prefersReducedMotion || nextSimulationNodes.length < 2) {
-            setAnimatedNodes(graph.nodes);
+            setAnimatedNodes(nextSimulationNodes.map(toGraphNode));
             return undefined;
         }
 
@@ -140,6 +153,14 @@ export const useAnimatedGraphLayout = (
             });
 
             nodes.forEach(node => {
+                if (draggedNode?.id === node.id) {
+                    node.x = draggedNode.x;
+                    node.y = draggedNode.y;
+                    node.vx = 0;
+                    node.vy = 0;
+                    return;
+                }
+
                 const isActiveNode = activeNodeId === node.id;
                 const isFilteredOut = activeFilter !== 'all' && node.type !== activeFilter;
                 const anchorStrength = isActiveNode ? 0.013 : isFilteredOut ? 0.018 : 0.009;
@@ -175,7 +196,7 @@ export const useAnimatedGraphLayout = (
                 frameRef.current = null;
             }
         };
-    }, [graph, activeFilter, activeNodeId, prefersReducedMotion]);
+    }, [graph, activeFilter, activeNodeId, customNodePositions, draggedNode, prefersReducedMotion]);
 
     const animatedNodeById = useMemo(
         () => new Map(animatedNodes.map(node => [node.id, node])),
