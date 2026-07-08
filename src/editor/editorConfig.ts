@@ -23,13 +23,14 @@ import { LinkCard } from './extensions/LinkCard';
 import { CustomImage } from './extensions/CustomImage';
 import { Columns, Column } from './extensions/Column';
 import { getSuggestionItems } from './slashCommands/registry';
+import { EDITOR_HEADING_LEVELS, EDITOR_TEXT_ALIGN_TYPES } from '../utils/editorConstants';
 
 const lowlight = createLowlight(common);
 
 export const getEditorExtensions = () => [
     StarterKit.configure({
         heading: {
-            levels: [1, 2, 3]
+            levels: [...EDITOR_HEADING_LEVELS]
         },
         codeBlock: false
     }),
@@ -47,7 +48,7 @@ export const getEditorExtensions = () => [
         placeholder: '내용을 입력하세요...'
     }),
     TextAlign.configure({
-        types: ['heading', 'paragraph']
+        types: EDITOR_TEXT_ALIGN_TYPES
     }),
     Table.configure({ resizable: true }),
     TableRow,

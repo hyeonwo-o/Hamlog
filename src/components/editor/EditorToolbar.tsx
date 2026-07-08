@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react';
 import { Highlighter, Palette } from 'lucide-react';
 import {
   CODE_LANGUAGES,
+  HEADING_OPTIONS,
   FONT_SIZES,
   HIGHLIGHT_COLORS,
   TEXT_COLORS
@@ -151,12 +152,7 @@ export function EditorToolbar({
                 label="본문"
                 value={headingValue}
                 width="w-24"
-                options={[
-                  { value: 'paragraph', label: '본문' },
-                  { value: 'h1', label: '제목 1' },
-                  { value: 'h2', label: '제목 2' },
-                  { value: 'h3', label: '제목 3' }
-                ]}
+                options={HEADING_OPTIONS}
                 onSelect={value => {
                   if (!editor) return;
                   if (value === 'paragraph') {

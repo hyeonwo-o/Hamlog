@@ -22,6 +22,7 @@ import {
   Undo,
   Underline
 } from 'lucide-react';
+import { EDITOR_HEADING_LEVELS } from '../../../utils/editorConstants';
 
 export interface ToolbarActionConfig {
   key: string;
@@ -43,16 +44,8 @@ interface InsertActionOptions {
 }
 
 export function getHeadingValue(editor: Editor | null) {
-  if (editor?.isActive('heading', { level: 1 })) {
-    return 'h1';
-  }
-  if (editor?.isActive('heading', { level: 2 })) {
-    return 'h2';
-  }
-  if (editor?.isActive('heading', { level: 3 })) {
-    return 'h3';
-  }
-  return 'paragraph';
+  const activeLevel = EDITOR_HEADING_LEVELS.find(level => editor?.isActive('heading', { level }));
+  return activeLevel ? `h${activeLevel}` : 'paragraph';
 }
 
 export function getFontSizeValue(editor: Editor | null) {

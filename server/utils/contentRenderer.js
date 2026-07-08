@@ -73,8 +73,8 @@ const CustomImage = Image.extend({
             }
         };
     },
-    renderHTML({ HTMLAttributes }) {
-        const { caption } = HTMLAttributes;
+    renderHTML({ node, HTMLAttributes }) {
+        const { caption } = node.attrs;
         if (caption) {
             return [
                 'figure',

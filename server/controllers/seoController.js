@@ -3,26 +3,20 @@ import { readProfile } from '../models/profileModel.js';
 import { filterPublicPosts, findPublicPostBySlug } from '../utils/postVisibility.js';
 import { readSpaIndexHtml, resolveSpaIndexPath } from '../utils/spaIndex.js';
 import { buildRobotsTxt, injectSearchVerificationMeta } from '../utils/searchVerification.js';
+import {
+  escapeHtml,
+  escapeXml,
+  normalizeBaseUrl,
+  removeHeadTag,
+  replaceHeadTag,
+  toAbsoluteUrl,
+  wrapCdata
+} from '../utils/seoHtml.js';
 
 const DEFAULT_SITE_URL = (process.env.SITE_URL?.trim() || 'https://tech.hamwoo.co.kr').replace(/\/+$/, '');
 const SITE_NAME = 'Hamlog';
 const AUTHOR_NAME = 'Hamwoo';
 
-const escapeHtml = (value = '') => String(value)
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
-  .replace(/'/g, '&#39;');
-
-const escapeXml = (value = '') => String(value)
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
-  .replace(/'/g, '&apos;');
-
-const wrapCdata = (value = '') => `<![CDATA[${String(value).replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
 const resolvePostKeywords = (post) => {
   if (Array.isArray(post?.seo?.keywords) && post.seo.keywords.length > 0) {
     return post.seo.keywords;
@@ -34,23 +28,8 @@ const resolvePostKeywords = (post) => {
 };
 
 const resolveBaseUrl = (profile) => {
-  const candidate = String(profile?.siteUrl || DEFAULT_SITE_URL).trim().replace(/\/+$/, '');
-  return /^https?:\/\//i.test(candidate) ? candidate : DEFAULT_SITE_URL;
+  return normalizeBaseUrl(profile?.siteUrl, DEFAULT_SITE_URL);
 };
-
-const toAbsoluteUrl = (baseUrl, value = '') => {
-  if (!value) return `${baseUrl}/avatar.jpg`;
-  if (/^https?:\/\//i.test(value)) return value;
-  return `${baseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
-};
-
-const replaceHeadTag = (html, pattern, replacement) => (
-  pattern.test(html)
-    ? html.replace(pattern, replacement)
-    : html.replace('</head>', `  ${replacement}\n</head>`)
-);
-
-const removeHeadTag = (html, pattern) => html.replace(pattern, '');
 const setRobotsDirective = (html, content) => replaceHeadTag(
   html,
   /<meta name="robots" content=".*?" \/>/,

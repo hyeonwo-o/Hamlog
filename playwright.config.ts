@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = process.env.PORT ?? '4000';
+const API_PORT = process.env.E2E_API_PORT ?? process.env.PORT ?? '4100';
+const WEB_PORT = process.env.E2E_WEB_PORT ?? '5174';
+const API_ORIGIN = `http://127.0.0.1:${API_PORT}`;
+const WEB_ORIGIN = `http://127.0.0.1:${WEB_PORT}`;
+const shouldReuseServer = process.env.PLAYWRIGHT_REUSE_SERVER === 'true';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -9,20 +13,20 @@ export default defineConfig({
     timeout: 8_000
   },
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: WEB_ORIGIN,
     trace: 'on-first-retry'
   },
   webServer: [
     {
-      command: `PORT=${PORT} npm run server`,
-      url: `http://127.0.0.1:${PORT}/api/health`,
-      reuseExistingServer: true,
+      command: `PORT=${API_PORT} ADMIN_PASSWORD=${process.env.ADMIN_PASSWORD ?? 'e2e-password'} JWT_SECRET=${process.env.JWT_SECRET ?? 'e2e-secret'} CORS_ORIGINS=${WEB_ORIGIN} npm run server`,
+      url: `${API_ORIGIN}/api/health`,
+      reuseExistingServer: shouldReuseServer,
       timeout: 30_000
     },
     {
-      command: 'npm run dev -- --host 127.0.0.1',
-      url: 'http://127.0.0.1:5173',
-      reuseExistingServer: true,
+      command: `VITE_DEV_API_TARGET=${API_ORIGIN} npm run dev -- --host 127.0.0.1 --port ${WEB_PORT}`,
+      url: WEB_ORIGIN,
+      reuseExistingServer: shouldReuseServer,
       timeout: 30_000
     }
   ],

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const backendOrigin = `http://127.0.0.1:${process.env.PORT ?? '4000'}`;
+const backendOrigin = `http://127.0.0.1:${process.env.E2E_API_PORT ?? process.env.PORT ?? '4100'}`;
 const loginPasswords = Array.from(new Set([
   process.env.ADMIN_PASSWORD,
   'admin1234',
@@ -196,7 +196,7 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
   await editor.click();
   await page.keyboard.type(body);
 
-  await page.getByRole('button', { name: '발행' }).click();
+  await page.getByTestId('post-publish-button').click();
   await expect(page.getByRole('heading', { name: '발행' })).toBeVisible();
   await page.locator('input[type="radio"]').first().check();
 

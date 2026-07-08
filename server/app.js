@@ -25,6 +25,7 @@ import { getRobots, injectPostMeta } from './controllers/seoController.js';
 import { searchRateLimiter } from './middleware/rateLimit.js';
 import { readSpaIndexHtml, resolveSpaIndexPath } from './utils/spaIndex.js';
 import { injectSearchVerificationMeta } from './utils/searchVerification.js';
+import { escapeHtml, normalizeBaseUrl, replaceHeadTag, toAbsoluteUrl } from './utils/seoHtml.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,25 +54,8 @@ if (process.env.NODE_ENV === 'production') {
     cspDirectives.upgradeInsecureRequests = [];
 }
 
-const replaceHeadTag = (html, pattern, replacement) => (
-    pattern.test(html)
-        ? html.replace(pattern, replacement)
-        : html.replace('</head>', `  ${replacement}\n</head>`)
-);
-const escapeHtml = (value = '') => String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 const resolveBaseUrl = (profile) => {
-    const candidate = String(profile?.siteUrl ?? '').trim().replace(/\/+$/, '');
-    return /^https?:\/\//i.test(candidate) ? candidate : DEFAULT_SITE_URL;
-};
-const toAbsoluteUrl = (baseUrl, value = '') => {
-    if (!value) return `${baseUrl}/avatar.jpg`;
-    if (/^https?:\/\//i.test(value)) return value;
-    return `${baseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
+    return normalizeBaseUrl(profile?.siteUrl, DEFAULT_SITE_URL);
 };
 const resolveHomeTitle = (profile) => {
     const title = String(profile?.title ?? '').trim() || 'Ham_Tech_Log';

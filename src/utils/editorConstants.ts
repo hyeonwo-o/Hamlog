@@ -1,3 +1,12 @@
+export const EDITOR_HEADING_LEVELS = [1, 2, 3] as const;
+
+export const EDITOR_TEXT_ALIGN_TYPES = ['heading', 'paragraph'];
+
+export const HEADING_OPTIONS = [
+    { value: 'paragraph', label: '본문' },
+    ...EDITOR_HEADING_LEVELS.map(level => ({ value: `h${level}`, label: `제목 ${level}` }))
+];
+
 export const CODE_LANGUAGES = [
     { value: 'plaintext', label: '기본' },
     { value: 'bash', label: 'Bash' },

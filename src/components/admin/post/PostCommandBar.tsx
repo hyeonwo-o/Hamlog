@@ -44,7 +44,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
   onDelete
 }) => {
   return (
-    <div className="flex w-full flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
+    <div data-testid="post-command-bar" className="flex w-full flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] leading-6 text-[var(--text-muted)]">
           <span className="font-medium text-[var(--text)]">
@@ -114,6 +114,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
         </button>
         <button
           type="button"
+          data-testid="post-publish-button"
           onClick={onPublish}
           disabled={saving}
           title="발행"

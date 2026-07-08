@@ -41,8 +41,8 @@ export const CustomImage = Image.extend({
             }
         };
     },
-    renderHTML({ HTMLAttributes }) {
-        const { caption } = HTMLAttributes;
+    renderHTML({ node, HTMLAttributes }) {
+        const { caption } = node.attrs;
 
         // This is for Tiptap's output (saving to HTML)
         // We render a figure with caption if it exists
