@@ -1,21 +1,46 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type KeyboardEvent,
+    type PointerEvent
+} from 'react';
 import type { Post } from '../../types/blog';
 import { GraphCanvas } from './postGraph/GraphCanvas';
 import { GraphDetailPanel } from './postGraph/GraphDetailPanel';
 import { GraphToolbar } from './postGraph/GraphToolbar';
 import {
     GRAPH_ASPECT_RATIO,
+    GRAPH_FOCUS_ZOOM,
     GRAPH_HEIGHT,
     GRAPH_PADDING,
     GRAPH_WIDTH,
     GRAPH_ZOOM_STEP,
+    LARGE_GRAPH_ANIMATION_THRESHOLD,
     initialGraphViewport
 } from './postGraph/constants';
 import { buildGraphData } from './postGraph/graphData';
+import {
+    clearStoredGraphState,
+    readGraphUrlState,
+    readStoredGraphState,
+    writeGraphUrlState,
+    writeStoredGraphState
+} from './postGraph/graphState';
 import { graphStageStyle } from './postGraph/styles';
-import type { DraggedGraphNode, GraphFilter, GraphNode, GraphNodePositions, GraphViewport } from './postGraph/types';
+import type {
+    DraggedGraphNode,
+    GraphEdgeFilter,
+    GraphFilter,
+    GraphNode,
+    GraphNodePositions,
+    GraphViewport
+} from './postGraph/types';
 import { useAnimatedGraphLayout } from './postGraph/useAnimatedGraphLayout';
-import { clampPosition } from './postGraph/utils';
+import { usePrefersReducedMotion } from './postGraph/usePrefersReducedMotion';
+import { clampPosition, normalizeKey } from './postGraph/utils';
 import {
     clampGraphViewport,
     clampGraphZoom,
@@ -29,20 +54,76 @@ interface PostGraphSectionProps {
     posts: Post[];
 }
 
+const copyText = async (value: string) => {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    textarea.remove();
+    if (!copied) throw new Error('Clipboard API is unavailable');
+};
+
 export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
+    const prefersReducedMotion = usePrefersReducedMotion();
+    const initialStateRef = useRef<{
+        url: ReturnType<typeof readGraphUrlState>;
+        stored: ReturnType<typeof readStoredGraphState>;
+    } | null>(null);
+    if (initialStateRef.current === null) {
+        initialStateRef.current = {
+            url: readGraphUrlState(),
+            stored: readStoredGraphState()
+        };
+    }
+    const initialState = initialStateRef.current;
+    const initialViewport = clampGraphViewport(
+        initialState.url.viewport ?? initialState.stored.viewport ?? initialGraphViewport,
+        GRAPH_ASPECT_RATIO
+    );
+
     const graph = useMemo(() => buildGraphData(posts), [posts]);
-    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const postById = useMemo(() => new Map(posts.map(post => [post.id, post])), [posts]);
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialState.url.selectedNodeId);
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-    const [activeFilter, setActiveFilter] = useState<GraphFilter>('all');
-    const [showLabels, setShowLabels] = useState(true);
-    const [graphViewport, setGraphViewport] = useState<GraphViewport>(initialGraphViewport);
+    const [activeFilter, setActiveFilter] = useState<GraphFilter>(initialState.url.activeFilter);
+    const [activeEdgeFilter, setActiveEdgeFilter] = useState<GraphEdgeFilter>(initialState.url.activeEdgeFilter);
+    const [showLabels, setShowLabels] = useState(initialState.url.showLabels);
+    const [focusMode, setFocusMode] = useState(initialState.url.focusMode);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [graphViewport, setGraphViewport] = useState<GraphViewport>(initialViewport);
+    const [hasCustomViewport, setHasCustomViewport] = useState(Boolean(
+        initialState.url.viewport || initialState.stored.viewport
+    ));
     const [graphAspectRatio, setGraphAspectRatio] = useState(GRAPH_ASPECT_RATIO);
     const [isPanning, setIsPanning] = useState(false);
-    const [customNodePositions, setCustomNodePositions] = useState<GraphNodePositions>({});
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+    const [selectionAnimation, setSelectionAnimation] = useState<{
+        nodeId: string | null;
+        key: number;
+    }>({ nodeId: null, key: 0 });
+    const [customNodePositions, setCustomNodePositions] = useState<GraphNodePositions>(
+        initialState.stored.customNodePositions
+    );
     const [draggedNode, setDraggedNode] = useState<DraggedGraphNode | null>(null);
+    const sectionRef = useRef<HTMLElement | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
-    const hasCustomViewportRef = useRef(false);
+    const searchInputRef = useRef<HTMLInputElement | null>(null);
+    const graphViewportRef = useRef(graphViewport);
+    const viewportAnimationFrameRef = useRef<number | null>(null);
+    const hasCustomViewportRef = useRef(hasCustomViewport);
     const draggedNodeRef = useRef<DraggedGraphNode | null>(null);
+    const nativeFullscreenRef = useRef(false);
+    const shareStatusTimeoutRef = useRef<number | null>(null);
+    const didApplyInitialSelectionRef = useRef(false);
     const dragRef = useRef<{
         pointerId: number;
         startX: number;
@@ -63,7 +144,9 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
     } | null>(null);
     const didPanRef = useRef(false);
     const didDragNodeRef = useRef(false);
-    const activeNodeId = hoveredNodeId ?? selectedNodeId;
+    const animateInteractions = !prefersReducedMotion
+        && graph.nodes.length < LARGE_GRAPH_ANIMATION_THRESHOLD;
+    const activeNodeId = hoveredNodeId ?? (focusMode ? selectedNodeId : null);
     const animatedGraph = useAnimatedGraphLayout(
         graph,
         activeFilter,
@@ -75,17 +158,134 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         () => getAutoFitGraphViewport(graph.nodes, graphAspectRatio),
         [graph.nodes, graphAspectRatio]
     );
+    const visibleEdges = useMemo(
+        () => activeEdgeFilter === 'all'
+            ? graph.edges
+            : graph.edges.filter(edge => edge.type === activeEdgeFilter),
+        [activeEdgeFilter, graph.edges]
+    );
+    const visibleEdgeIds = useMemo(
+        () => new Set(visibleEdges.map(edge => edge.id)),
+        [visibleEdges]
+    );
+    const nodesWithVisibleEdges = useMemo(() => {
+        const nodeIds = new Set<string>();
+        visibleEdges.forEach(edge => {
+            nodeIds.add(edge.source);
+            nodeIds.add(edge.target);
+        });
+        return nodeIds;
+    }, [visibleEdges]);
+    const activeNeighborIds = useMemo(() => {
+        const nodeIds = new Set<string>();
+        if (!activeNodeId) return nodeIds;
+        visibleEdges.forEach(edge => {
+            if (edge.source === activeNodeId) nodeIds.add(edge.target);
+            if (edge.target === activeNodeId) nodeIds.add(edge.source);
+        });
+        return nodeIds;
+    }, [activeNodeId, visibleEdges]);
+    const selectionNeighborIds = useMemo(() => {
+        const nodeIds = new Set<string>();
+        if (!selectionAnimation.nodeId) return nodeIds;
+        visibleEdges.forEach(edge => {
+            if (edge.source === selectionAnimation.nodeId) nodeIds.add(edge.target);
+            if (edge.target === selectionAnimation.nodeId) nodeIds.add(edge.source);
+        });
+        return nodeIds;
+    }, [selectionAnimation.nodeId, visibleEdges]);
     const hubNodes = useMemo(() => (
         [...graph.relationNodes]
+            .filter(node => activeEdgeFilter === 'all' || node.type === activeEdgeFilter)
             .sort((left, right) => (
                 right.relatedPostIds.length - left.relatedPostIds.length
                 || left.label.localeCompare(right.label, 'ko')
             ))
             .slice(0, 6)
-    ), [graph]);
+    ), [activeEdgeFilter, graph.relationNodes]);
+    const searchResults = useMemo(() => {
+        const query = normalizeKey(searchQuery);
+        if (!query) return [];
+
+        const getScore = (node: GraphNode) => {
+            const label = normalizeKey(node.label);
+            if (label === query) return 0;
+            if (label.startsWith(query)) return 1;
+            return 2;
+        };
+
+        return graph.nodes
+            .filter(node => normalizeKey(node.label).includes(query))
+            .sort((left, right) => (
+                getScore(left) - getScore(right)
+                || left.type.localeCompare(right.type)
+                || left.label.localeCompare(right.label, 'ko')
+            ))
+            .slice(0, 8);
+    }, [graph.nodes, searchQuery]);
+
+    const markCustomViewport = useCallback((custom: boolean) => {
+        hasCustomViewportRef.current = custom;
+        setHasCustomViewport(custom);
+    }, []);
+
+    const cancelViewportAnimation = useCallback(() => {
+        if (viewportAnimationFrameRef.current !== null) {
+            window.cancelAnimationFrame(viewportAnimationFrameRef.current);
+            viewportAnimationFrameRef.current = null;
+        }
+    }, []);
+
+    const animateGraphViewport = useCallback((targetViewport: GraphViewport) => {
+        cancelViewportAnimation();
+        const target = clampGraphViewport(targetViewport, graphAspectRatio);
+
+        if (!animateInteractions) {
+            graphViewportRef.current = target;
+            setGraphViewport(target);
+            return;
+        }
+
+        const start = graphViewportRef.current;
+        const distance = Math.hypot(target.centerX - start.centerX, target.centerY - start.centerY);
+        const zoomDistance = Math.abs(target.zoom - start.zoom);
+        if (distance < 0.5 && zoomDistance < 0.005) {
+            graphViewportRef.current = target;
+            setGraphViewport(target);
+            return;
+        }
+
+        const duration = Math.min(520, 360 + distance * 0.16);
+        let startedAt: number | null = null;
+
+        const tick = (timestamp: number) => {
+            startedAt ??= timestamp;
+            const progress = Math.min(1, (timestamp - startedAt) / duration);
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+            const nextViewport = {
+                zoom: start.zoom + (target.zoom - start.zoom) * easedProgress,
+                centerX: start.centerX + (target.centerX - start.centerX) * easedProgress,
+                centerY: start.centerY + (target.centerY - start.centerY) * easedProgress
+            };
+
+            graphViewportRef.current = nextViewport;
+            setGraphViewport(nextViewport);
+
+            if (progress < 1) {
+                viewportAnimationFrameRef.current = window.requestAnimationFrame(tick);
+            } else {
+                viewportAnimationFrameRef.current = null;
+                graphViewportRef.current = target;
+                setGraphViewport(target);
+            }
+        };
+
+        viewportAnimationFrameRef.current = window.requestAnimationFrame(tick);
+    }, [animateInteractions, cancelViewportAnimation, graphAspectRatio]);
 
     const changeGraphZoom = useCallback((delta: number, anchor?: { x: number; y: number }) => {
-        hasCustomViewportRef.current = true;
+        cancelViewportAnimation();
+        markCustomViewport(true);
         setGraphViewport(previousViewport => {
             const zoom = clampGraphZoom(previousViewport.zoom + delta);
             const previousDimensions = getGraphViewportDimensions(previousViewport.zoom, graphAspectRatio);
@@ -107,7 +307,100 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                 centerY: zoomAnchor.y - (relativeY - 0.5) * nextDimensions.height
             }, graphAspectRatio);
         });
-    }, [graphAspectRatio]);
+    }, [cancelViewportAnimation, graphAspectRatio, markCustomViewport]);
+
+    const focusGraphNode = useCallback((nodeId: string) => {
+        const node = animatedGraph.nodeById.get(nodeId) ?? graph.nodeById.get(nodeId);
+        if (!node) return;
+
+        setSelectedNodeId(nodeId);
+        setHoveredNodeId(null);
+        setFocusMode(true);
+        setSelectionAnimation(previous => ({ nodeId, key: previous.key + 1 }));
+        markCustomViewport(true);
+        animateGraphViewport({
+            zoom: Math.max(graphViewportRef.current.zoom, GRAPH_FOCUS_ZOOM),
+            centerX: node.x,
+            centerY: node.y
+        });
+    }, [animateGraphViewport, animatedGraph.nodeById, graph.nodeById, markCustomViewport]);
+
+    const resetGraph = useCallback(() => {
+        cancelViewportAnimation();
+        markCustomViewport(false);
+        setSelectedNodeId(null);
+        setHoveredNodeId(null);
+        setActiveFilter('all');
+        setActiveEdgeFilter('all');
+        setShowLabels(true);
+        setFocusMode(true);
+        setSearchQuery('');
+        setSelectionAnimation(previous => ({ nodeId: null, key: previous.key + 1 }));
+        setCustomNodePositions({});
+        draggedNodeRef.current = null;
+        setDraggedNode(null);
+        setGraphViewport(autoFitViewport);
+        graphViewportRef.current = autoFitViewport;
+        clearStoredGraphState();
+        writeGraphUrlState({
+            selectedNodeId: null,
+            activeFilter: 'all',
+            activeEdgeFilter: 'all',
+            showLabels: true,
+            focusMode: true,
+            viewport: null
+        });
+    }, [autoFitViewport, cancelViewportAnimation, markCustomViewport]);
+
+    const toggleFullscreen = useCallback(async () => {
+        const section = sectionRef.current;
+        if (!section) return;
+
+        if (isFullscreen) {
+            if (nativeFullscreenRef.current && document.fullscreenElement) {
+                await document.exitFullscreen().catch(() => undefined);
+            } else {
+                setIsFullscreen(false);
+            }
+            return;
+        }
+
+        if (typeof section.requestFullscreen === 'function') {
+            try {
+                await section.requestFullscreen();
+                nativeFullscreenRef.current = true;
+                setIsFullscreen(true);
+                return;
+            } catch {
+                nativeFullscreenRef.current = false;
+            }
+        }
+
+        setIsFullscreen(true);
+    }, [isFullscreen]);
+
+    const shareGraph = useCallback(async () => {
+        const url = writeGraphUrlState({
+            selectedNodeId,
+            activeFilter,
+            activeEdgeFilter,
+            showLabels,
+            focusMode,
+            viewport: graphViewport
+        });
+
+        try {
+            await copyText(url);
+            setShareStatus('copied');
+        } catch {
+            setShareStatus('failed');
+        }
+
+        if (shareStatusTimeoutRef.current !== null) {
+            window.clearTimeout(shareStatusTimeoutRef.current);
+        }
+        shareStatusTimeoutRef.current = window.setTimeout(() => setShareStatus('idle'), 1800);
+    }, [activeEdgeFilter, activeFilter, focusMode, graphViewport, selectedNodeId, showLabels]);
 
     useEffect(() => {
         const svg = svgRef.current;
@@ -129,12 +422,30 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
 
         const resizeObserver = new ResizeObserver(updateAspectRatio);
         resizeObserver.observe(svg);
-
         return () => resizeObserver.disconnect();
-    }, [graph.nodes.length]);
+    }, [graph.nodes.length, isFullscreen]);
+
+    useEffect(() => {
+        graphViewportRef.current = graphViewport;
+    }, [graphViewport]);
+
+    useEffect(() => () => cancelViewportAnimation(), [cancelViewportAnimation]);
+
+    useEffect(() => {
+        if (!selectionAnimation.nodeId) return undefined;
+        const timeout = window.setTimeout(() => {
+            setSelectionAnimation(previous => (
+                previous.key === selectionAnimation.key
+                    ? { ...previous, nodeId: null }
+                    : previous
+            ));
+        }, 1100);
+        return () => window.clearTimeout(timeout);
+    }, [selectionAnimation.key, selectionAnimation.nodeId]);
 
     useEffect(() => {
         if (hasCustomViewportRef.current) return;
+        graphViewportRef.current = autoFitViewport;
         setGraphViewport(autoFitViewport);
     }, [autoFitViewport]);
 
@@ -156,7 +467,19 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         if (draggedNodeRef.current && !graphNodeIds.has(draggedNodeRef.current.id)) {
             draggedNodeRef.current = null;
         }
-    }, [graph.nodes]);
+        if (selectedNodeId && !graphNodeIds.has(selectedNodeId)) {
+            setSelectedNodeId(null);
+        }
+    }, [graph.nodes, selectedNodeId]);
+
+    useEffect(() => {
+        if (didApplyInitialSelectionRef.current || !selectedNodeId) return;
+        if (!graph.nodeById.has(selectedNodeId)) return;
+        didApplyInitialSelectionRef.current = true;
+        if (!initialState.url.viewport && !initialState.stored.viewport) {
+            focusGraphNode(selectedNodeId);
+        }
+    }, [focusGraphNode, graph.nodeById, initialState.stored.viewport, initialState.url.viewport, selectedNodeId]);
 
     useEffect(() => {
         const svg = svgRef.current;
@@ -165,70 +488,181 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         const handleWheel = (event: globalThis.WheelEvent) => {
             event.preventDefault();
             const anchor = getGraphPoint(event.clientX, event.clientY, svg, graphViewport, graphAspectRatio);
-
             changeGraphZoom(event.deltaY > 0 ? -GRAPH_ZOOM_STEP : GRAPH_ZOOM_STEP, anchor);
         };
 
         svg.addEventListener('wheel', handleWheel, { passive: false });
-
         return () => svg.removeEventListener('wheel', handleWheel);
     }, [changeGraphZoom, graphAspectRatio, graphViewport]);
 
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            writeGraphUrlState({
+                selectedNodeId,
+                activeFilter,
+                activeEdgeFilter,
+                showLabels,
+                focusMode,
+                viewport: hasCustomViewport ? graphViewport : null
+            });
+        }, 180);
+        return () => window.clearTimeout(timeout);
+    }, [activeEdgeFilter, activeFilter, focusMode, graphViewport, hasCustomViewport, selectedNodeId, showLabels]);
+
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            writeStoredGraphState({
+                viewport: hasCustomViewport ? graphViewport : null,
+                customNodePositions
+            });
+        }, 240);
+        return () => window.clearTimeout(timeout);
+    }, [customNodePositions, graphViewport, hasCustomViewport]);
+
+    useEffect(() => {
+        const handlePopState = () => {
+            cancelViewportAnimation();
+            const nextState = readGraphUrlState();
+            setSelectedNodeId(nextState.selectedNodeId);
+            setHoveredNodeId(null);
+            setActiveFilter(nextState.activeFilter);
+            setActiveEdgeFilter(nextState.activeEdgeFilter);
+            setShowLabels(nextState.showLabels);
+            setFocusMode(nextState.focusMode);
+            if (nextState.viewport) {
+                markCustomViewport(true);
+                const nextViewport = clampGraphViewport(nextState.viewport, graphAspectRatio);
+                graphViewportRef.current = nextViewport;
+                setGraphViewport(nextViewport);
+            } else {
+                markCustomViewport(false);
+                graphViewportRef.current = autoFitViewport;
+                setGraphViewport(autoFitViewport);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [autoFitViewport, cancelViewportAnimation, graphAspectRatio, markCustomViewport]);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            if (!nativeFullscreenRef.current) return;
+            const active = document.fullscreenElement === sectionRef.current;
+            setIsFullscreen(active);
+            if (!active) nativeFullscreenRef.current = false;
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    useEffect(() => {
+        if (!isFullscreen) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [isFullscreen]);
+
+    useEffect(() => {
+        const handleKeyboardShortcut = (event: globalThis.KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            const isTyping = Boolean(target?.closest('input, textarea, select, [contenteditable="true"]'));
+
+            if (event.key === '/' && !isTyping) {
+                event.preventDefault();
+                searchInputRef.current?.focus();
+                return;
+            }
+            if (event.key === 'Escape' && !isTyping) {
+                setSearchQuery('');
+                setSelectedNodeId(null);
+                setSelectionAnimation(previous => ({ nodeId: null, key: previous.key + 1 }));
+                if (isFullscreen && !nativeFullscreenRef.current) setIsFullscreen(false);
+                return;
+            }
+            if (isTyping) return;
+
+            const graphHasFocus = isFullscreen || Boolean(
+                sectionRef.current?.contains(document.activeElement)
+            );
+            if (!graphHasFocus) return;
+
+            if (event.key === '+' || event.key === '=') {
+                event.preventDefault();
+                changeGraphZoom(GRAPH_ZOOM_STEP);
+            } else if (event.key === '-') {
+                event.preventDefault();
+                changeGraphZoom(-GRAPH_ZOOM_STEP);
+            } else if (event.key === '0') {
+                event.preventDefault();
+                resetGraph();
+            } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+                event.preventDefault();
+                cancelViewportAnimation();
+                markCustomViewport(true);
+                setGraphViewport(previousViewport => {
+                    const dimensions = getGraphViewportDimensions(previousViewport.zoom, graphAspectRatio);
+                    const stepX = dimensions.width * 0.08;
+                    const stepY = dimensions.height * 0.08;
+                    return clampGraphViewport({
+                        ...previousViewport,
+                        centerX: previousViewport.centerX + (event.key === 'ArrowLeft' ? -stepX : event.key === 'ArrowRight' ? stepX : 0),
+                        centerY: previousViewport.centerY + (event.key === 'ArrowUp' ? -stepY : event.key === 'ArrowDown' ? stepY : 0)
+                    }, graphAspectRatio);
+                });
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyboardShortcut);
+        return () => window.removeEventListener('keydown', handleKeyboardShortcut);
+    }, [cancelViewportAnimation, changeGraphZoom, graphAspectRatio, isFullscreen, markCustomViewport, resetGraph]);
+
+    useEffect(() => () => {
+        if (shareStatusTimeoutRef.current !== null) {
+            window.clearTimeout(shareStatusTimeoutRef.current);
+        }
+    }, []);
+
     if (graph.nodes.length === 0) return null;
 
-    const fallbackNode = animatedGraph.nodes.find(node => node.type === 'post') ?? animatedGraph.nodes[0] as GraphNode;
     const selectedNode = selectedNodeId
-        ? animatedGraph.nodeById.get(selectedNodeId) ?? fallbackNode
-        : fallbackNode;
-    const activeNeighborIds = new Set<string>();
-
-    if (activeNodeId) {
-        graph.edges.forEach(edge => {
-            if (edge.source === activeNodeId) activeNeighborIds.add(edge.target);
-            if (edge.target === activeNodeId) activeNeighborIds.add(edge.source);
-        });
-    }
-
-    const relatedPosts = selectedNode.relatedPostIds
-        .map(id => posts.find(post => post.id === id))
-        .filter((post): post is Post => Boolean(post))
-        .slice(0, 5);
+        ? animatedGraph.nodeById.get(selectedNodeId) ?? null
+        : null;
+    const relatedPosts = selectedNode
+        ? selectedNode.relatedPostIds
+            .map(id => postById.get(id))
+            .filter((post): post is Post => Boolean(post))
+            .slice(0, 5)
+        : [];
 
     const isNodeDimmed = (node: GraphNode) => {
         const isContextNode = Boolean(activeNodeId) && (
             node.id === activeNodeId || activeNeighborIds.has(node.id)
         );
-        const matchesFilter = activeFilter === 'all' || node.type === activeFilter;
+        const matchesNodeFilter = activeFilter === 'all' || node.type === activeFilter;
+        const matchesEdgeFilter = activeEdgeFilter === 'all' || nodesWithVisibleEdges.has(node.id);
 
         if (isContextNode) return false;
         if (activeNodeId) return true;
-        return !matchesFilter;
+        return !matchesNodeFilter || !matchesEdgeFilter;
     };
 
     const selectNode = (nodeId: string) => {
         if (didPanRef.current || didDragNodeRef.current) return;
         setSelectedNodeId(nodeId);
         setHoveredNodeId(null);
-    };
-
-    const resetGraph = () => {
-        hasCustomViewportRef.current = false;
-        setSelectedNodeId(null);
-        setHoveredNodeId(null);
-        setActiveFilter('all');
-        setShowLabels(true);
-        setCustomNodePositions({});
-        draggedNodeRef.current = null;
-        setDraggedNode(null);
-        setGraphViewport(autoFitViewport);
+        setFocusMode(true);
+        setSelectionAnimation(previous => ({ nodeId: null, key: previous.key + 1 }));
     };
 
     const handleGraphPointerDown = (event: PointerEvent<SVGSVGElement>) => {
         if (event.pointerType === 'mouse' && event.button !== 0) return;
         if (nodeDragRef.current) return;
+        cancelViewportAnimation();
 
         const viewportDimensions = getGraphViewportDimensions(graphViewport.zoom, graphAspectRatio);
-
         dragRef.current = {
             pointerId: event.pointerId,
             startX: event.clientX,
@@ -255,7 +689,7 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         if (rect.width === 0 || rect.height === 0) return;
 
         event.preventDefault();
-        hasCustomViewportRef.current = true;
+        markCustomViewport(true);
         didPanRef.current = true;
         setIsPanning(true);
         setGraphViewport(clampGraphViewport({
@@ -272,7 +706,6 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
         }
-
         dragRef.current = null;
         setIsPanning(false);
         window.setTimeout(() => {
@@ -289,7 +722,6 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
 
         event.preventDefault();
         event.stopPropagation();
-
         const graphPoint = getGraphPoint(event.clientX, event.clientY, svg, graphViewport, graphAspectRatio);
         nodeDragRef.current = {
             pointerId: event.pointerId,
@@ -315,7 +747,6 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
 
         event.preventDefault();
         event.stopPropagation();
-
         const graphPoint = getGraphPoint(event.clientX, event.clientY, svg, graphViewport, graphAspectRatio);
         didDragNodeRef.current = true;
         setSelectedNodeId(nodeDrag.nodeId);
@@ -334,7 +765,6 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
         if (!nodeDrag || nodeDrag.pointerId !== event.pointerId) return;
 
         event.stopPropagation();
-
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
         }
@@ -348,9 +778,6 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                     y: currentDraggedNode.y
                 }
             }));
-        } else if (!didDragNodeRef.current) {
-            setSelectedNodeId(nodeDrag.nodeId);
-            setHoveredNodeId(null);
         }
 
         draggedNodeRef.current = null;
@@ -368,40 +795,64 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
     };
 
     const graphViewBox = getGraphViewBox(graphViewport, graphAspectRatio);
-    const graphZoomPercent = Math.round(graphViewport.zoom * 100);
-
     return (
-        <section id="graph" className="mx-auto max-w-6xl px-4 py-8">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                    <h2 className="font-display text-xl font-semibold">그래프 뷰</h2>
-                </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                    {graph.nodes.length} nodes · {graph.edges.length} links
+        <section
+            ref={sectionRef}
+            id="graph"
+            className={isFullscreen
+                ? 'graph-fullscreen-enter fixed inset-0 z-[100] overflow-y-auto bg-[var(--bg)] px-4 py-4 text-[var(--text)]'
+                : 'mx-auto max-w-7xl px-4 pb-8 pt-2'}
+        >
+            <h2 className="sr-only">그래프뷰 탐색</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--text-muted)]">
+                <span>
+                    노드 {graph.nodes.length}개 · 연결 {visibleEdges.length}/{graph.edges.length}개
+                </span>
+                <span className="hidden sm:inline">
+                    노드 크기는 조회수와 연결 수를 반영합니다.
+                    {graph.isPostLimitApplied && ` 최신 글 ${graph.postNodes.length}/${graph.totalPostCount}편 표시 중`}
                 </span>
             </div>
 
             <GraphToolbar
                 activeFilter={activeFilter}
+                activeEdgeFilter={activeEdgeFilter}
                 showLabels={showLabels}
-                zoom={graphViewport.zoom}
-                zoomPercent={graphZoomPercent}
+                searchQuery={searchQuery}
+                searchResults={searchResults}
+                searchInputRef={searchInputRef}
+                isFullscreen={isFullscreen}
+                shareStatus={shareStatus}
                 onFilterChange={setActiveFilter}
+                onEdgeFilterChange={setActiveEdgeFilter}
                 onShowLabelsChange={setShowLabels}
-                onZoomChange={changeGraphZoom}
+                onSearchQueryChange={setSearchQuery}
+                onSearchSubmit={() => {
+                    if (searchResults[0]) focusGraphNode(searchResults[0].id);
+                }}
+                onSearchResultSelect={focusGraphNode}
+                onToggleFullscreen={() => void toggleFullscreen()}
+                onShare={() => void shareGraph()}
                 onReset={resetGraph}
             />
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <GraphCanvas
-                    graph={graph}
+                    edges={graph.edges}
+                    visibleEdgeIds={visibleEdgeIds}
                     animatedGraph={animatedGraph}
                     activeNodeId={activeNodeId}
                     activeNeighborIds={activeNeighborIds}
+                    selectionNeighborIds={selectionNeighborIds}
                     selectedNodeId={selectedNodeId}
+                    selectionAnimationNodeId={selectionAnimation.nodeId}
+                    selectionAnimationKey={selectionAnimation.key}
+                    animateInteractions={animateInteractions}
+                    zoom={graphViewport.zoom}
                     draggingNodeId={draggedNode?.id ?? null}
                     showLabels={showLabels}
                     isPanning={isPanning}
+                    isFullscreen={isFullscreen}
                     viewBox={graphViewBox}
                     stageStyle={graphStageStyle}
                     svgRef={svgRef}
@@ -416,14 +867,19 @@ export const PostGraphSection = ({ posts }: PostGraphSectionProps) => {
                     onPointerDown={handleGraphPointerDown}
                     onPointerMove={handleGraphPointerMove}
                     onPointerUp={releaseGraphPointer}
+                    onZoomChange={changeGraphZoom}
                 />
 
                 <GraphDetailPanel
-                    graph={graph}
                     selectedNode={selectedNode}
                     relatedPosts={relatedPosts}
                     hubNodes={hubNodes}
-                    onSelectNode={selectNode}
+                    isFullscreen={isFullscreen}
+                    onFocusNode={focusGraphNode}
+                    onClearSelection={() => {
+                        setSelectedNodeId(null);
+                        setHoveredNodeId(null);
+                    }}
                 />
             </div>
         </section>

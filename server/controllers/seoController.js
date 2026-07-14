@@ -275,6 +275,11 @@ export const getSitemap = async (req, res) => {
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>${escapeXml(`${baseUrl}/graph`)}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
   ${urls}
 </urlset>`;
 

@@ -32,6 +32,7 @@ const lazyWithRetry = (importFn: () => LazyImport) => {
 
 // Lazy load pages with retry
 const PostPage = lazyWithRetry(() => import('./pages/PostPage'));
+const GraphPage = lazyWithRetry(() => import('./pages/GraphPage'));
 const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'));
 
 const LoadingFallback = () => (
@@ -44,6 +45,14 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <HomePage />
+  },
+  {
+    path: '/graph',
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <GraphPage />
+      </Suspense>
+    )
   },
   {
     path: '/posts/:slug',

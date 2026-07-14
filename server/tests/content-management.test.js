@@ -1166,6 +1166,7 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
 
     const sitemapResponse = await request(app).get('/sitemap.xml');
     assert.equal(sitemapResponse.status, 200);
+    assert.match(sitemapResponse.text, /<loc>https:\/\/tech\.hamwoo\.co\.kr\/graph<\/loc>/);
     assert.match(sitemapResponse.text, /meta-visible-post/);
     assert.match(sitemapResponse.text, /<lastmod>2026-03-08<\/lastmod>/);
     assert.match(sitemapResponse.text, /meta-scheduled-visible/);
@@ -1292,6 +1293,15 @@ test('home page reflects profile SEO metadata and search engine verification', a
             response.text,
             /<meta name="daum-site-verification" content="daum-verification-token" \/>/
         );
+
+        const graphResponse = await request(app).get('/graph');
+        assert.equal(graphResponse.status, 200);
+        assert.match(graphResponse.text, /<title>그래프뷰 \| HamLog Ops<\/title>/);
+        assert.match(
+            graphResponse.text,
+            /<link rel="canonical" href="https:\/\/tech\.hamwoo\.co\.kr\/graph" \/>/
+        );
+        assert.match(graphResponse.text, /"@type":"WebPage"/);
 
         const robotsResponse = await request(app).get('/robots.txt');
         assert.equal(robotsResponse.status, 200);

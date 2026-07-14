@@ -2,6 +2,8 @@ import type { Post } from '../../../types/blog';
 
 export type GraphNodeType = 'post' | 'category' | 'series';
 export type GraphFilter = GraphNodeType | 'all';
+export type GraphEdgeType = 'category' | 'series' | 'link';
+export type GraphEdgeFilter = GraphEdgeType | 'all';
 
 export interface GraphNode {
     id: string;
@@ -37,7 +39,7 @@ export interface GraphEdge {
     id: string;
     source: string;
     target: string;
-    type: 'category' | 'series' | 'link';
+    type: GraphEdgeType;
 }
 
 export interface GraphViewport {
@@ -52,4 +54,6 @@ export interface GraphData {
     nodeById: Map<string, GraphNode>;
     postNodes: GraphNode[];
     relationNodes: GraphNode[];
+    totalPostCount: number;
+    isPostLimitApplied: boolean;
 }

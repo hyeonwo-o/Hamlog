@@ -24,7 +24,7 @@ export const getNodeClasses = (
     isDimmed: boolean,
     isDragging = false
 ) => {
-    const base = isDragging ? '' : 'transition duration-200';
+    const base = `graph-node-circle ${isDragging ? '' : 'transition duration-200'}`;
     const opacity = isDimmed ? 'opacity-25' : 'opacity-100';
     const cursor = isDragging ? 'cursor-grabbing' : 'cursor-grab';
 

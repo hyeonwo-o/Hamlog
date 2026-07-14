@@ -5,7 +5,8 @@ import {
     ANIMATION_SETTLE_SPEED,
     GRAPH_HEIGHT,
     GRAPH_PADDING,
-    GRAPH_WIDTH
+    GRAPH_WIDTH,
+    LARGE_GRAPH_ANIMATION_THRESHOLD
 } from './constants';
 import type {
     DraggedGraphNode,
@@ -16,6 +17,7 @@ import type {
     SimulationNode
 } from './types';
 import { clampPosition, hashString } from './utils';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 
 const toGraphNode = (node: SimulationNode): GraphNode => ({
     id: node.id,
@@ -27,28 +29,6 @@ const toGraphNode = (node: SimulationNode): GraphNode => ({
     post: node.post,
     relatedPostIds: node.relatedPostIds
 });
-
-const usePrefersReducedMotion = () => {
-    const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
-        typeof window !== 'undefined'
-            && typeof window.matchMedia === 'function'
-            && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ));
-
-    useEffect(() => {
-        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
-
-        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-        const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
-
-        handleChange();
-        mediaQuery.addEventListener('change', handleChange);
-
-        return () => mediaQuery.removeEventListener('change', handleChange);
-    }, []);
-
-    return prefersReducedMotion;
-};
 
 export const useAnimatedGraphLayout = (
     graph: GraphData,
@@ -97,7 +77,11 @@ export const useAnimatedGraphLayout = (
 
         simulationRef.current = nextSimulationNodes;
 
-        if (prefersReducedMotion || nextSimulationNodes.length < 2) {
+        if (
+            prefersReducedMotion
+            || nextSimulationNodes.length < 2
+            || nextSimulationNodes.length >= LARGE_GRAPH_ANIMATION_THRESHOLD
+        ) {
             setAnimatedNodes(nextSimulationNodes.map(toGraphNode));
             return undefined;
         }

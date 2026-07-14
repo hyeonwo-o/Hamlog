@@ -41,7 +41,13 @@ const applyGraphLayout = (nodes: GraphNode[], edges: GraphEdge[]) => {
     }));
     const nodeIndex = new Map(layoutNodes.map((node, index) => [node.id, index]));
 
-    for (let iteration = 0; iteration < LAYOUT_ITERATIONS; iteration += 1) {
+    const layoutIterations = nodes.length > 110
+        ? Math.ceil(LAYOUT_ITERATIONS * 0.34)
+        : nodes.length > 72
+            ? Math.ceil(LAYOUT_ITERATIONS * 0.52)
+            : LAYOUT_ITERATIONS;
+
+    for (let iteration = 0; iteration < layoutIterations; iteration += 1) {
         for (let leftIndex = 0; leftIndex < layoutNodes.length; leftIndex += 1) {
             for (let rightIndex = leftIndex + 1; rightIndex < layoutNodes.length; rightIndex += 1) {
                 const left = layoutNodes[leftIndex];
@@ -209,6 +215,8 @@ export const buildGraphData = (posts: Post[]): GraphData => {
         edges: edges.filter(edge => nodeById.has(edge.source) && nodeById.has(edge.target)),
         nodeById,
         postNodes: layoutNodes.filter(node => node.type === 'post'),
-        relationNodes: layoutNodes.filter(node => node.type !== 'post')
+        relationNodes: layoutNodes.filter(node => node.type !== 'post'),
+        totalPostCount: posts.length,
+        isPostLimitApplied: posts.length > graphPosts.length
     };
 };

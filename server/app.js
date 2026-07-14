@@ -32,6 +32,7 @@ const __dirname = path.dirname(__filename);
 const DEFAULT_SITE_URL = 'https://tech.hamwoo.co.kr';
 const HOME_TITLE_SUFFIX = '클라우드 엔지니어링과 개발 기록';
 const HOME_DESCRIPTION = '클라우드 엔지니어링, 인프라, DevOps, 개발 경험을 기록하는 기술 블로그입니다.';
+const GRAPH_DESCRIPTION = '글과 카테고리, 시리즈, 본문 링크의 관계를 한 화면에서 탐색합니다.';
 
 const app = express();
 app.set('trust proxy', resolveTrustProxy());
@@ -194,6 +195,80 @@ const injectHomeAppShell = async (req, res, next) => {
     }
 };
 
+const injectGraphSeoMeta = (html, profile) => {
+    const baseUrl = resolveBaseUrl(profile);
+    const graphUrl = `${baseUrl}/graph`;
+    const siteName = String(profile?.title ?? '').trim() || 'Hamlog';
+    const title = `그래프뷰 | ${siteName}`;
+    const schema = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: title,
+        description: GRAPH_DESCRIPTION,
+        url: graphUrl,
+        isPartOf: {
+            '@type': 'WebSite',
+            name: siteName,
+            url: baseUrl
+        },
+        inLanguage: 'ko-KR'
+    }).replace(/</g, '\\u003c');
+
+    let nextHtml = injectHomeSeoMeta(html, profile);
+    nextHtml = replaceHeadTag(nextHtml, /<title>.*?<\/title>/, `<title>${escapeHtml(title)}</title>`);
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="description" content=".*?" \/>/,
+        `<meta name="description" content="${escapeHtml(GRAPH_DESCRIPTION)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:title" content=".*?" \/>/,
+        `<meta property="og:title" content="${escapeHtml(title)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:description" content=".*?" \/>/,
+        `<meta property="og:description" content="${escapeHtml(GRAPH_DESCRIPTION)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta property="og:url" content=".*?" \/>/,
+        `<meta property="og:url" content="${escapeHtml(graphUrl)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="twitter:title" content=".*?" \/>/,
+        `<meta name="twitter:title" content="${escapeHtml(title)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<meta name="twitter:description" content=".*?" \/>/,
+        `<meta name="twitter:description" content="${escapeHtml(GRAPH_DESCRIPTION)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<link rel="canonical" href=".*?" \/>/,
+        `<link rel="canonical" href="${escapeHtml(graphUrl)}" />`
+    );
+    nextHtml = replaceHeadTag(
+        nextHtml,
+        /<script type="application\/ld\+json">[\s\S]*?<\/script>/,
+        `<script type="application/ld+json">${schema}</script>`
+    );
+
+    return nextHtml;
+};
+
+const injectGraphAppShell = async (req, res, next) => {
+    try {
+        const [html, profile] = await Promise.all([readSpaIndexHtml(), readProfile()]);
+        res.send(injectGraphSeoMeta(html, profile));
+    } catch (error) {
+        next(error);
+    }
+};
+
 const injectNoindexAppShell = async (req, res, next) => {
     try {
         let html = await readSpaIndexHtml();
@@ -227,6 +302,7 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
 app.get('/', injectHomeAppShell);
+app.get('/graph', injectGraphAppShell);
 app.get('/robots.txt', getRobots);
 
 // Static Files
