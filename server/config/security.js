@@ -21,13 +21,26 @@ const parseCorsOrigins = () => {
     return new Set(DEV_CORS_ORIGINS);
 };
 
-const getForwardedValue = (value) => value.split(',')[0]?.trim();
+export const resolveTrustProxy = () => {
+    const raw = String(process.env.TRUST_PROXY ?? '').trim();
+    if (!raw || ['0', 'false', 'off', 'no'].includes(raw.toLowerCase())) return false;
+    if (raw.toLowerCase() === 'true') return 1;
+
+    const hopCount = Number.parseInt(raw, 10);
+    if (/^\d+$/.test(raw) && Number.isFinite(hopCount) && hopCount > 0) {
+        return hopCount;
+    }
+
+    // Express accepts named ranges (for example "loopback") and arrays of IP/subnet entries.
+    const entries = raw.split(',').map(item => item.trim()).filter(Boolean);
+    return entries.length === 1 ? entries[0] : entries;
+};
 
 const isSameOrigin = (requestOrigin, req) => {
     try {
         const parsedOrigin = new URL(requestOrigin);
-        const requestHost = getForwardedValue(req.get('x-forwarded-host') || req.get('host') || '');
-        const requestProto = getForwardedValue(req.get('x-forwarded-proto') || req.protocol || 'http');
+        const requestHost = req.get('host') || '';
+        const requestProto = req.protocol || 'http';
 
         if (!requestHost) {
             return false;

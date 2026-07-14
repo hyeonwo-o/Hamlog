@@ -92,6 +92,9 @@ const SyntaxHighlighter = lazy(async () => {
   };
 });
 
+const MathContent = lazy(() => import('./MathContent'));
+const MermaidContent = lazy(() => import('./MermaidContent'));
+
 const CodeBlock = ({ language, code }: { language: string; code: string }) => {
   const [copied, setCopied] = useState(false);
 
@@ -190,6 +193,24 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
         }
       }
 
+      if (domNode.name === 'span' && domNode.attribs['data-type'] === 'math') {
+        const latex = domNode.attribs['data-latex'] || getNodeText(domNode).trim();
+        return (
+          <Suspense fallback={<span className="math-src">{latex}</span>}>
+            <MathContent latex={latex} />
+          </Suspense>
+        );
+      }
+
+      if (domNode.name === 'div' && domNode.attribs['data-type'] === 'mermaid') {
+        const source = getCodeText(domNode).trim();
+        return (
+          <Suspense fallback={<div className="mermaid-status">다이어그램을 불러오는 중...</div>}>
+            <MermaidContent source={source} />
+          </Suspense>
+        );
+      }
+
       // 2. Handle Code Blocks
       if (domNode.name === 'pre') {
         const codeNode = (domNode.children ?? []).find(
@@ -208,7 +229,16 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
             .replace(/&quot;/g, '"')
             .replace(/&amp;/g, '&');
 
-          return <CodeBlock language={language} code={codeContent.trimEnd()} />;
+          const normalizedCode = codeContent.trimEnd();
+          if (language === 'mermaid') {
+            return (
+              <Suspense fallback={<div className="mermaid-status">다이어그램을 불러오는 중...</div>}>
+                <MermaidContent source={normalizedCode} />
+              </Suspense>
+            );
+          }
+
+          return <CodeBlock language={language} code={normalizedCode} />;
         }
       }
       return undefined;

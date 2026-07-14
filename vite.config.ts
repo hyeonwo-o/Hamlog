@@ -28,7 +28,8 @@ export default defineConfig({
             '@tiptap/extension-code-block-lowlight',
             'tippy.js'
           ],
-          'ui-vendor': ['lucide-react', 'katex']
+          'icon-vendor': ['lucide-react'],
+          'math-vendor': ['katex']
         }
       }
     }

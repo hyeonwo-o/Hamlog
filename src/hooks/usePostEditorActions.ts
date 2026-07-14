@@ -1,31 +1,32 @@
 import { useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { PostDraft } from '../types/admin';
-import { uploadLocalImage } from '../api/uploadApi';
 import { promptForText } from '../utils/editorDialog';
 
 interface UsePostEditorActionsOptions {
   editor: Editor | null;
   updateDraft: (patch: Partial<PostDraft>) => void;
   setNotice: (message: string) => void;
+  uploadImage: (file: File) => Promise<{ url: string }>;
 }
 
 export const usePostEditorActions = ({
   editor,
   updateDraft,
-  setNotice
+  setNotice,
+  uploadImage
 }: UsePostEditorActionsOptions) => {
   const handleCoverUpload = useCallback(async (file: File) => {
     try {
       setNotice('업로드 중...');
-      const { url } = await uploadLocalImage(file);
+      const { url } = await uploadImage(file);
       updateDraft({ cover: url });
       setNotice('대표 이미지가 업로드되었습니다.');
     } catch (error) {
       console.error(error);
       setNotice('이미지 업로드에 실패했습니다.');
     }
-  }, [setNotice, updateDraft]);
+  }, [setNotice, updateDraft, uploadImage]);
 
   const handleSetCoverFromContent = useCallback((srcOverride?: string) => {
     if (srcOverride) {
@@ -71,11 +72,11 @@ export const usePostEditorActions = ({
 
       const url = rawUrl.trim();
       if (!url) {
-        editor.chain().focus().unsetLink().run();
+        editor.chain().focus().extendMarkRange('link').unsetLink().run();
         return;
       }
 
-      editor.chain().focus().setLink({ href: url }).run();
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
     })();
   }, [editor]);
 

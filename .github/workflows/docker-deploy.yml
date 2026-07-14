@@ -97,8 +97,23 @@ jobs:
       - name: Deploy to Server
         env:
           GITHUB_SHA: ${{ github.sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          COOKIE_SAME_SITE: ${{ secrets.COOKIE_SAME_SITE }}
+          COOKIE_SECURE: ${{ secrets.COOKIE_SECURE }}
+          TRUST_PROXY: ${{ secrets.TRUST_PROXY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          GOOGLE_SITE_VERIFICATION: ${{ secrets.GOOGLE_SITE_VERIFICATION }}
+          NAVER_SITE_VERIFICATION: ${{ secrets.NAVER_SITE_VERIFICATION }}
+          DAUM_SITE_VERIFICATION: ${{ secrets.DAUM_SITE_VERIFICATION }}
+          DAUM_WEBMASTER_PIN: ${{ secrets.DAUM_WEBMASTER_PIN }}
         run: |
           set -euo pipefail
+
+          : "${JWT_SECRET:?JWT_SECRET secret is required}"
+          : "${ADMIN_PASSWORD:?ADMIN_PASSWORD secret is required}"
 
           # Convert repository name to lowercase
           REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
@@ -109,7 +124,7 @@ jobs:
           echo "Deploying $IMAGE_TAG..."
 
           # Login to GHCR
-          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
           cleanup_old_repo_images() {
             docker image ls "$IMAGE_REPO" --format '{{.Repository}}:{{.Tag}}' | while read -r image_ref; do
@@ -139,16 +154,17 @@ jobs:
               -v "$HOME/hamlog-data/uploads:/app/server/uploads" \
               -e NODE_ENV=production \
               -e PORT=4000 \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              -e ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
-              -e CORS_ORIGINS="${{ secrets.CORS_ORIGINS }}" \
-              -e COOKIE_SAME_SITE="${{ secrets.COOKIE_SAME_SITE }}" \
-              -e COOKIE_SECURE="${{ secrets.COOKIE_SECURE }}" \
-              -e SITE_URL="${{ secrets.SITE_URL }}" \
-              -e GOOGLE_SITE_VERIFICATION="${{ secrets.GOOGLE_SITE_VERIFICATION }}" \
-              -e NAVER_SITE_VERIFICATION="${{ secrets.NAVER_SITE_VERIFICATION }}" \
-              -e DAUM_SITE_VERIFICATION="${{ secrets.DAUM_SITE_VERIFICATION }}" \
-              -e DAUM_WEBMASTER_PIN="${{ secrets.DAUM_WEBMASTER_PIN }}" \
+              -e JWT_SECRET="$JWT_SECRET" \
+              -e ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+              -e CORS_ORIGINS="$CORS_ORIGINS" \
+              -e COOKIE_SAME_SITE="$COOKIE_SAME_SITE" \
+              -e COOKIE_SECURE="$COOKIE_SECURE" \
+              -e TRUST_PROXY="$TRUST_PROXY" \
+              -e SITE_URL="$SITE_URL" \
+              -e GOOGLE_SITE_VERIFICATION="$GOOGLE_SITE_VERIFICATION" \
+              -e NAVER_SITE_VERIFICATION="$NAVER_SITE_VERIFICATION" \
+              -e DAUM_SITE_VERIFICATION="$DAUM_SITE_VERIFICATION" \
+              -e DAUM_WEBMASTER_PIN="$DAUM_WEBMASTER_PIN" \
               "$image"
           }
 
@@ -188,8 +204,7 @@ jobs:
 
           # Cleanup previous release images that are no longer needed on the runner.
           cleanup_old_repo_images
-          docker image prune -af >/dev/null 2>&1 || true
-          docker builder prune -af >/dev/null 2>&1 || true
+          docker builder prune --filter "until=168h" -f >/dev/null 2>&1 || true
 
       - name: Send Telegram Notification
         if: success()

@@ -17,9 +17,13 @@ interface PostViewResponse {
   views: number;
 }
 
-export async function fetchPosts(): Promise<Post[]> {
-  const data = await requestJson<PostListResponse>('/posts');
+export async function fetchPosts(summaryOnly = false): Promise<Post[]> {
+  const data = await requestJson<PostListResponse>(summaryOnly ? '/posts?summary=true' : '/posts');
   return data.posts;
+}
+
+export async function fetchPostBySlug(slug: string): Promise<Post> {
+  return requestJson<Post>(`/posts/${encodeURIComponent(slug)}`);
 }
 
 export async function createPost(payload: SavePostInput): Promise<Post> {

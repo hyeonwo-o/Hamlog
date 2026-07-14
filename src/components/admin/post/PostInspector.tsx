@@ -137,6 +137,11 @@ const PostInspector: React.FC<PostInspectorProps> = ({
 
   const handleDeleteUnusedUploads = async () => {
     if (!unusedUploads || selectedUploads.size === 0) return;
+    const confirmed = window.confirm(
+      `선택한 미사용 이미지 ${selectedUploads.size}개를 영구 삭제할까요?`
+    );
+    if (!confirmed) return;
+
     setUploadCleanupLoading(true);
     setUploadCleanupNotice('');
 
@@ -190,7 +195,9 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   );
 
   return (
-    <aside className={embedded ? 'space-y-4' : 'space-y-4 xl:sticky xl:top-28 self-start'}>
+    <aside className={embedded
+      ? 'space-y-4'
+      : 'space-y-4 self-start 2xl:sticky 2xl:top-[calc(var(--admin-header-offset)+var(--admin-post-command-offset)+0.75rem)] 2xl:max-h-[calc(100vh-var(--admin-header-offset)-var(--admin-post-command-offset)-1.5rem)] 2xl:overflow-y-auto 2xl:pr-1'}>
       <PostInspectorSection
         title="발행과 메타"
         description="카테고리, 일정, 대표 이미지, 요약을 이 패널에서 관리합니다."

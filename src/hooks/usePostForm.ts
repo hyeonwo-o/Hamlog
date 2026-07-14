@@ -38,7 +38,7 @@ export const toDraft = (post?: Post): PostDraft => {
 
     const contentHtml = post.contentHtml?.trim()
         ? post.contentHtml
-        : post.sections.length
+        : post.sections?.length
             ? sectionsToHtml(post.sections)
             : '';
 

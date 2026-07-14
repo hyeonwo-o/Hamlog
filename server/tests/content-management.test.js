@@ -2,7 +2,7 @@ import test, { after, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import request from 'supertest';
 
 import app from '../app.js';
@@ -19,12 +19,13 @@ import { readComments, writeComments } from '../models/commentModel.js';
 import { ensurePostsFile, readPosts, writePosts } from '../models/postModel.js';
 import { readProfile, writeProfile } from '../models/profileModel.js';
 import { readPostRevisions } from '../models/revisionModel.js';
+import { readPostViews } from '../models/postViewModel.js';
 import { COMMENT_LIMITS } from '../services/commentService.js';
 import { SEARCH_QUERY_MAX_LENGTH, SEARCH_RESULT_LIMIT } from '../controllers/searchController.js';
 import { defaultProfile } from '../utils/normalizers/profileNormalizers.js';
 
 const adminPassword = process.env.ADMIN_PASSWORD ?? 'test-password';
-const TRUSTED_ORIGIN = 'https://tech.hamwoo.co.kr';
+const TRUSTED_ORIGIN = 'http://hamlog.test';
 const tinyPngDataUrl =
     'data:image/png;base64,'
     + 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0mQAAAAASUVORK5CYII=';
@@ -96,8 +97,7 @@ const withTrustedOrigin = (requestBuilder, origin = TRUSTED_ORIGIN) => {
     const parsed = new URL(origin);
     return requestBuilder
         .set('Origin', origin)
-        .set('X-Forwarded-Host', parsed.host)
-        .set('X-Forwarded-Proto', parsed.protocol.replace(':', ''));
+        .set('Host', parsed.host);
 };
 
 before(async () => {
@@ -220,6 +220,19 @@ test('authenticated content routes persist posts and categories', async () => {
     const categoriesAfterDelete = await readCategories();
     assert.ok(!categoriesAfterDelete.some(category => category.name === 'Platform'));
 
+    await writeComments([{
+        id: 'comment-on-post-to-delete',
+        postId: createPostResponse.body.id,
+        author: 'Test',
+        password: 'legacy-test-password',
+        content: 'This comment should be removed with its post.',
+        createdAt: new Date().toISOString()
+    }]);
+
+    const viewResponse = await request(app).post('/api/posts/ci-hardening-updated/view');
+    assert.equal(viewResponse.status, 200);
+    assert.equal((await readPostViews())[createPostResponse.body.id], 1);
+
     const deletePostResponse = await withTrustedOrigin(request(app)
         .delete(`/api/posts/${createPostResponse.body.id}`)
         .set('Cookie', cookies));
@@ -229,6 +242,8 @@ test('authenticated content routes persist posts and categories', async () => {
     const postsAfterDelete = await readPosts();
     assert.equal(postsAfterDelete.length, 0);
     assert.deepEqual(await readPostRevisions(createPostResponse.body.id), []);
+    assert.deepEqual(await readComments(), []);
+    assert.equal(Object.hasOwn(await readPostViews(), createPostResponse.body.id), false);
 });
 
 test('post slugs are normalized before file persistence', async () => {
@@ -579,6 +594,10 @@ test('profile route recreates a default profile when the profile file is corrupt
     const savedProfile = await readProfile();
     assert.equal(savedProfile.title, defaultProfile.title);
     assert.equal(savedProfile.favicon, defaultProfile.favicon);
+
+    const corruptBackups = (await readdir(dataDir))
+        .filter(fileName => fileName.startsWith('profile.json.corrupt-'));
+    assert.equal(corruptBackups.length, 1);
 });
 
 test('categories are rebuilt from posts when the category file is missing', async () => {
@@ -793,7 +812,7 @@ test('authenticated write routes reject untrusted origins', async () => {
         .post('/api/posts')
         .set('Cookie', cookies)
         .set('Origin', 'https://evil.example.com')
-        .set('X-Forwarded-Host', 'tech.hamwoo.co.kr')
+        .set('X-Forwarded-Host', 'evil.example.com')
         .set('X-Forwarded-Proto', 'https')
         .send({
             slug: 'blocked-by-origin',
@@ -955,10 +974,13 @@ test('public post views increment only for visible posts', async () => {
     const scheduledPost = storedPosts.find(post => post.slug === 'scheduled-hidden-post');
     const draftPost = storedPosts.find(post => post.slug === 'draft-post');
 
-    assert.equal(publicPost.views, 4);
+    assert.equal(publicPost.views, 2);
     assert.equal(publicPost.updatedAt, '2026-03-06T00:00:00.000Z');
     assert.equal(scheduledPost.views, 5);
     assert.equal(draftPost.views, 7);
+
+    const storedViews = await readPostViews();
+    assert.equal(storedViews['post-public'], 4);
 
     const publicPostsResponse = await request(app).get('/api/posts');
     assert.equal(publicPostsResponse.status, 200);
@@ -966,6 +988,65 @@ test('public post views increment only for visible posts', async () => {
         publicPostsResponse.body.posts.map(post => ({ slug: post.slug, views: post.views })),
         [{ slug: 'public-post', views: 4 }]
     );
+});
+
+test('public post summaries omit editor content and detail endpoint returns one visible post', async () => {
+    await writePosts([
+        {
+            id: 'post-summary-public',
+            slug: 'summary-public',
+            title: 'Summary Public',
+            summary: 'summary',
+            category: 'Testing',
+            contentHtml: '<p>private payload-sized body</p><a href="/posts/linked-post">link</a>',
+            publishedAt: '2026-03-06',
+            tags: [],
+            status: 'published',
+            sections: []
+        },
+        {
+            id: 'post-linked',
+            slug: 'linked-post',
+            title: 'Linked Post',
+            summary: 'linked',
+            category: 'Testing',
+            contentHtml: '<p>linked body</p>',
+            publishedAt: '2026-03-05',
+            tags: [],
+            status: 'published',
+            sections: []
+        },
+        {
+            id: 'post-summary-draft',
+            slug: 'summary-draft',
+            title: 'Summary Draft',
+            summary: 'draft',
+            category: 'Testing',
+            contentHtml: '<p>draft body</p>',
+            publishedAt: '2026-03-04',
+            tags: [],
+            status: 'draft',
+            sections: []
+        }
+    ]);
+
+    const summariesResponse = await request(app).get('/api/posts?summary=true');
+    assert.equal(summariesResponse.status, 200);
+    assert.equal(summariesResponse.body.posts.length, 2);
+
+    const summary = summariesResponse.body.posts.find(post => post.slug === 'summary-public');
+    assert.ok(summary);
+    assert.equal(Object.hasOwn(summary, 'contentHtml'), false);
+    assert.equal(Object.hasOwn(summary, 'contentJson'), false);
+    assert.equal(Object.hasOwn(summary, 'sections'), false);
+    assert.deepEqual(summary.linkedPostSlugs, ['linked-post']);
+
+    const detailResponse = await request(app).get('/api/posts/summary-public');
+    assert.equal(detailResponse.status, 200);
+    assert.equal(detailResponse.body.contentHtml.includes('private payload-sized body'), true);
+
+    const hiddenDetailResponse = await request(app).get('/api/posts/summary-draft');
+    assert.equal(hiddenDetailResponse.status, 404);
 });
 
 test('seo routes ignore non-public posts, escape meta values, and include visible scheduled posts in feeds', async () => {

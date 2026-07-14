@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BookOpen, Calendar, ChevronLeft } from 'lucide-react';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -21,6 +21,10 @@ import { buildCategoryTree, getCategoryPathLabel } from '../utils/categoryTree';
 import { useSeo } from '../hooks/useSeo';
 import { useSchema } from '../hooks/useSchema';
 import { siteMeta } from '../data/blogData';
+import { fetchPostBySlug } from '../api/postApi';
+import { ApiError } from '../api/client';
+import type { Post } from '../types/blog';
+import { TableOfContents } from '../components/TableOfContents';
 
 const normalizePageProfile = (profile: SiteMeta) => ({
   ...siteMeta,
@@ -43,11 +47,44 @@ const PostPage: React.FC = () => {
   const loading = usePostStore(state => state.loading);
   const error = usePostStore(state => state.error);
   const hasLoaded = usePostStore(state => state.hasLoaded);
+  const loadedMode = usePostStore(state => state.loadedMode);
   const fetchPosts = usePostStore(state => state.fetchPosts);
   const recordPostView = usePostStore(state => state.recordPostView);
   const [categories, setCategories] = useState<Category[]>([]);
   const [profile, setProfile] = useState<SiteMeta>(siteMeta);
+  const [post, setPost] = useState<Post | null>(null);
+  const [detailLoading, setDetailLoading] = useState(true);
+  const [detailError, setDetailError] = useState('');
   const recordedViewSlugRef = useRef<string | null>(null);
+
+  const loadPost = useCallback(async () => {
+    if (!slug) {
+      setPost(null);
+      setDetailLoading(false);
+      return;
+    }
+
+    setDetailLoading(true);
+    setDetailError('');
+    try {
+      setPost(await fetchPostBySlug(slug));
+    } catch (loadError) {
+      setPost(null);
+      if (!(loadError instanceof ApiError && loadError.status === 404)) {
+        setDetailError(
+          loadError instanceof Error && loadError.message
+            ? loadError.message
+            : '글을 불러오지 못했습니다.'
+        );
+      }
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    void loadPost();
+  }, [loadPost]);
 
   useEffect(() => {
     fetchCategories().then(setCategories).catch(console.error);
@@ -70,13 +107,12 @@ const PostPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!hasLoaded && !loading) {
-      void fetchPosts();
+    if (loadedMode === 'none' && !loading) {
+      void fetchPosts('summary');
     }
-  }, [hasLoaded, loading, fetchPosts]);
+  }, [fetchPosts, loadedMode, loading]);
 
   const visiblePosts = useMemo(() => posts.filter(post => isPostVisible(post)), [posts]);
-  const post = useMemo(() => visiblePosts.find(item => item.slug === slug), [visiblePosts, slug]);
 
   useEffect(() => {
     if (!post?.slug) return;
@@ -125,9 +161,9 @@ const PostPage: React.FC = () => {
     type: 'article'
   });
 
-  useSchema({ post });
+  useSchema({ post: post ?? undefined });
 
-  if (!hasLoaded && posts.length === 0) {
+  if (detailLoading || (!hasLoaded && posts.length === 0)) {
     return (
       <ErrorBoundary>
         <div className="min-h-screen text-[var(--text)]">
@@ -141,16 +177,16 @@ const PostPage: React.FC = () => {
     );
   }
 
-  if (error && !post) {
+  if ((detailError || error) && !post) {
     return (
       <ErrorBoundary>
         <div className="min-h-screen text-[var(--text)]">
           <SiteHeader profile={profile} eyebrow="Error" contextTitle="글을 불러오지 못했습니다" />
           <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-            <p className="text-sm text-[var(--text-muted)]">{error}</p>
+            <p className="text-sm text-[var(--text-muted)]">{detailError || error}</p>
             <button
               type="button"
-              onClick={() => fetchPosts()}
+              onClick={() => void loadPost()}
               className="mt-4 rounded-lg border border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text)]"
             >
               다시 시도
@@ -206,7 +242,7 @@ const PostPage: React.FC = () => {
         />
 
         <div className="mx-auto max-w-6xl px-4 py-10 xl:py-12">
-          <div className="grid gap-6 2xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-8">
+          <div className="grid gap-6 2xl:grid-cols-[200px_minmax(0,1fr)_220px] xl:gap-8">
             <aside className="hidden 2xl:block relative">
               <div className="sticky top-8 space-y-8">
                 <CategorySidebar
@@ -306,6 +342,12 @@ const PostPage: React.FC = () => {
                 </section>
               )}
             </main>
+
+            <aside className="hidden 2xl:block">
+              <div className="sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto border border-[color:var(--border)] bg-[var(--surface)] p-4">
+                <TableOfContents contentSelector=".post-content" />
+              </div>
+            </aside>
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import request from 'supertest';
 import app from '../app.js';
 
 const adminPassword = process.env.ADMIN_PASSWORD ?? 'test-password';
-const TRUSTED_ORIGIN = 'https://tech.hamwoo.co.kr';
+const TRUSTED_ORIGIN = 'http://hamlog.test';
 
 const loginAsAdmin = async () => {
     const response = await request(app)
@@ -21,8 +21,7 @@ const withTrustedOrigin = (requestBuilder, origin = TRUSTED_ORIGIN) => {
     const parsed = new URL(origin);
     return requestBuilder
         .set('Origin', origin)
-        .set('X-Forwarded-Host', parsed.host)
-        .set('X-Forwarded-Proto', parsed.protocol.replace(':', ''));
+        .set('Host', parsed.host);
 };
 
 test('GET /api/preview should require admin authentication', async () => {
@@ -63,8 +62,7 @@ test('GET /api/preview should accept trusted referer for same-origin editor fetc
         .get('/api/preview')
         .set('Cookie', cookies)
         .set('Referer', `${TRUSTED_ORIGIN}/admin?section=posts`)
-        .set('X-Forwarded-Host', 'tech.hamwoo.co.kr')
-        .set('X-Forwarded-Proto', 'https');
+        .set('Host', new URL(TRUSTED_ORIGIN).host);
 
     assert.equal(response.status, 400);
     assert.equal(response.body.error, 'URL is required');

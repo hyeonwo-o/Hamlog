@@ -7,6 +7,13 @@ if [ -f .env ]; then
   set +a
 fi
 
+export NODE_ENV=production
+
+if [ -z "${JWT_SECRET:-}" ] || [ -z "${ADMIN_PASSWORD:-}" ]; then
+  echo "❌ JWT_SECRET and ADMIN_PASSWORD are required for production deployment."
+  exit 1
+fi
+
 echo "🚀 Starting Deployment..."
 
 # 1. Pull latest changes
@@ -15,7 +22,7 @@ git pull origin main
 
 # 2. Install dependencies
 echo "📦 Installing dependencies..."
-npm install
+npm ci
 
 # 3. Build project
 echo "🏗️ Building project..."
@@ -32,7 +39,7 @@ fi
 echo "🔄 Restarting server..."
 # Check if pm2 is installed and running
 if command -v pm2 &> /dev/null; then
-    pm2 restart all
+    pm2 restart hamlog --update-env
 else
     echo "⚠️ PM2 not found, skipping restart (Manual restart required if running directly)"
 fi

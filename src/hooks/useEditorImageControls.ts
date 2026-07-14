@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { EditorView } from '@tiptap/pm/view';
-import { NodeSelection } from '@tiptap/pm/state';
 import { detectImageDropZone } from '../editor/utils/dragDropUtils';
 import { promptForText } from '../utils/editorDialog';
 
@@ -19,8 +18,13 @@ export const useEditorImageControls = ({
 }: UseEditorImageControlsProps) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [isImageSelected, setIsImageSelected] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const validateImageFile = useCallback((file: File) => {
+    if (file.size <= maxUploadMb * 1024 * 1024) return true;
+    setUploadError(`이미지는 ${maxUploadMb}MB 이하만 가능합니다.`);
+    return false;
+  }, [maxUploadMb]);
 
   const getImageFileFromTransfer = useCallback((transfer?: DataTransfer | null) => {
     if (!transfer) return null;
@@ -28,45 +32,40 @@ export const useEditorImageControls = ({
     return files.find(file => file.type.startsWith('image/')) ?? null;
   }, []);
 
+  const uploadValidatedImage = useCallback(async (file: File) => {
+    setUploadError('');
+    if (!validateImageFile(file)) {
+      throw new Error(`이미지는 ${maxUploadMb}MB 이하만 가능합니다.`);
+    }
+
+    setUploadingImage(true);
+    try {
+      return await uploadLocalImage(file);
+    } catch (error) {
+      const message = error instanceof Error && error.message
+        ? error.message
+        : '이미지 업로드에 실패했습니다.';
+      setUploadError(message);
+      throw error;
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [maxUploadMb, uploadLocalImage, validateImageFile]);
+
   const uploadImageToEditor = useCallback(
     async (file: File) => {
-      setUploadError('');
-      if (file.size > maxUploadMb * 1024 * 1024) {
-        setUploadError(`이미지는 ${maxUploadMb}MB 이하만 가능합니다.`);
-        return;
-      }
-
       const currentEditor = editorRef.current;
       if (!currentEditor) return;
-      setUploadingImage(true);
       try {
-        const { url } = await uploadLocalImage(file);
+        const { url } = await uploadValidatedImage(file);
         const imageAttrs = { src: url, alt: file.name, size: 'full' };
         currentEditor.chain().focus().setImage(imageAttrs).run();
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : '이미지 업로드에 실패했습니다.';
-        setUploadError(message);
-      } finally {
-        setUploadingImage(false);
+      } catch {
+        // uploadValidatedImage reports the user-facing error.
       }
     },
-    [editorRef, maxUploadMb, uploadLocalImage]
+    [editorRef, uploadValidatedImage]
   );
-
-  const handleSelectionUpdate = useCallback((editor: Editor) => {
-    const { selection } = editor.state;
-    // Check both standard isActive and explicit NodeSelection for 'image' type
-    const active = editor.isActive('image') || (selection instanceof NodeSelection && selection.node.type.name === 'image');
-
-    setIsImageSelected(active);
-
-    if (!active) {
-      return;
-    }
-  }, []);
 
   const handlePaste = useCallback(
     (_view: unknown, event: ClipboardEvent) => {
@@ -86,6 +85,7 @@ export const useEditorImageControls = ({
       if (!file) return false;
 
       event.preventDefault();
+      setUploadError('');
 
       const clientX = event.clientX;
       const clientY = event.clientY;
@@ -93,7 +93,7 @@ export const useEditorImageControls = ({
 
       const handleUploadAndInsert = async () => {
         try {
-          const { url } = await uploadLocalImage(file);
+          const { url } = await uploadValidatedImage(file);
           let grouped = false;
 
           // STRATEGY: Edge Detection for Columns
@@ -231,15 +231,15 @@ export const useEditorImageControls = ({
               editorRef.current?.chain().focus().setImage({ src: url }).run();
             }
           }
-        } catch (e) {
-          console.error(e);
+        } catch (error) {
+          console.error(error);
         }
       };
 
       void handleUploadAndInsert();
       return true;
     },
-    [editorRef, getImageFileFromTransfer, uploadLocalImage]
+    [editorRef, getImageFileFromTransfer, uploadValidatedImage]
   );
 
   const handleToolbarImageUpload = useCallback(() => {
@@ -266,12 +266,11 @@ export const useEditorImageControls = ({
     fileInputRef,
     uploadingImage,
     uploadError,
+    uploadValidatedImage,
     uploadImageToEditor,
-    handleSelectionUpdate,
     handlePaste,
     handleDrop,
     handleToolbarImageUpload,
-    handleInsertImageUrl,
-    isImageSelected
+    handleInsertImageUrl
   };
 };

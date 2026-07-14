@@ -10,9 +10,61 @@ interface UseAutosaveProps {
 }
 
 interface AutosavePayload {
-    draft: PostDraft;
+    draft: Partial<PostDraft>;
     updatedAt: string;
 }
+
+const normalizeStoredDraft = (
+    candidate: Partial<PostDraft>,
+    fallback: PostDraft
+): PostDraft => {
+    const merged = { ...fallback, ...candidate };
+    const stringValue = (value: unknown, fallbackValue: string) =>
+        typeof value === 'string' ? value : fallbackValue;
+    const validStatuses = new Set(['draft', 'scheduled', 'published']);
+
+    return {
+        ...merged,
+        title: stringValue(merged.title, fallback.title),
+        slug: stringValue(merged.slug, fallback.slug),
+        summary: stringValue(merged.summary, fallback.summary),
+        category: stringValue(merged.category, fallback.category),
+        contentJson: merged.contentJson && typeof merged.contentJson === 'object'
+            ? merged.contentJson
+            : fallback.contentJson,
+        contentHtml: stringValue(merged.contentHtml, fallback.contentHtml),
+        publishedAt: stringValue(merged.publishedAt, fallback.publishedAt),
+        tags: Array.isArray(merged.tags)
+            ? merged.tags.filter((tag): tag is string => typeof tag === 'string')
+            : fallback.tags,
+        series: stringValue(merged.series, fallback.series),
+        featured: typeof merged.featured === 'boolean' ? merged.featured : fallback.featured,
+        cover: stringValue(merged.cover, fallback.cover),
+        status: validStatuses.has(String(merged.status)) ? merged.status : fallback.status,
+        scheduledAt: stringValue(merged.scheduledAt, fallback.scheduledAt),
+        seoTitle: stringValue(merged.seoTitle, fallback.seoTitle),
+        seoDescription: stringValue(merged.seoDescription, fallback.seoDescription),
+        seoOgImage: stringValue(merged.seoOgImage, fallback.seoOgImage),
+        seoCanonicalUrl: stringValue(merged.seoCanonicalUrl, fallback.seoCanonicalUrl),
+        seoKeywords: stringValue(merged.seoKeywords, fallback.seoKeywords)
+    };
+};
+
+const readAutosave = (key: string) => {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const removeAutosave = (key: string) => {
+    try {
+        localStorage.removeItem(key);
+    } catch {
+        // Storage may be unavailable in restricted browsing modes.
+    }
+};
 
 const getDraftAutosaveSignature = (draft: PostDraft) => JSON.stringify({
     title: draft.title,
@@ -74,7 +126,7 @@ export const useAutosave = ({
 
     // Check for autosave on mount (or when activeId changes)
     useEffect(() => {
-        const saved = localStorage.getItem(autosaveKey);
+        const saved = readAutosave(autosaveKey);
         if (!saved) {
             setAutosaveUpdatedAt(null);
             return;
@@ -82,13 +134,14 @@ export const useAutosave = ({
 
         const payload = parseAutosavePayload(saved);
         if (!payload) {
-            localStorage.removeItem(autosaveKey);
+            removeAutosave(autosaveKey);
             setAutosaveUpdatedAt(null);
             return;
         }
 
         const currentInit = onLoadDraft();
-        if (isDraftDifferent(payload.draft, currentInit)) {
+        const storedDraft = normalizeStoredDraft(payload.draft, currentInit);
+        if (isDraftDifferent(storedDraft, currentInit)) {
             setAutosaveUpdatedAt(payload.updatedAt);
             setNotice('임시 저장본이 있습니다. 복구 또는 삭제를 선택하세요.');
         } else {
@@ -104,33 +157,37 @@ export const useAutosave = ({
                     draft,
                     updatedAt: new Date().toISOString()
                 };
-                localStorage.setItem(autosaveKey, JSON.stringify(payload));
+                try {
+                    localStorage.setItem(autosaveKey, JSON.stringify(payload));
+                } catch {
+                    setNotice('브라우저 저장 공간이 부족해 임시 저장하지 못했습니다.');
+                }
             }
         }, 1000);
         return () => clearTimeout(timer);
-    }, [draft, autosaveKey]);
+    }, [draft, autosaveKey, setNotice]);
 
     const clearAutosave = useCallback(() => {
-        localStorage.removeItem(autosaveKey);
+        removeAutosave(autosaveKey);
         setAutosaveUpdatedAt(null);
     }, [autosaveKey]);
 
     const handleRestoreAutosave = useCallback(() => {
-        const saved = localStorage.getItem(autosaveKey);
+        const saved = readAutosave(autosaveKey);
         if (!saved) return;
 
         const payload = parseAutosavePayload(saved);
         if (payload) {
-            setDraft(payload.draft);
+            setDraft(normalizeStoredDraft(payload.draft, onLoadDraft()));
             setAutosaveUpdatedAt(null);
             setNotice('임시 저장된 내용을 복구했습니다.');
         } else {
             setNotice('복구에 실패했습니다.');
         }
-    }, [autosaveKey, setDraft, setNotice]);
+    }, [autosaveKey, onLoadDraft, setDraft, setNotice]);
 
     const discardAutosave = useCallback(() => {
-        localStorage.removeItem(autosaveKey);
+        removeAutosave(autosaveKey);
         setAutosaveUpdatedAt(null);
         setNotice('임시 저장본을 삭제했습니다.');
     }, [autosaveKey, setNotice]);

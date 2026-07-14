@@ -17,13 +17,16 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Load category from URL
+    // Load category from URL and keep browser back/forward navigation in sync.
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const category = params.get('category');
-        if (category) {
-            setSelectedCategory(category);
-        }
+        const syncCategoryFromUrl = () => {
+            const params = new URLSearchParams(window.location.search);
+            setSelectedCategory(params.get('category'));
+        };
+
+        syncCategoryFromUrl();
+        window.addEventListener('popstate', syncCategoryFromUrl);
+        return () => window.removeEventListener('popstate', syncCategoryFromUrl);
     }, []);
 
     // Sync URL when category changes

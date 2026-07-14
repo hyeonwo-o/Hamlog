@@ -6,6 +6,7 @@ interface PostCommandBarProps {
   activeId: string | null;
   status: PostStatus;
   saving: boolean;
+  isDirty: boolean;
   previewMode: boolean;
   notice: string;
   onNoticeClick?: () => void;
@@ -30,6 +31,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
   activeId,
   status,
   saving,
+  isDirty,
   previewMode,
   notice,
   onNoticeClick,
@@ -46,10 +48,18 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
   return (
     <div data-testid="post-command-bar" className="flex w-full flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] leading-6 text-[var(--text-muted)]">
+        <div
+          className="flex flex-wrap items-center gap-1.5 text-[11px] leading-6 text-[var(--text-muted)]"
+          aria-live="polite"
+        >
           <span className="font-medium text-[var(--text)]">
             {activeId ? '편집 중' : '새 초안'}
           </span>
+          {isDirty && (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700">
+              저장되지 않은 변경
+            </span>
+          )}
           {notice ? (
             <button
               type="button"
@@ -83,6 +93,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
 
       <div className="flex flex-wrap items-center gap-1.5">
         <select
+          aria-label="글 상태"
           value={status}
           onChange={event => onStatusChange(event.target.value as PostStatus)}
           className="h-7 border border-[color:var(--border)] bg-white px-2 text-[11px] text-[var(--text)] outline-none transition focus:border-[color:var(--accent)]"

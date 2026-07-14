@@ -18,17 +18,9 @@ const resolveCookieSameSite = () => {
     return process.env.CORS_ORIGINS?.trim() ? 'none' : 'lax';
 };
 
-const getForwardedProto = (req) => (
-    String(req.get('x-forwarded-proto') ?? '')
-        .split(',')[0]
-        .trim()
-        .toLowerCase()
-);
-
 const isHttpsRequest = (req) => (
     req.secure
     || req.protocol === 'https'
-    || getForwardedProto(req) === 'https'
 );
 
 const resolveCookieSecure = (req, sameSite) => {

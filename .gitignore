@@ -28,3 +28,4 @@ server/data/posts/
 server/uploads/
 test-results/
 playwright-report/
+.tmp/

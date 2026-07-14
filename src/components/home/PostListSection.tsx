@@ -12,6 +12,7 @@ interface PostListSectionProps {
     loading: boolean;
     error: string | null;
     onSelectCategory: (id: string | null) => void;
+    onSearchChange: (query: string) => void;
     onClearSearch: () => void;
 }
 
@@ -24,6 +25,7 @@ export const PostListSection = ({
     loading,
     error,
     onSelectCategory,
+    onSearchChange,
     onClearSearch
 }: PostListSectionProps) => {
     return (
@@ -38,6 +40,16 @@ export const PostListSection = ({
                     {filteredPosts.length}편
                 </span>
             </div>
+            <label className="mt-4 block max-w-xl text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                글 검색
+                <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={event => onSearchChange(event.target.value.slice(0, 120))}
+                    placeholder="제목, 요약, 태그, 시리즈로 검색"
+                    className="angular-control mt-2 w-full border border-[color:var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--text)] outline-none transition focus:border-[color:var(--accent)]"
+                />
+            </label>
             <div className="mt-5 grid gap-4 lg:grid-cols-[230px_minmax(0,1fr)]">
                 <CategorySidebar
                     categoryTree={categoryTree}

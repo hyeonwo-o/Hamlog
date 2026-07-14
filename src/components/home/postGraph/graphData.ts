@@ -154,7 +154,11 @@ export const buildGraphData = (posts: Post[]): GraphData => {
         addRelation('category', post.category ?? '미분류', post);
         if (post.series) addRelation('series', post.series, post);
 
-        extractLinkedPostSlugs(post.contentHtml, availableSlugs).forEach(slug => {
+        const linkedSlugs = Array.isArray(post.linkedPostSlugs)
+            ? post.linkedPostSlugs.filter(slug => availableSlugs.has(slug))
+            : Array.from(extractLinkedPostSlugs(post.contentHtml, availableSlugs));
+
+        linkedSlugs.forEach(slug => {
             if (slug === post.slug) return;
             edges.push({
                 id: `${post.slug}->${slug}`,

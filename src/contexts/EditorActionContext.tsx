@@ -4,7 +4,6 @@ import { createContext, useContext } from 'react';
 interface EditorActionContextType {
     onSetCover: (src: string) => void;
     currentCoverUrl?: string;
-    onToolbarUpload?: () => void;
     uploadLocalImage?: (file: File) => Promise<{ url: string }>;
 }
 

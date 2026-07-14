@@ -88,3 +88,12 @@ export async function deleteComment(id, password) {
         return { success: true };
     });
 }
+
+export async function deleteCommentsByPostIdUnlocked(postId) {
+    const all = await readComments();
+    const next = all.filter(comment => comment.postId !== postId);
+    if (next.length !== all.length) {
+        await writeComments(next);
+    }
+    return all.length - next.length;
+}

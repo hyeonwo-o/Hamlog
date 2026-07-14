@@ -65,20 +65,23 @@ export function getCodeBlockLanguage(editor: Editor | null) {
 }
 
 export function buildHistoryActions(editor: Editor | null): ToolbarActionConfig[] {
+  const canUndo = Boolean(editor?.can().chain().focus().undo().run());
+  const canRedo = Boolean(editor?.can().chain().focus().redo().run());
+
   return [
     {
       key: 'undo',
       label: '실행 취소',
       icon: <Undo size={16} />,
       onClick: () => editor?.chain().focus().undo().run(),
-      disabled: !editor
+      disabled: !canUndo
     },
     {
       key: 'redo',
       label: '다시 실행',
       icon: <Redo size={16} />,
       onClick: () => editor?.chain().focus().redo().run(),
-      disabled: !editor
+      disabled: !canRedo
     }
   ];
 }
@@ -202,6 +205,13 @@ export function buildInsertActions({
   uploadingImage
 }: InsertActionOptions): ToolbarActionConfig[] {
   return [
+    {
+      key: 'advanced-insert',
+      label: '고급 삽입 메뉴',
+      icon: <span className="text-sm font-bold">/</span>,
+      onClick: () => editor?.chain().focus().insertContent('/').run(),
+      disabled: !editor
+    },
     {
       key: 'code-block',
       label: '코드 블록',

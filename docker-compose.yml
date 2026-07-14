@@ -8,4 +8,8 @@ services:
       - ./server/uploads:/app/server/uploads
     env_file:
       - .env
+    environment:
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
     restart: always

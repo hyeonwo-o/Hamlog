@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 
 // Config
 import { uploadDir } from './config/paths.js';
-import { resolveCorsOptions } from './config/security.js';
+import { resolveCorsOptions, resolveTrustProxy } from './config/security.js';
 import { readProfile } from './models/profileModel.js';
 
 // Routers
@@ -34,6 +34,7 @@ const HOME_TITLE_SUFFIX = '클라우드 엔지니어링과 개발 기록';
 const HOME_DESCRIPTION = '클라우드 엔지니어링, 인프라, DevOps, 개발 경험을 기록하는 기술 블로그입니다.';
 
 const app = express();
+app.set('trust proxy', resolveTrustProxy());
 const cspDirectives = {
     defaultSrc: ["'self'"],
     baseUri: ["'self'"],
@@ -242,6 +243,9 @@ app.use('/api/comments', commentRouter);
 app.use('/api/auth', authRouter);
 app.use('/api', previewRouter);
 app.get('/api/search', searchRateLimiter, searchPosts);
+app.use('/api', (_req, res) => {
+    res.status(404).json({ message: 'API 경로를 찾을 수 없습니다.' });
+});
 app.get(/^\/admin(?:\/.*)?$/, injectNoindexAppShell);
 app.get(['/posts/:slug', '/p/:slug'], injectPostMeta);
 app.use('/', seoRouter);

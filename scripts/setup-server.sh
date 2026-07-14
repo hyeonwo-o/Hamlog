@@ -44,13 +44,19 @@ read -sp "Enter Admin Password for the Blog: " ADMIN_PWD
 echo ""
 read -sp "Enter JWT Secret (random string recommended): " JWT_SEC
 echo ""
+if [ -z "$ADMIN_PWD" ] || [ -z "$JWT_SEC" ]; then
+    echo "❌ Admin password and JWT secret are required."
+    exit 1
+fi
 read -p "Enter allowed frontend origin(s) for cross-site admin access (optional, comma-separated): " CORS_ORIGINS
+read -p "Trusted proxy hops [0/1/2...] (default: 0): " TRUST_PROXY
 read -p "Cookie SameSite policy [auto/lax/strict/none] (default: auto): " COOKIE_SAME_SITE_INPUT
 read -p "Force secure cookies? [auto/true/false] (default: auto): " COOKIE_SECURE_INPUT
 PORT=4000
 
 COOKIE_SAME_SITE=""
 COOKIE_SECURE=""
+TRUST_PROXY="${TRUST_PROXY:-0}"
 
 if [[ "$COOKIE_SAME_SITE_INPUT" != "" && "$COOKIE_SAME_SITE_INPUT" != "auto" ]]; then
   COOKIE_SAME_SITE="$COOKIE_SAME_SITE_INPUT"
@@ -75,12 +81,14 @@ docker run -d \
   -p $PORT:4000 \
   -v "$DATA_DIR/data":/app/server/data \
   -v "$DATA_DIR/uploads":/app/server/uploads \
+  -e NODE_ENV=production \
   -e PORT=4000 \
   -e JWT_SECRET="$JWT_SEC" \
   -e ADMIN_PASSWORD="$ADMIN_PWD" \
   -e CORS_ORIGINS="$CORS_ORIGINS" \
   -e COOKIE_SAME_SITE="$COOKIE_SAME_SITE" \
   -e COOKIE_SECURE="$COOKIE_SECURE" \
+  -e TRUST_PROXY="$TRUST_PROXY" \
   $IMAGE_NAME
 
 echo "✅ Deployment Complete!"

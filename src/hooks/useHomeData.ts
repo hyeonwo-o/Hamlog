@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { siteMeta } from '../data/blogData';
 import { fetchCategories } from '../api/categoryApi';
 import { fetchProfile } from '../api/profileApi';
@@ -28,14 +28,16 @@ export function useHomeData() {
     const loading = usePostStore(state => state.loading);
     const error = usePostStore(state => state.error);
     const hasLoaded = usePostStore(state => state.hasLoaded);
+    const loadedMode = usePostStore(state => state.loadedMode);
     const fetchPosts = usePostStore(state => state.fetchPosts);
+    const fetchHomePosts = useCallback(() => fetchPosts('summary'), [fetchPosts]);
 
     // Fetch Posts
     useEffect(() => {
-        if (!hasLoaded && !loading) {
-            void fetchPosts();
+        if (loadedMode === 'none' && !loading) {
+            void fetchHomePosts();
         }
-    }, [hasLoaded, loading, fetchPosts]);
+    }, [fetchHomePosts, loadedMode, loading]);
 
     // Fetch Profile
     useEffect(() => {
@@ -85,7 +87,7 @@ export function useHomeData() {
         posts,
         loading: initialLoading || (loading && !hasLoaded), // Unified loading state
         error,
-        fetchPosts,
+        fetchPosts: fetchHomePosts,
         hasLoaded
     };
 }

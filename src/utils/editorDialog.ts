@@ -77,6 +77,7 @@ export const promptForText = ({
   }
 
   return new Promise((resolve) => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     const overlay = document.createElement('div');
     applyStyles(overlay, {
       position: 'fixed',
@@ -90,8 +91,13 @@ export const promptForText = ({
     });
 
     const panel = document.createElement('div');
+    const headingId = `hamlog-editor-dialog-${Date.now()}`;
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', headingId);
+    panel.tabIndex = -1;
     applyStyles(panel, {
-      width: 'min(520px, 100%)',
+      width: multiline ? 'min(720px, 100%)' : 'min(520px, 100%)',
       borderRadius: '14px',
       border: '1px solid rgba(148, 163, 184, 0.4)',
       background: '#ffffff',
@@ -100,6 +106,7 @@ export const promptForText = ({
     });
 
     const heading = document.createElement('h3');
+    heading.id = headingId;
     heading.textContent = title;
     applyStyles(heading, {
       margin: '0',
@@ -125,6 +132,7 @@ export const promptForText = ({
       ? document.createElement('textarea')
       : document.createElement('input');
     input.value = defaultValue;
+    input.setAttribute('aria-label', title);
     if (!multiline) {
       (input as HTMLInputElement).type = 'text';
     }
@@ -145,8 +153,11 @@ export const promptForText = ({
     });
 
     if (multiline) {
+      input.spellcheck = false;
       applyStyles(input, {
-        minHeight: '96px',
+        minHeight: '260px',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        lineHeight: '1.5',
         resize: 'vertical'
       });
     }
@@ -198,6 +209,7 @@ export const promptForText = ({
     const cleanup = () => {
       document.removeEventListener('keydown', onKeyDown);
       overlay.remove();
+      previouslyFocused?.focus();
     };
 
     const cancel = () => {
@@ -218,9 +230,22 @@ export const promptForText = ({
         return;
       }
 
-      if (event.key === 'Enter' && !multiline) {
+      if (event.key === 'Enter' && (!multiline || event.ctrlKey || event.metaKey)) {
         event.preventDefault();
         confirm();
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        const focusable = [input, cancelButton, confirmButton];
+        const currentIndex = focusable.indexOf(document.activeElement as HTMLInputElement);
+        if (event.shiftKey && currentIndex <= 0) {
+          event.preventDefault();
+          confirmButton.focus();
+        } else if (!event.shiftKey && currentIndex === focusable.length - 1) {
+          event.preventDefault();
+          input.focus();
+        }
       }
     };
 

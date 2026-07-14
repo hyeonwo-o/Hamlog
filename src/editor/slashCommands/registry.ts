@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { API_BASE_URL } from '../../api/client';
 import { promptForText, showEditorToast } from '../../utils/editorDialog';
+import { DEFAULT_MERMAID_SOURCE } from '../../utils/mermaid';
 import type { SlashCommandContext, SlashCommandItem } from './types';
 
 const createColumnContent = (count: 2 | 3, contentType: 'paragraph' | 'image') => {
@@ -207,6 +208,29 @@ export const getSlashCommandItems = (): SlashCommandItem[] => [
     }),
     ({ editor, range }, latex) => {
       editor.chain().focus().deleteRange(range).insertContent({ type: 'math', attrs: { latex } }).run();
+    }
+  ),
+  createPromptedCommand(
+    {
+      title: 'Mermaid 다이어그램',
+      description: '플로우차트와 시퀀스 다이어그램 삽입',
+      searchTerms: ['mermaid', 'diagram', 'flowchart', 'sequence', '다이어그램', '순서도'],
+      icon: '◇'
+    },
+    () => promptForText({
+      title: 'Mermaid 다이어그램 삽입',
+      description: 'Mermaid 문법을 입력하세요. Ctrl/Cmd + Enter로 삽입할 수 있습니다.',
+      defaultValue: DEFAULT_MERMAID_SOURCE,
+      confirmText: '삽입',
+      multiline: true
+    }),
+    ({ editor, range }, source) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mermaid', attrs: { source } })
+        .run();
     }
   ),
   createPromptedCommand(

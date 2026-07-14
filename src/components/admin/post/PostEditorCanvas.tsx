@@ -57,10 +57,13 @@ export default function PostEditorCanvas({
         />
       </div>
 
-      {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
+      {uploadError && (
+        <p role="alert" className="text-xs text-red-500">{uploadError}</p>
+      )}
 
       <input
         ref={fileInputRef}
+        data-testid="editor-image-input"
         type="file"
         accept="image/*"
         className="hidden"
@@ -94,7 +97,6 @@ export default function PostEditorCanvas({
           value={{
             onSetCover: src => onSetCoverFromContent?.(src),
             currentCoverUrl,
-            onToolbarUpload,
             uploadLocalImage
           }}
         >

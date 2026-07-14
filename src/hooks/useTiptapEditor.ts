@@ -1,6 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
 import { useEditor } from '@tiptap/react';
-import type { Editor } from '@tiptap/react';
 import type { PostDraft } from '../types/admin';
 import type { EditorView } from '@tiptap/pm/view';
 import type { Slice } from '@tiptap/pm/model';
@@ -10,7 +9,6 @@ interface UseTiptapEditorProps {
     contentJson?: JSONContent;
     contentHtml: string;
     setDraft: React.Dispatch<React.SetStateAction<PostDraft>>;
-    handleSelectionUpdate: (editor: Editor) => void;
     handlePaste: (view: EditorView, event: ClipboardEvent, slice: Slice) => boolean | void;
     handleDrop: (view: EditorView, event: DragEvent, slice: Slice, moved: boolean) => boolean | void;
 }
@@ -19,7 +17,6 @@ export const useTiptapEditor = ({
     contentJson,
     contentHtml,
     setDraft,
-    handleSelectionUpdate,
     handlePaste,
     handleDrop
 }: UseTiptapEditorProps) => {
@@ -39,9 +36,6 @@ export const useTiptapEditor = ({
                 contentHtml: editor.getHTML(),
                 contentJson: editor.getJSON()
             }));
-        },
-        onSelectionUpdate: ({ editor }) => {
-            handleSelectionUpdate(editor);
         },
         editorProps: {
             attributes: {

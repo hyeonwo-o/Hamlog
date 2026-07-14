@@ -10,14 +10,12 @@ export const ImageComponent = ({ node, updateAttributes, selected }: NodeViewPro
     // Safely consume context - might be null if used outside provider (e.g. preview)
     let onSetCover: ((src: string) => void) | undefined;
     let currentCoverUrl: string | undefined;
-    let onToolbarUpload: (() => void) | undefined;
     let uploadLocalImage: ((file: File) => Promise<{ url: string }>) | undefined;
 
     try {
         const ctx = useEditorAction();
         onSetCover = ctx.onSetCover;
         currentCoverUrl = ctx.currentCoverUrl;
-        onToolbarUpload = ctx.onToolbarUpload;
         uploadLocalImage = ctx.uploadLocalImage;
     } catch {
         // Ignore context error if not available
@@ -49,7 +47,6 @@ export const ImageComponent = ({ node, updateAttributes, selected }: NodeViewPro
                         }
                     }
                 }}
-                onToolbarClick={onToolbarUpload}
             />
         );
     }

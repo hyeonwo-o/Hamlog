@@ -1,5 +1,6 @@
 import {
     getAllPostsService,
+    getPostBySlugService,
     createPostService,
     updatePostService,
     deletePostService,
@@ -10,10 +11,24 @@ import {
 
 export const getPosts = async (req, res) => {
     try {
-        const result = await getAllPostsService(Boolean(req.user));
+        const summaryOnly = req.query.summary === 'true';
+        const result = await getAllPostsService(Boolean(req.user) && !summaryOnly, summaryOnly);
         res.json({ posts: result.data, total: result.data.length });
     } catch (error) {
         console.error('Failed to fetch posts', error);
+        res.status(500).json({ message: '포스트를 불러오지 못했습니다.' });
+    }
+};
+
+export const getPostBySlug = async (req, res) => {
+    try {
+        const result = await getPostBySlugService(req.params.slug);
+        if (!result.success) {
+            return res.status(404).json({ message: result.error });
+        }
+        res.json(result.data);
+    } catch (error) {
+        console.error('Failed to fetch post', error);
         res.status(500).json({ message: '포스트를 불러오지 못했습니다.' });
     }
 };

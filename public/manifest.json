@@ -9,22 +9,14 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/vite.svg",
-      "sizes": "32x32",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/avatar.jpg",
+      "sizes": "2048x2048",
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ],
   "categories": ["education", "technology", "productivity"],
   "lang": "ko",
   "dir": "ltr",
-  "scope": "/",
-  "screenshots": [
-    {
-      "src": "/vite.svg",
-      "sizes": "1280x720",
-      "type": "image/svg+xml",
-      "form_factor": "wide"
-    }
-  ]
+  "scope": "/"
 }

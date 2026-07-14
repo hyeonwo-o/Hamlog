@@ -1,4 +1,4 @@
-import { readFile, mkdir } from 'fs/promises';
+import { readFile, mkdir, rename } from 'fs/promises';
 import { profileFilePath, dataDir } from '../config/paths.js';
 import { writeJsonAtomic } from '../utils/fsUtils.js';
 import {
@@ -21,7 +21,9 @@ export async function readProfile() {
         const parsed = JSON.parse(raw);
         return normalizeProfile(parsed);
     } catch (error) {
-        console.error('Failed to parse profile file. Recreating default profile.', error);
+        const backupPath = `${profileFilePath}.corrupt-${Date.now()}`;
+        await rename(profileFilePath, backupPath);
+        console.error(`Failed to parse profile file. Corrupt data moved to ${backupPath}.`, error);
         return await writeProfile(defaultProfile);
     }
 }

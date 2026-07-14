@@ -5,16 +5,16 @@ const CATEGORY_SECTIONS: AdminSection[] = ['dashboard', 'posts', 'categories'];
 
 interface UseAdminDataBootstrapOptions {
   activeSection: AdminSection;
-  hasLoadedPosts: boolean;
+  postsLoadedMode: 'none' | 'summary' | 'full';
   postsLoading: boolean;
-  fetchPosts: () => void | Promise<void>;
+  fetchPosts: (mode?: 'summary' | 'full') => void | Promise<void>;
   loadCategories: () => void | Promise<void>;
   loadProfile: () => void | Promise<void>;
 }
 
 export const useAdminDataBootstrap = ({
   activeSection,
-  hasLoadedPosts,
+  postsLoadedMode,
   postsLoading,
   fetchPosts,
   loadCategories,
@@ -24,10 +24,10 @@ export const useAdminDataBootstrap = ({
   const [profileRequested, setProfileRequested] = useState(false);
 
   useEffect(() => {
-    if (!hasLoadedPosts && !postsLoading) {
-      void fetchPosts();
+    if (postsLoadedMode !== 'full' && !postsLoading) {
+      void fetchPosts('full');
     }
-  }, [fetchPosts, hasLoadedPosts, postsLoading]);
+  }, [fetchPosts, postsLoadedMode, postsLoading]);
 
   useEffect(() => {
     if (categoriesRequested) return;

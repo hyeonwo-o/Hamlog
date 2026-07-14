@@ -18,6 +18,7 @@ import { createLowlight, common } from 'lowlight';
 import { SlashCommand, renderItems } from './extensions/slashCommand';
 import { FontSize } from './extensions/fontSize';
 import { MathExtension } from '../components/editor/extensions/MathExtension';
+import { MermaidExtension } from '../components/editor/extensions/MermaidExtension';
 import { ImageGallery } from '../components/editor/extensions/ImageGallery';
 import { LinkCard } from './extensions/LinkCard';
 import { CustomImage } from './extensions/CustomImage';
@@ -45,7 +46,7 @@ export const getEditorExtensions = () => [
     }),
     CustomImage,
     Placeholder.configure({
-        placeholder: '내용을 입력하세요...'
+        placeholder: "내용을 입력하세요. '/'를 입력하면 수식, Mermaid, 영상, 링크 카드와 다단 레이아웃을 삽입할 수 있습니다."
     }),
     TextAlign.configure({
         types: EDITOR_TEXT_ALIGN_TYPES
@@ -61,6 +62,7 @@ export const getEditorExtensions = () => [
         },
     }),
     MathExtension,
+    MermaidExtension,
     Typography,
     ImageGallery,
     Youtube.configure({

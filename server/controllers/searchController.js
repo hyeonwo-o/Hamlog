@@ -1,5 +1,4 @@
-import { readPosts } from '../models/postModel.js';
-import { filterPublicPosts } from '../utils/postVisibility.js';
+import { getAllPostsService } from '../services/postService.js';
 
 export const SEARCH_QUERY_MAX_LENGTH = 120;
 export const SEARCH_RESULT_LIMIT = 25;
@@ -37,8 +36,7 @@ export const searchPosts = async (req, res) => {
         }
 
         const query = normalizedQuery.toLowerCase();
-        const posts = await readPosts();
-        const publicPosts = filterPublicPosts(posts);
+        const { data: publicPosts } = await getAllPostsService(false, false);
 
         const results = publicPosts.filter(post => {
             const inTitle = includesQuery(post.title, query);

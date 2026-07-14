@@ -10,6 +10,14 @@ import { normalizePostData } from '../utils/postHelpers.js';
 import { filterPublicPosts, isPostPublicVisible } from '../utils/postVisibility.js';
 import { normalizePostViews } from '../utils/normalizers/postNormalizers.js';
 import { runWithDataStoreLock } from '../utils/storeLock.js';
+import {
+    applyPostViews,
+    deletePostView,
+    incrementPostView,
+    readPostViews
+} from '../models/postViewModel.js';
+import { toPostSummaries } from '../utils/postSummaries.js';
+import { deleteCommentsByPostIdUnlocked } from '../models/commentModel.js';
 
 const serializeComparablePost = (post) => JSON.stringify(post ?? null);
 
@@ -27,9 +35,29 @@ const toRevisionSummary = (revision) => ({
     status: revision.snapshot?.status ?? revision.status ?? 'draft'
 });
 
-export async function getAllPostsService(includeAll = false) {
-    const posts = await readPosts();
-    return { success: true, data: includeAll ? posts : filterPublicPosts(posts) };
+const readPostsWithViews = async () => {
+    const [posts, views] = await Promise.all([readPosts(), readPostViews()]);
+    return applyPostViews(posts, views);
+};
+
+export async function getAllPostsService(includeAll = false, summaryOnly = false) {
+    const posts = await readPostsWithViews();
+    const visiblePosts = includeAll ? posts : filterPublicPosts(posts);
+    return {
+        success: true,
+        data: summaryOnly ? toPostSummaries(visiblePosts) : visiblePosts
+    };
+}
+
+export async function getPostBySlugService(slug) {
+    const posts = await readPostsWithViews();
+    const post = posts.find(item => item.slug === String(slug ?? '').trim());
+
+    if (!post || !isPostPublicVisible(post)) {
+        return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
+    }
+
+    return { success: true, data: post };
 }
 
 export async function createPostService(rawData) {
@@ -42,7 +70,7 @@ export async function createPostService(rawData) {
         }
 
         // 2. Check Slug Uniqueness
-        const allPosts = await readPosts();
+        const allPosts = await readPostsWithViews();
         if (allPosts.some(post => post.slug === data.slug)) {
             return { success: false, error: '슬러그가 이미 존재합니다.', code: 'duplicate_slug' };
         }
@@ -91,20 +119,16 @@ export async function recordPostViewService(slug) {
             return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
         }
 
-        const currentViews = normalizePostViews(allPosts[index].views);
-        const nextViews = currentViews + 1;
-        const updatedPost = {
-            ...allPosts[index],
-            views: nextViews
-        };
-
-        allPosts[index] = updatedPost;
-        await writePosts(allPosts);
+        const targetPost = allPosts[index];
+        const nextViews = await incrementPostView(
+            targetPost.id,
+            normalizePostViews(targetPost.views)
+        );
 
         return {
             success: true,
             data: {
-                slug: updatedPost.slug,
+                slug: targetPost.slug,
                 views: nextViews
             }
         };
@@ -113,7 +137,7 @@ export async function recordPostViewService(slug) {
 
 export async function updatePostService(id, rawData) {
     return runWithDataStoreLock(async () => {
-        const allPosts = await readPosts();
+        const allPosts = await readPostsWithViews();
         const index = allPosts.findIndex(post => post.id === id);
 
         if (index === -1) {
@@ -176,7 +200,7 @@ export async function updatePostService(id, rawData) {
 
 export async function restorePostRevisionService(id, revisionId) {
     return runWithDataStoreLock(async () => {
-        const allPosts = await readPosts();
+        const allPosts = await readPostsWithViews();
         const index = allPosts.findIndex(post => post.id === id);
 
         if (index === -1) {
@@ -232,7 +256,7 @@ export async function restorePostRevisionService(id, revisionId) {
 
 export async function deletePostService(id) {
     return runWithDataStoreLock(async () => {
-        const allPosts = await readPosts();
+        const allPosts = await readPostsWithViews();
         const next = allPosts.filter(post => post.id !== id);
 
         if (next.length === allPosts.length) {
@@ -241,6 +265,8 @@ export async function deletePostService(id) {
 
         await writePosts(next);
         await deletePostRevisions(id);
+        await deletePostView(id);
+        await deleteCommentsByPostIdUnlocked(id);
         return { success: true };
     });
 }

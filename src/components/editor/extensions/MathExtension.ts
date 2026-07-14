@@ -1,5 +1,7 @@
 import { mergeAttributes, Node, nodeInputRule } from '@tiptap/core';
 import katex from 'katex';
+import 'katex/dist/katex.min.css';
+import { promptForText } from '../../../utils/editorDialog';
 
 export const MathExtension = Node.create({
     name: 'math',
@@ -53,37 +55,76 @@ export const MathExtension = Node.create({
     },
 
     addNodeView() {
-        return ({ node }) => {
+        return ({ node, editor, getPos }) => {
+            let currentNode = node;
             const dom = document.createElement('span');
             dom.classList.add('math-node');
+            dom.tabIndex = 0;
+            dom.setAttribute('role', 'button');
+            dom.setAttribute('aria-label', '수식 편집');
+            dom.title = '더블 클릭하거나 Enter를 눌러 수식을 편집하세요.';
 
             const renderSpan = document.createElement('span');
             renderSpan.classList.add('math-render');
 
-            // Render math
-            try {
-                katex.render(node.attrs.latex || 'x', renderSpan, {
-                    throwOnError: false,
-                    output: 'html' // Use HTML mostly
+            const renderMath = () => {
+                try {
+                    katex.render(currentNode.attrs.latex || 'x', renderSpan, {
+                        throwOnError: false,
+                        output: 'html'
+                    });
+                } catch {
+                    renderSpan.innerText = 'Error';
+                }
+            };
+
+            const editMath = async () => {
+                const latex = await promptForText({
+                    title: 'LaTeX 수식 편집',
+                    defaultValue: currentNode.attrs.latex || 'x'
                 });
-            } catch {
-                renderSpan.innerText = 'Error';
-            }
+                if (latex === null || typeof getPos !== 'function') return;
+                const position = getPos();
+                if (typeof position !== 'number') return;
+                editor
+                    .chain()
+                    .focus()
+                    .setNodeSelection(position)
+                    .updateAttributes('math', { latex: latex.trim() || 'x' })
+                    .run();
+            };
+
+            const handleDoubleClick = () => void editMath();
+            const handleKeyDown = (event: KeyboardEvent) => {
+                if (!['Enter', ' '].includes(event.key)) return;
+                event.preventDefault();
+                void editMath();
+            };
+
+            renderMath();
 
             dom.appendChild(renderSpan);
-
-            // Simple click handler to potentiall edit (optional, for now just render)
-            // In a real implementation, you might want to show an input on click.
-            // For this task, getting rendering working from $..$ is priority.
+            dom.addEventListener('dblclick', handleDoubleClick);
+            dom.addEventListener('keydown', handleKeyDown);
 
             return {
                 dom,
+                update: updatedNode => {
+                    if (updatedNode.type !== currentNode.type) return false;
+                    currentNode = updatedNode;
+                    renderMath();
+                    return true;
+                },
                 selectNode: () => {
                     dom.classList.add('ProseMirror-selectednode');
                 },
                 deselectNode: () => {
                     dom.classList.remove('ProseMirror-selectednode');
                 },
+                destroy: () => {
+                    dom.removeEventListener('dblclick', handleDoubleClick);
+                    dom.removeEventListener('keydown', handleKeyDown);
+                }
             }
         }
     }

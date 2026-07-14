@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { renderContentJsonToHtml } from '../utils/contentRenderer.js';
+import { parseHtmlToContentJson, renderContentJsonToHtml } from '../utils/contentRenderer.js';
 
 const readProjectFile = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
 
@@ -25,6 +25,7 @@ test('frontend editor config and server renderer keep core extensions aligned', 
     'TableHeader',
     'TableCell',
     'MathExtension',
+    'MermaidExtension',
     'Typography',
     'ImageGallery',
     'Youtube',
@@ -81,6 +82,12 @@ test('server renderer handles rich editor custom nodes used by the frontend', ()
         }
       },
       {
+        type: 'mermaid',
+        attrs: {
+          source: 'flowchart TD\n    A[Start] --> B{Done?}'
+        }
+      },
+      {
         type: 'columns',
         attrs: { layout: 'two-column' },
         content: [
@@ -122,6 +129,9 @@ test('server renderer handles rich editor custom nodes used by the frontend', ()
   assert.match(html, /<h2>Renderer contract<\/h2>/);
   assert.match(html, /data-type="math"/);
   assert.match(html, /data-latex="x\^2"/);
+  assert.match(html, /data-type="mermaid"/);
+  assert.match(html, /class="language-mermaid"/);
+  assert.match(html, /A\[Start\] --&gt; B\{Done\?\}/);
   assert.match(html, /<figure class="post-image local-image">/);
   assert.match(html, /<figcaption>Example caption<\/figcaption>/);
   assert.match(html, /data-type="columns"/);
@@ -129,4 +139,8 @@ test('server renderer handles rich editor custom nodes used by the frontend', ()
   assert.match(html, /data-type="column"/);
   assert.match(html, /<link-card/);
   assert.match(html, /url="https:\/\/example.com"/);
+
+  const parsed = parseHtmlToContentJson(html);
+  const mermaidNode = parsed.content?.find(node => node.type === 'mermaid');
+  assert.equal(mermaidNode?.attrs?.source, 'flowchart TD\n    A[Start] --> B{Done?}');
 });

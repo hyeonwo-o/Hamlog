@@ -197,6 +197,43 @@ const MathExtension = Node.create({
     }
 });
 
+const MermaidExtension = Node.create({
+    name: 'mermaid',
+    group: 'block',
+    atom: true,
+    isolating: true,
+
+    addAttributes() {
+        return {
+            source: {
+                default: 'flowchart TD\n    A[시작] --> B[종료]',
+                parseHTML: element => (
+                    element.querySelector('code')?.textContent
+                    || element.getAttribute('data-source')
+                    || ''
+                ),
+                renderHTML: () => ({})
+            }
+        };
+    },
+
+    parseHTML() {
+        return [{ tag: 'div[data-type="mermaid"]' }];
+    },
+
+    renderHTML({ node, HTMLAttributes }) {
+        return [
+            'div',
+            mergeAttributes(HTMLAttributes, { 'data-type': 'mermaid' }),
+            [
+                'pre',
+                { class: 'mermaid-source' },
+                ['code', { class: 'language-mermaid' }, node.attrs.source]
+            ]
+        ];
+    }
+});
+
 const ImageGallery = Node.create({
     name: 'imageGallery',
     group: 'block',
@@ -244,6 +281,7 @@ const htmlRendererExtensions = [
     TableHeader,
     TableCell,
     MathExtension,
+    MermaidExtension,
     Typography,
     ImageGallery,
     Youtube.configure({ controls: false }),

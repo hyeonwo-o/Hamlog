@@ -23,13 +23,7 @@ export const HomeHeader = ({ profile, postCount, categoryCount }: HomeHeaderProp
     return (
         <header className="border-b border-[color:var(--border)]">
             <div className="mx-auto max-w-6xl px-4 py-6">
-                <nav className="flex flex-wrap items-center justify-between gap-4 text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                    <span className="font-display text-base font-semibold text-[var(--accent)]">
-                        {profile.title}
-                    </span>
-                </nav>
-
-                <div className="mt-6 grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
+                <div className="grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
                     <div className="space-y-5">
                         <div>
                             <h1 className="break-keep font-display text-2xl font-bold leading-tight tracking-tight text-[var(--text)] sm:text-3xl">

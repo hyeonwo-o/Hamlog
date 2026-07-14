@@ -13,7 +13,8 @@ interface PostState {
   loading: boolean;
   error: string | null;
   hasLoaded: boolean;
-  fetchPosts: () => Promise<void>;
+  loadedMode: 'none' | 'summary' | 'full';
+  fetchPosts: (mode?: 'summary' | 'full') => Promise<void>;
   addPost: (post: PostInput) => Promise<Post>;
   updatePost: (id: string, post: PostInput) => Promise<Post>;
   deletePost: (id: string) => Promise<void>;
@@ -30,17 +31,20 @@ export const usePostStore = create<PostState>((set, get) => ({
   loading: false,
   error: null,
   hasLoaded: false,
+  loadedMode: 'none',
 
-  fetchPosts: async () => {
+  fetchPosts: async (mode = 'full') => {
     if (get().loading) return;
+    if (get().loadedMode === 'full' && mode === 'summary') return;
     set({ loading: true, error: null });
     try {
-      const posts = await fetchPostsRequest();
-      set({ posts, loading: false, hasLoaded: true });
+      const posts = await fetchPostsRequest(mode === 'summary');
+      set({ posts, loading: false, hasLoaded: true, loadedMode: mode });
     } catch (error) {
       set({
         loading: false,
         hasLoaded: true,
+        loadedMode: mode,
         error: normalizeError(error, 'Failed to load posts.')
       });
     }
@@ -53,7 +57,8 @@ export const usePostStore = create<PostState>((set, get) => ({
       set(state => ({
         posts: [created, ...state.posts],
         loading: false,
-        hasLoaded: true
+        hasLoaded: true,
+        loadedMode: 'full'
       }));
       return created;
     } catch (error) {
@@ -69,7 +74,8 @@ export const usePostStore = create<PostState>((set, get) => ({
       set(state => ({
         posts: state.posts.map(item => (item.id === id ? updated : item)),
         loading: false,
-        hasLoaded: true
+        hasLoaded: true,
+        loadedMode: 'full'
       }));
       return updated;
     } catch (error) {
@@ -85,7 +91,8 @@ export const usePostStore = create<PostState>((set, get) => ({
       set(state => ({
         posts: state.posts.filter(item => item.id !== id),
         loading: false,
-        hasLoaded: true
+        hasLoaded: true,
+        loadedMode: 'full'
       }));
     } catch (error) {
       set({ loading: false, error: normalizeError(error, 'Failed to delete post.') });

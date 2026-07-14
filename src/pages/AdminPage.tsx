@@ -26,6 +26,7 @@ const AdminPage: React.FC = () => {
   const loading = usePostStore(state => state.loading);
   const postError = usePostStore(state => state.error);
   const hasLoaded = usePostStore(state => state.hasLoaded);
+  const loadedMode = usePostStore(state => state.loadedMode);
   const fetchPosts = usePostStore(state => state.fetchPosts);
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -92,7 +93,7 @@ const AdminPage: React.FC = () => {
 
   useAdminDataBootstrap({
     activeSection,
-    hasLoadedPosts: hasLoaded,
+    postsLoadedMode: loadedMode,
     postsLoading: loading,
     fetchPosts,
     loadCategories,

@@ -47,6 +47,48 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
   onCoverUpload
 }) => {
   const coverInputRef = React.useRef<HTMLInputElement>(null);
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const cancelButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    cancelButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, [onClose, open]);
 
   if (!open) return null;
 
@@ -63,10 +105,21 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
         : '공개 발행';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4 py-6">
-      <div className="max-h-[calc(100vh-3rem)] w-full max-w-[820px] overflow-y-auto border border-[color:var(--border)] bg-white">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4 py-6"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="publish-dialog-title"
+        className="max-h-[calc(100vh-3rem)] w-full max-w-[820px] overflow-y-auto border border-[color:var(--border)] bg-white"
+      >
         <div className="flex items-center justify-between border-b border-black px-6 py-4">
-          <h2 className="text-sm font-semibold text-[var(--text)]">발행 설정</h2>
+          <h2 id="publish-dialog-title" className="text-sm font-semibold text-[var(--text)]">발행 설정</h2>
           <span className="text-xs text-[var(--text-muted)]">저장 전 메타데이터 확인</span>
         </div>
 
@@ -238,6 +291,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
 
         <div className="flex justify-center gap-2 px-6 pb-6">
           <button
+            ref={cancelButtonRef}
             type="button"
             onClick={onClose}
             className="h-11 min-w-20 rounded-full border border-[color:var(--border)] px-6 text-sm text-[var(--text)] transition hover:bg-[var(--surface-muted)]"

@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getPosts,
+  getPostBySlug,
   createPost,
   recordPostView,
   updatePost,
@@ -22,5 +23,6 @@ router.get('/:id/revisions', authenticateToken, getPostRevisions);
 router.post('/:id/revisions/:revisionId/restore', authenticateToken, requireTrustedOrigin, restorePostRevision);
 router.put('/:id', authenticateToken, requireTrustedOrigin, updatePost);
 router.delete('/:id', authenticateToken, requireTrustedOrigin, deletePost);
+router.get('/:slug', getPostBySlug);
 
 export const postRouter = router;

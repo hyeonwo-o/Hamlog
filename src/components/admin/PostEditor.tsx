@@ -10,11 +10,15 @@ import type { CategoryTreeResult } from '../../utils/categoryTree';
 import { usePostForm, toDraft } from '../../hooks/usePostForm';
 import { useAutosave } from '../../hooks/useAutosave';
 import { usePostPersistence } from '../../hooks/usePostPersistence';
+import { usePostRevisions } from '../../hooks/usePostRevisions';
 import { usePostEditorShortcuts } from '../../hooks/usePostEditorShortcuts';
 import { usePostEditorActions } from '../../hooks/usePostEditorActions';
+import { usePostStore } from '../../store/postStore';
+import PublishDialog from './post/PublishDialog';
 import {
     normalizeContentHtmlForDirtyCheck,
-    normalizeContentJsonForDirtyCheck
+    normalizeContentJsonForDirtyCheck,
+    stripHtml
 } from '../../utils/postContent';
 
 const MAX_UPLOAD_MB = 8;
@@ -61,6 +65,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
     onDirtyChange
 }) => {
     const activeId = post?.id || null;
+    const refreshPosts = usePostStore(state => state.fetchPosts);
 
     // 1. Form Logic (extracted)
     const {
@@ -79,6 +84,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
 
     const [notice, setNotice] = useState('');
     const [previewMode, setPreviewMode] = useState(false);
+    const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+    const [publishStatus, setPublishStatus] = useState(draft.status);
     const editorRef = useRef<Editor | null>(null);
     const previewToggleTimeoutRef = useRef<number | null>(null);
     const preserveNoticeOnPostChangeRef = useRef(false);
@@ -109,6 +116,23 @@ const PostEditor: React.FC<PostEditorProps> = ({
         onLoadDraft: loadDraftSnapshot
     });
 
+    const {
+        revisions,
+        revisionsLoading,
+        restoringRevisionId,
+        loadRevisions,
+        handleRestoreRevision
+    } = usePostRevisions({
+        activeId,
+        setNotice,
+        onAfterRestore: useCallback(async (restoredPost: Post) => {
+            clearAutosave();
+            setDraft(toDraft(restoredPost));
+            await refreshPosts('full');
+            onSaveSuccess(restoredPost);
+        }, [clearAutosave, onSaveSuccess, refreshPosts, setDraft])
+    });
+
     // 3. Persistence Logic (extracted)
     const {
         handleSave,
@@ -120,7 +144,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
         onSaveSuccess: useCallback((savedPost: Post) => {
             preserveNoticeOnPostChangeRef.current = true;
             onSaveSuccess(savedPost);
-        }, [onSaveSuccess]),
+            void loadRevisions(savedPost.id);
+        }, [loadRevisions, onSaveSuccess]),
         onDeleteSuccess,
         setNotice,
         onAfterSave: useCallback(() => {
@@ -135,8 +160,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
         fileInputRef,
         uploadingImage,
         uploadError,
+        uploadValidatedImage,
         uploadImageToEditor,
-        handleSelectionUpdate,
         handlePaste,
         handleDrop,
         handleToolbarImageUpload,
@@ -151,7 +176,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
         contentJson: draft.contentJson,
         contentHtml: draft.contentHtml || '',
         setDraft,
-        handleSelectionUpdate,
         handlePaste,
         handleDrop
     });
@@ -239,14 +263,47 @@ const PostEditor: React.FC<PostEditorProps> = ({
         }
     }, [editor, activeId, draft.contentHtml, draft.contentJson, draftContentJsonKey]);
 
+    const contentStats = useMemo(() => {
+        const plainText = stripHtml(draft.contentHtml || '');
+        const words = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+        return {
+            chars: plainText.length,
+            words
+        };
+    }, [draft.contentHtml]);
+
     const handleImageUpload = async (file: File) => {
         await uploadImageToEditor(file);
     };
     const { handleCoverUpload, handleSetCoverFromContent, handleLink } = usePostEditorActions({
         editor,
         updateDraft,
-        setNotice
+        setNotice,
+        uploadImage: uploadValidatedImage
     });
+
+    const openPublishDialog = useCallback(() => {
+        setPublishStatus(draft.status);
+        setPublishDialogOpen(true);
+    }, [draft.status]);
+
+    const closePublishDialog = useCallback(() => {
+        if (!saving) setPublishDialogOpen(false);
+    }, [saving]);
+
+    const confirmPublishDialog = useCallback(async () => {
+        if (saving) return;
+        handleStatusChange(publishStatus);
+        const saved = await handleSave(
+            publishStatus === 'published'
+                ? '발행되었습니다.'
+                : publishStatus === 'scheduled'
+                    ? '예약 저장되었습니다.'
+                    : '비공개로 저장되었습니다.',
+            publishStatus
+        );
+        if (saved) setPublishDialogOpen(false);
+    }, [handleSave, handleStatusChange, publishStatus, saving]);
 
     usePostEditorShortcuts({
         onSaveDraft: () => {
@@ -255,9 +312,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
         onSave: () => {
             void handleSave('수동 저장되었습니다.');
         },
-        onPublish: () => {
-            void handleSave('발행되었습니다.', 'published');
-        },
+        onPublish: openPublishDialog,
         onTogglePreview: togglePreviewMode
     });
 
@@ -267,6 +322,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
             onStatusChange: handleStatusChange,
             onSave: handleSave,
             onDelete: () => void handleDelete(),
+            onPublish: openPublishDialog,
+            onRestoreRevision: (revisionId: string) => void handleRestoreRevision(revisionId),
             updateDraft,
             onTogglePreview: togglePreviewMode,
             onLink: handleLink
@@ -284,7 +341,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
             fileInputRef,
             onCoverUpload: handleCoverUpload,
             onSetCoverFromContent: handleSetCoverFromContent,
-            uploadLocalImage
+            uploadLocalImage: uploadValidatedImage
         },
         uiState: {
             notice,
@@ -294,6 +351,9 @@ const PostEditor: React.FC<PostEditorProps> = ({
             previewMode,
             uploadingImage,
             uploadError,
+            isDirty,
+            revisionsLoading,
+            restoringRevisionId,
             onNoticeClick: notice.includes('복구') ? handleRestoreAutosave : undefined,
             hasRestorableDraft,
             autosaveUpdatedAt,
@@ -303,12 +363,35 @@ const PostEditor: React.FC<PostEditorProps> = ({
         data: {
             draft,
             categoryTree,
+            revisions,
+            contentStats,
             currentCoverUrl: draft.cover,
             editor
         }
     };
 
-    return <PostEditorSection {...groupedProps} />;
+    return (
+        <>
+            <PostEditorSection {...groupedProps} />
+            <PublishDialog
+                open={publishDialogOpen}
+                draft={draft}
+                categoryTree={categoryTree}
+                status={publishStatus}
+                saving={saving}
+                tagInput={tagInput}
+                onTagInputChange={setTagInput}
+                onTagKeyDown={handleTagKeyDown}
+                onTagBlur={handleTagBlur}
+                onRemoveTag={removeTag}
+                onUpdateDraft={updateDraft}
+                onClose={closePublishDialog}
+                onStatusChange={setPublishStatus}
+                onConfirm={confirmPublishDialog}
+                onCoverUpload={handleCoverUpload}
+            />
+        </>
+    );
 };
 
 export default PostEditor;

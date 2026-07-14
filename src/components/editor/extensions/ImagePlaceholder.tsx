@@ -1,15 +1,30 @@
 
 import { NodeViewWrapper } from '@tiptap/react';
+import { useRef } from 'react';
 
 interface ImagePlaceholderProps {
     onUpload: (file: File) => Promise<void>;
-    onToolbarClick?: () => void;
 }
 
-export const ImagePlaceholder = ({ onUpload, onToolbarClick }: ImagePlaceholderProps) => {
+export const ImagePlaceholder = ({ onUpload }: ImagePlaceholderProps) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+
     return (
         <NodeViewWrapper className="image-component relative group flex flex-col items-center my-6">
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={event => {
+                    const file = event.target.files?.[0];
+                    if (file) void onUpload(file);
+                    event.target.value = '';
+                }}
+            />
             <div
+                role="button"
+                tabIndex={0}
                 onDragOver={(e) => {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'copy';
@@ -21,10 +36,11 @@ export const ImagePlaceholder = ({ onUpload, onToolbarClick }: ImagePlaceholderP
                         await onUpload(file);
                     }
                 }}
-                onClick={() => {
-                    if (onToolbarClick) {
-                        onToolbarClick();
-                    }
+                onClick={() => inputRef.current?.click()}
+                onKeyDown={event => {
+                    if (!['Enter', ' '].includes(event.key)) return;
+                    event.preventDefault();
+                    inputRef.current?.click();
                 }}
                 className="w-full h-48 bg-[var(--surface-muted)] border-2 border-dashed border-[color:var(--border)] rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--surface)] hover:border-[color:var(--accent)] transition-colors gap-2"
             >

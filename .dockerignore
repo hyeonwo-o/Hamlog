@@ -2,5 +2,11 @@ node_modules
 dist
 .git
 .github
+.env
 .DS_Store
 *.log
+server/data
+server/uploads
+test-results
+playwright-report
+.tmp

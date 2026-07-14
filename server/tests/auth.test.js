@@ -91,3 +91,16 @@ test('POST /api/auth/login should avoid secure cookie for direct HTTP same-origi
         }
     }
 });
+
+test('POST /api/auth/logout should require a trusted request origin', async () => {
+    const rejected = await request(app).post('/api/auth/logout');
+    assert.equal(rejected.status, 403);
+
+    const accepted = await request(app)
+        .post('/api/auth/logout')
+        .set('Origin', 'http://hamlog.test')
+        .set('Host', 'hamlog.test');
+
+    assert.equal(accepted.status, 200);
+    assert.equal(accepted.body.message, '로그아웃 성공');
+});

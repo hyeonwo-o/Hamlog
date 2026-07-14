@@ -15,6 +15,10 @@ export const usePostEditorShortcuts = ({
 }: UsePostEditorShortcutsOptions) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || document.querySelector('[role="dialog"][aria-modal="true"]')) {
+        return;
+      }
+
       const key = event.key.toLowerCase();
 
       if ((event.metaKey || event.ctrlKey) && key === 's') {

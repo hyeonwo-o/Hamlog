@@ -18,7 +18,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `PORT=${API_PORT} ADMIN_PASSWORD=${process.env.ADMIN_PASSWORD ?? 'e2e-password'} JWT_SECRET=${process.env.JWT_SECRET ?? 'e2e-secret'} CORS_ORIGINS=${WEB_ORIGIN} npm run server`,
+      command: `HAMLOG_DATA_DIR=.tmp/e2e/data HAMLOG_UPLOAD_DIR=.tmp/e2e/uploads PORT=${API_PORT} ADMIN_PASSWORD=${process.env.ADMIN_PASSWORD ?? 'e2e-password'} JWT_SECRET=${process.env.JWT_SECRET ?? 'e2e-secret'} CORS_ORIGINS=${WEB_ORIGIN} npm run server`,
       url: `${API_ORIGIN}/api/health`,
       reuseExistingServer: shouldReuseServer,
       timeout: 30_000

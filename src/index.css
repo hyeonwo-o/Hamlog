@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Nanum+Gothic:wght@400;700&display=swap');
 
-@import 'katex/dist/katex.min.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -459,6 +458,106 @@ body::before {
   color: #e2e8f0;
 }
 
+.mermaid-block,
+.mermaid-node {
+  width: 100%;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.mermaid-block {
+  padding: 18px;
+}
+
+.mermaid-node {
+  padding: 0;
+}
+
+.mermaid-node__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.mermaid-node__header button {
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface);
+  padding: 5px 10px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.mermaid-node__header button:hover,
+.mermaid-node__header button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  outline: none;
+}
+
+.mermaid-render {
+  min-height: 96px;
+  overflow-x: auto;
+  padding: 18px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.mermaid-block > .mermaid-render {
+  padding: 0;
+}
+
+.mermaid-render svg {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.mermaid-render--error,
+.mermaid-error {
+  color: #b91c1c;
+}
+
+.mermaid-status {
+  padding: 18px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.mermaid-error {
+  display: grid;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.mermaid-error pre,
+.rich-content .mermaid-error pre {
+  margin: 4px 0 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.mermaid-node.ProseMirror-selectednode {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 .hljs-comment,
 .hljs-quote {
   color: #94a3b8;
@@ -612,6 +711,11 @@ body::before {
 .tiptap-editor figcaption {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.rich-content .mermaid-block {
+  display: block;
+  margin: 1.5rem 0;
 }
 
 .post-heading {

@@ -110,6 +110,7 @@ const HomePage = () => {
                         loading={loading}
                         error={error}
                         onSelectCategory={selectCategory}
+                        onSearchChange={setSearchQuery}
                         onClearSearch={() => setSearchQuery('')}
                     />
                 </main>
