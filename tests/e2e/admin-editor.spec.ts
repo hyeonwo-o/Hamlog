@@ -270,14 +270,15 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
   await page.getByPlaceholder('검색 결과 제목').fill(seoTitle);
 
   await page.getByTestId('post-publish-button').click();
-  await expect(page.getByRole('heading', { name: '발행' })).toBeVisible();
-  await page.locator('input[type="radio"]').first().check();
+  const publishDialog = page.getByRole('dialog', { name: '발행 설정' });
+  await expect(publishDialog).toBeVisible();
+  await publishDialog.locator('input[type="radio"]').first().check();
 
   await Promise.all([
     page.waitForResponse(response =>
       response.url().includes('/api/posts') && response.request().method() === 'POST'
     ),
-    page.getByRole('button', { name: '공개 발행' }).click()
+    publishDialog.getByRole('button', { name: '공개 발행' }).click()
   ]);
 
   await expect(page.getByText('발행되었습니다.')).toBeVisible();
