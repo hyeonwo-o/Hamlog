@@ -4,6 +4,7 @@ import parse from 'html-react-parser';
 import type { DOMNode, HTMLReactParserOptions, Element } from 'html-react-parser';
 import type { ChildNode } from 'domhandler';
 import { Copy, Check, Terminal } from 'lucide-react';
+import { resolveMermaidCodeBlockSource } from '../utils/mermaid';
 
 interface PostContentProps {
   contentHtml?: string;
@@ -230,10 +231,11 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
             .replace(/&amp;/g, '&');
 
           const normalizedCode = codeContent.trimEnd();
-          if (language === 'mermaid') {
+          const mermaidSource = resolveMermaidCodeBlockSource(language, normalizedCode);
+          if (mermaidSource !== null) {
             return (
               <Suspense fallback={<div className="mermaid-status">다이어그램을 불러오는 중...</div>}>
-                <MermaidContent source={normalizedCode} />
+                <MermaidContent source={mermaidSource} />
               </Suspense>
             );
           }

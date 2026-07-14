@@ -103,6 +103,9 @@ test('admin editor toolbar is grouped and accessible', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Mermaid 다이어그램/ })).toBeVisible();
   await page.keyboard.press('Escape');
 
+  await toolbar.getByRole('button', { name: '코드 블록' }).click();
+  await expect(page.getByRole('group', { name: '코드 언어 선택' }).getByRole('button', { name: 'Mermaid' })).toBeVisible();
+
   await expect(page.getByRole('heading', { name: '발행과 메타' })).toBeVisible();
   await page.getByRole('button', { name: /^SEO/ }).click();
   await expect(page.getByPlaceholder('검색 결과 제목')).toBeVisible();
@@ -130,16 +133,23 @@ test('admin editor inserts, renders, and reopens Mermaid diagrams', async ({ pag
 
   const insertDialog = page.getByRole('dialog', { name: 'Mermaid 다이어그램 삽입' });
   const sourceInput = insertDialog.getByRole('textbox', { name: 'Mermaid 다이어그램 삽입' });
-  await sourceInput.fill('flowchart LR\n    A[Write] --> B[Preview]');
+  const normalizedSource = [
+    '%%{init: {"htmlLabels": true}}%%',
+    'flowchart LR',
+    '    A["사용자 브라우저"] --> B["Nginx<br/>80 · 443"]'
+  ].join('\n');
+  const fencedSource = ['```mermaid', normalizedSource, '```'].join('\n');
+  await sourceInput.fill(fencedSource);
   await insertDialog.getByRole('button', { name: '삽입' }).click();
 
   const mermaidNode = page.locator('.mermaid-node');
   await expect(mermaidNode).toBeVisible();
   await expect(mermaidNode.locator('.mermaid-render svg')).toBeVisible({ timeout: 15_000 });
+  await expect(mermaidNode.locator('.mermaid-render svg')).toContainText('사용자 브라우저');
 
   await mermaidNode.getByRole('button', { name: 'Mermaid 소스 편집' }).click();
   const editDialog = page.getByRole('dialog', { name: 'Mermaid 다이어그램 편집' });
-  await expect(editDialog.getByRole('textbox')).toHaveValue('flowchart LR\n    A[Write] --> B[Preview]');
+  await expect(editDialog.getByRole('textbox')).toHaveValue(normalizedSource);
   await page.keyboard.press('Escape');
 });
 

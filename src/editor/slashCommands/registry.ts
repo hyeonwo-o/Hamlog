@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { API_BASE_URL } from '../../api/client';
 import { promptForText, showEditorToast } from '../../utils/editorDialog';
-import { DEFAULT_MERMAID_SOURCE } from '../../utils/mermaid';
+import { DEFAULT_MERMAID_SOURCE, normalizeMermaidSource } from '../../utils/mermaid';
 import type { SlashCommandContext, SlashCommandItem } from './types';
 
 const createColumnContent = (count: 2 | 3, contentType: 'paragraph' | 'image') => {
@@ -219,17 +219,18 @@ export const getSlashCommandItems = (): SlashCommandItem[] => [
     },
     () => promptForText({
       title: 'Mermaid 다이어그램 삽입',
-      description: 'Mermaid 문법을 입력하세요. Ctrl/Cmd + Enter로 삽입할 수 있습니다.',
+      description: 'Mermaid 문법이나 ```mermaid 펜스 블록을 입력하세요. Ctrl/Cmd + Enter로 삽입할 수 있습니다.',
       defaultValue: DEFAULT_MERMAID_SOURCE,
       confirmText: '삽입',
       multiline: true
     }),
     ({ editor, range }, source) => {
+      const normalizedSource = normalizeMermaidSource(source);
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContent({ type: 'mermaid', attrs: { source } })
+        .insertContent({ type: 'mermaid', attrs: { source: normalizedSource } })
         .run();
     }
   ),

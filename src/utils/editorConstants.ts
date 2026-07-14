@@ -16,6 +16,7 @@ export const CODE_LANGUAGES = [
     { value: 'typescript', label: 'TypeScript' },
     { value: 'json', label: 'JSON' },
     { value: 'markdown', label: 'Markdown' },
+    { value: 'mermaid', label: 'Mermaid' },
     { value: 'python', label: 'Python' },
     { value: 'sql', label: 'SQL' }
 ];

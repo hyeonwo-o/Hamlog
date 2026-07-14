@@ -7,6 +7,30 @@ export const DEFAULT_MERMAID_SOURCE = `flowchart TD
 
 export const MAX_MERMAID_SOURCE_LENGTH = 20_000;
 
+const normalizeLineEndings = (source: string) => source.replace(/\r\n?/g, '\n').trim();
+
+export const extractMermaidFencedSource = (source: string) => {
+  const normalizedSource = normalizeLineEndings(source);
+  const openingFence = normalizedSource.match(/^[ \t]*(`{3,}|~{3,})[ \t]*mermaid[ \t]*\n/i);
+  if (!openingFence) return null;
+
+  const fence = openingFence[1];
+  const bodyLines = normalizedSource.slice(openingFence[0].length).split('\n');
+  if (bodyLines.at(-1)?.trim() === fence) bodyLines.pop();
+
+  return bodyLines.join('\n').trim();
+};
+
+export const normalizeMermaidSource = (source: string) => (
+  extractMermaidFencedSource(source) ?? normalizeLineEndings(source)
+);
+
+export const resolveMermaidCodeBlockSource = (language: string, source: string) => {
+  const fencedSource = extractMermaidFencedSource(source);
+  if (language.toLowerCase() === 'mermaid') return fencedSource ?? normalizeMermaidSource(source);
+  return fencedSource;
+};
+
 type MermaidApi = (typeof import('mermaid'))['default'];
 
 let mermaidPromise: Promise<MermaidApi> | null = null;
@@ -18,10 +42,12 @@ const loadMermaid = () => {
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: 'strict',
+        htmlLabels: false,
         secure: [
           'secure',
           'securityLevel',
           'startOnLoad',
+          'htmlLabels',
           'maxTextSize',
           'suppressErrorRendering'
         ],
@@ -29,7 +55,6 @@ const loadMermaid = () => {
         suppressErrorRendering: true,
         theme: 'neutral',
         flowchart: {
-          htmlLabels: false,
           useMaxWidth: true
         },
         sequence: {
@@ -45,7 +70,7 @@ const loadMermaid = () => {
 };
 
 export const renderMermaidToSvg = async (source: string) => {
-  const normalizedSource = source.trim();
+  const normalizedSource = normalizeMermaidSource(source);
   if (!normalizedSource) {
     throw new Error('Mermaid 소스가 비어 있습니다.');
   }

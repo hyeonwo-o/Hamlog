@@ -1,8 +1,12 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { promptForText } from '../../../utils/editorDialog';
-import { DEFAULT_MERMAID_SOURCE, renderMermaidToSvg } from '../../../utils/mermaid';
+import {
+  DEFAULT_MERMAID_SOURCE,
+  normalizeMermaidSource,
+  renderMermaidToSvg
+} from '../../../utils/mermaid';
 
-const readMermaidSource = (element: HTMLElement) => (
+const readMermaidSource = (element: HTMLElement) => normalizeMermaidSource(
   element.querySelector('code')?.textContent
   || element.getAttribute('data-source')
   || DEFAULT_MERMAID_SOURCE
@@ -94,12 +98,12 @@ export const MermaidExtension = Node.create({
       const editMermaid = async () => {
         const source = await promptForText({
           title: 'Mermaid 다이어그램 편집',
-          description: 'Mermaid 문법을 입력하세요. Ctrl/Cmd + Enter로 적용할 수 있습니다.',
-          defaultValue: String(currentNode.attrs.source || DEFAULT_MERMAID_SOURCE),
+          description: 'Mermaid 문법이나 ```mermaid 펜스 블록을 입력하세요. Ctrl/Cmd + Enter로 적용할 수 있습니다.',
+          defaultValue: normalizeMermaidSource(String(currentNode.attrs.source || DEFAULT_MERMAID_SOURCE)),
           confirmText: '적용',
           multiline: true
         });
-        const normalizedSource = source?.trim();
+        const normalizedSource = source ? normalizeMermaidSource(source) : '';
         if (!normalizedSource || typeof getPos !== 'function') return;
         const position = getPos();
         if (typeof position !== 'number') return;
