@@ -74,11 +74,7 @@ jobs:
 
   deploy:
     needs: build-and-push
-    strategy:
-      fail-fast: false
-      matrix:
-        runner-label: [blog, minecraft]
-    runs-on: [self-hosted, "${{ matrix.runner-label }}"]
+    runs-on: [self-hosted, blog]
     if: github.ref == 'refs/heads/main'
     environment: production
     
@@ -213,7 +209,7 @@ jobs:
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
           -d text="✅ *Deployment Successful!*
           
-          Runner: ${{ matrix.runner-label }}
+          Runner: blog
           Commit: ${{ github.sha }}
           New version is live on HamLog." \
           -d parse_mode="Markdown"
@@ -225,7 +221,7 @@ jobs:
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
           -d text="❌ *Deployment Failed!*
           
-          Runner: ${{ matrix.runner-label }}
+          Runner: blog
           Commit: ${{ github.sha }}
           Please check GitHub Actions for details." \
           -d parse_mode="Markdown"
