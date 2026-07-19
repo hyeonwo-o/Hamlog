@@ -10,6 +10,12 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      APP_VERSION: ${APP_VERSION:-local}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: always

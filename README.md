@@ -68,6 +68,8 @@ npm run verify:data
 ## Environment Variables
 ### Backend (`server`)
 - `PORT` (default: `4000`)
+- `APP_VERSION` (optional)
+  - `/api/health`에 노출할 배포 버전. 운영 GitHub Actions는 커밋 SHA 앞 7자를 자동 주입합니다.
 - `HAMLOG_DATA_DIR` (optional, default: `server/data`)
   - JSON 저장 경로. 테스트는 실제 데이터를 보호하기 위해 `.tmp` 경로로 재지정합니다.
 - `HAMLOG_UPLOAD_DIR` (optional, default: `server/uploads`)
@@ -148,3 +150,44 @@ docker compose up -d --build
 `.github/workflows/docker-deploy.yml`
 - `main` push 시 Docker 이미지를 빌드하여 GHCR에 업로드
 - Self-Hosted Runner가 운영 서버에서 최신 이미지를 pull/run (포트 4000)
+- 배포 전 `$HOME/hamlog-data`를 `$HOME/hamlog-backups`에 백업하고 14일간 보관
+- 새 컨테이너의 로컬 및 `SITE_URL` 공개 헬스 응답에서 커밋 버전을 확인
+- 헬스체크 실패 시 직전 Docker 이미지로 자동 롤백
+- 컨테이너 로그는 파일당 10MB, 최대 3개로 회전
+- GitHub 호스티드 러너가 15분마다 홈·그래프·헬스 API를 외부에서 점검
+
+외부 점검 주소를 바꾸려면 Repository Variable `PUBLIC_SITE_URL`을 설정합니다.
+미설정 시 `https://tech.hamwoo.co.kr`을 사용합니다.
+
+## Backup and Restore
+
+운영 배포는 데이터와 업로드를 잠시 멈춘 뒤 일관된 `tar.gz` 백업과 SHA-256 체크섬을 생성합니다.
+수동 백업도 같은 스크립트를 사용할 수 있습니다.
+
+```bash
+BACKUP_RETENTION_DAYS=14 \
+  bash scripts/backup-data.sh "$HOME/hamlog-data" "$HOME/hamlog-backups"
+```
+
+복구 전에는 체크섬과 압축 파일을 먼저 검증합니다.
+
+```bash
+cd "$HOME/hamlog-backups"
+sha256sum -c hamlog-YYYYMMDDTHHMMSSZ-SHA.tar.gz.sha256
+
+docker stop hamlog
+tar -xzf hamlog-YYYYMMDDTHHMMSSZ-SHA.tar.gz -C "$HOME/hamlog-data"
+docker start hamlog
+```
+
+이 백업은 동일 호스트의 배포·데이터 손상 복구용입니다. 호스트 장애에 대비하려면
+`$HOME/hamlog-backups`를 별도의 암호화된 오브젝트 스토리지나 백업 서버로 동기화해야 합니다.
+
+## Recommended Branch Protection
+
+GitHub의 `main`과 `develop`에 다음 보호 규칙을 적용하는 것을 권장합니다.
+
+- Pull Request를 통한 변경만 허용
+- 병합 전 최신 CI 상태 검사 필수
+- 강제 푸시와 브랜치 삭제 금지
+- `main`은 운영 환경 승인 또는 지정 관리자 병합만 허용
