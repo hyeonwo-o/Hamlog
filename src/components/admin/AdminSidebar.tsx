@@ -63,10 +63,10 @@ export default function AdminSidebar({
   ];
 
   return (
-    <aside className={`angular-panel flex flex-col gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 ${
+    <aside className={`angular-panel flex min-w-0 flex-col gap-4 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-4 ${
       embedded
         ? ''
-        : 'h-full overflow-y-auto lg:sticky lg:top-24 lg:h-[calc(100vh-110px)]'
+        : '2xl:sticky 2xl:top-24 2xl:max-h-[calc(100vh-110px)] 2xl:overflow-y-auto'
     }`}>
       <SidebarSummary
         totalCount={totalCount}

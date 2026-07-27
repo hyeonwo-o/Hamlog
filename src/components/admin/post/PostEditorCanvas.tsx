@@ -45,7 +45,7 @@ export default function PostEditorCanvas({
   return (
     <>
       <div
-        className={`sticky top-[calc(var(--admin-header-offset)+var(--admin-post-command-offset))] z-20 ${toolbarStateClass}`}
+        className={`relative z-20 sm:sticky sm:top-[calc(var(--admin-header-offset)+var(--admin-post-command-offset))] ${toolbarStateClass}`}
         aria-hidden={previewMode}
       >
         <EditorToolbar

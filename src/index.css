@@ -86,19 +86,19 @@ body::before {
   }
 
   .admin-compact {
-    --admin-header-offset: 56px;
-    --admin-post-command-offset: 42px;
+    --admin-header-offset: 59px;
+    --admin-post-command-offset: 48px;
   }
 
   @media (max-width: 1023px) {
     .admin-compact {
-      --admin-post-command-offset: 76px;
+      --admin-post-command-offset: 86px;
     }
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 639px) {
     .admin-compact {
-      --admin-header-offset: 96px;
+      --admin-header-offset: 105px;
     }
   }
 

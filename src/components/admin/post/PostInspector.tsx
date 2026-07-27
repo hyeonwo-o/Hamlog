@@ -197,7 +197,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   return (
     <aside className={embedded
       ? 'space-y-4'
-      : 'space-y-4 self-start 2xl:sticky 2xl:top-[calc(var(--admin-header-offset)+var(--admin-post-command-offset)+0.75rem)] 2xl:max-h-[calc(100vh-var(--admin-header-offset)-var(--admin-post-command-offset)-1.5rem)] 2xl:overflow-y-auto 2xl:pr-1'}>
+      : 'min-w-0 space-y-4 self-start lg:sticky lg:top-[calc(var(--admin-header-offset)+var(--admin-post-command-offset)+0.75rem)] lg:max-h-[calc(100vh-var(--admin-header-offset)-var(--admin-post-command-offset)-1.5rem)] lg:overflow-y-auto lg:pr-1'}>
       <PostInspectorSection
         title="발행과 메타"
         description="카테고리, 일정, 대표 이미지, 요약을 이 패널에서 관리합니다."

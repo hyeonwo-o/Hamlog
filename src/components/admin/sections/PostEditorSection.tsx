@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { PostRevision, PostStatus } from '../../../data/blogData';
 import type { PostDraft } from '../../../types/admin';
@@ -13,7 +13,6 @@ import { useEditorToc } from '../../../hooks/useEditorToc';
 
 export interface EditorHandlers {
   onTitleChange: (value: string) => void;
-  onStatusChange: (value: PostStatus) => void;
   onSave: (message?: string, statusOverride?: PostStatus) => Promise<boolean>;
   onDelete: () => void;
   onPublish: () => void;
@@ -73,6 +72,8 @@ interface PostEditorSectionProps {
   mediaHandlers: MediaHandlers;
   uiState: UIState;
   data: EditorData;
+  postListOpen?: boolean;
+  onOpenPostList?: () => void;
 }
 
 const PostEditorSection: React.FC<PostEditorSectionProps> = ({
@@ -80,8 +81,13 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
   tagHandlers,
   mediaHandlers,
   uiState,
-  data
+  data,
+  postListOpen,
+  onOpenPostList
 }) => {
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const commandBarRef = useRef<HTMLDivElement>(null);
   const { draft, categoryTree, revisions, contentStats, currentCoverUrl, editor } = data;
   const {
     notice,
@@ -102,7 +108,6 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
   } = uiState;
   const {
     onTitleChange,
-    onStatusChange,
     onSave,
     onDelete,
     onPublish,
@@ -123,6 +128,30 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
   } = mediaHandlers;
   const { tocItems, handleTocLinkClick } = useEditorToc(editor);
 
+  useLayoutEffect(() => {
+    const section = sectionRef.current;
+    const commandBar = commandBarRef.current;
+    if (!section || !commandBar) return;
+
+    const syncCommandBarHeight = () => {
+      const height = Math.ceil(commandBar.getBoundingClientRect().height);
+      if (height <= 0) return;
+      section.style.setProperty('--admin-post-command-offset', `${height}px`);
+    };
+
+    syncCommandBarHeight();
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(syncCommandBarHeight)
+      : null;
+    resizeObserver?.observe(commandBar);
+    window.addEventListener('resize', syncCommandBarHeight);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', syncCommandBarHeight);
+    };
+  }, []);
+
   const autosaveLabel = (() => {
     if (!autosaveUpdatedAt) return '';
     const timestamp = new Date(autosaveUpdatedAt);
@@ -136,8 +165,11 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
   })();
 
   return (
-    <div className="mx-auto max-w-none">
-      <div className="sticky top-[var(--admin-header-offset)] z-20 border-b border-[color:var(--border)] bg-white/95 backdrop-blur">
+    <div ref={sectionRef} className="mx-auto min-w-0 max-w-none">
+      <div
+        ref={commandBarRef}
+        className="sticky top-[var(--admin-header-offset)] z-30 border-b border-[color:var(--border)] bg-white/95 backdrop-blur"
+      >
         <div className="mx-auto flex max-w-[1500px] flex-col gap-1.5 px-3 py-1.5 lg:flex-row lg:items-center lg:justify-between">
           <PostCommandBar
             activeId={activeId}
@@ -151,7 +183,10 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
             autosaveLabel={autosaveLabel}
             onRestoreAutosave={onRestoreAutosave}
             onDiscardAutosave={onDiscardAutosave}
-            onStatusChange={onStatusChange}
+            inspectorOpen={inspectorOpen}
+            onToggleInspector={() => setInspectorOpen(current => !current)}
+            postListOpen={postListOpen}
+            onOpenPostList={onOpenPostList}
             onTogglePreview={onTogglePreview}
             onSave={() => void onSave('수동 저장되었습니다.')}
             onPublish={onPublish}
@@ -160,7 +195,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-[1500px] gap-4 px-3 2xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mx-auto grid min-w-0 max-w-[1500px] gap-4 px-3 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
           <PostEditorCanvas
             editor={editor}
@@ -185,7 +220,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
                 defaultOptionLabel={DEFAULT_CATEGORY}
                 recentStorageKey="hamlog:admin:editor-categories"
                 triggerClassName="flex h-8 w-full max-w-[260px] items-center justify-between border border-[color:var(--border)] bg-white px-2.5 text-xs text-[var(--text-muted)] transition hover:border-[color:var(--accent)]"
-                panelClassName="absolute left-0 top-full z-40 mt-2 w-full min-w-[320px] rounded-lg border border-[color:var(--border)] bg-white p-3 shadow-lg"
+                panelClassName="absolute left-0 top-full z-40 mt-2 w-[min(320px,calc(100vw-2rem))] rounded-lg border border-[color:var(--border)] bg-white p-3 shadow-lg"
               />
 
               <PostEditorHeader
@@ -223,25 +258,30 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
           <div className="h-8" />
         </div>
 
-        <PostInspector
-          activeId={activeId}
-          draft={draft}
-          categoryTree={categoryTree}
-          revisions={revisions}
-          revisionsLoading={revisionsLoading}
-          restoringRevisionId={restoringRevisionId}
-          contentStats={contentStats}
-          tagInput={tagInput}
-          onTagInputChange={onInputChange}
-          onTagKeyDown={onKeyDown}
-          onTagBlur={onBlur}
-          onRemoveTag={onRemove}
-          onUpdateDraft={updateDraft}
-          onCoverUpload={onCoverUpload}
-          onRestoreRevision={onRestoreRevision}
-          tocItems={tocItems}
-          onTocLinkClick={handleTocLinkClick}
-        />
+        <div
+          id="post-inspector-panel"
+          className={`${inspectorOpen ? 'block' : 'hidden'} order-first min-w-0 lg:order-none lg:block`}
+        >
+          <PostInspector
+            activeId={activeId}
+            draft={draft}
+            categoryTree={categoryTree}
+            revisions={revisions}
+            revisionsLoading={revisionsLoading}
+            restoringRevisionId={restoringRevisionId}
+            contentStats={contentStats}
+            tagInput={tagInput}
+            onTagInputChange={onInputChange}
+            onTagKeyDown={onKeyDown}
+            onTagBlur={onBlur}
+            onRemoveTag={onRemove}
+            onUpdateDraft={updateDraft}
+            onCoverUpload={onCoverUpload}
+            onRestoreRevision={onRestoreRevision}
+            tocItems={tocItems}
+            onTocLinkClick={handleTocLinkClick}
+          />
+        </div>
       </div>
     </div>
   );

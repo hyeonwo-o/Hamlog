@@ -24,9 +24,9 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
   onBeforeNavigateHome
 }) => (
   <header className="sticky top-0 z-10 border-b border-[color:var(--border)] bg-[var(--surface-overlay)] backdrop-blur-md">
-    <div className="mx-auto flex max-w-[1700px] flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div className="mx-auto flex max-w-[1700px] flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between">
       {logoutError && (
-        <p className="min-w-[160px] text-xs text-[var(--accent-strong)]">{logoutError}</p>
+        <p className="sr-only" role="alert">{logoutError}</p>
       )}
       <AdminNav
         activeSection={activeSection}
