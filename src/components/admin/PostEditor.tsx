@@ -54,6 +54,8 @@ interface PostEditorProps {
     categoryTree: CategoryTreeResult;
     onLoadCategories: () => void | Promise<void>;
     onDirtyChange?: (dirty: boolean) => void;
+    postListOpen?: boolean;
+    onOpenPostList?: () => void;
 }
 
 const PostEditor: React.FC<PostEditorProps> = ({
@@ -62,7 +64,9 @@ const PostEditor: React.FC<PostEditorProps> = ({
     onDeleteSuccess,
     categoryTree,
     onLoadCategories,
-    onDirtyChange
+    onDirtyChange,
+    postListOpen,
+    onOpenPostList
 }) => {
     const activeId = post?.id || null;
     const refreshPosts = usePostStore(state => state.fetchPosts);
@@ -76,7 +80,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
         setTagInput,
         updateDraft,
         handleTitleChange,
-        handleStatusChange,
         removeTag,
         handleTagKeyDown,
         handleTagBlur
@@ -293,7 +296,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
 
     const confirmPublishDialog = useCallback(async () => {
         if (saving) return;
-        handleStatusChange(publishStatus);
         const saved = await handleSave(
             publishStatus === 'published'
                 ? '발행되었습니다.'
@@ -303,11 +305,15 @@ const PostEditor: React.FC<PostEditorProps> = ({
             publishStatus
         );
         if (saved) setPublishDialogOpen(false);
-    }, [handleSave, handleStatusChange, publishStatus, saving]);
+    }, [handleSave, publishStatus, saving]);
 
     usePostEditorShortcuts({
         onSaveDraft: () => {
-            void handleSave('초안으로 저장되었습니다.', 'draft');
+            if (draft.status === 'draft') {
+                void handleSave('초안으로 저장되었습니다.', 'draft');
+                return;
+            }
+            openPublishDialog();
         },
         onSave: () => {
             void handleSave('수동 저장되었습니다.');
@@ -319,7 +325,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
     const groupedProps = {
         editorHandlers: {
             onTitleChange: handleTitleChange,
-            onStatusChange: handleStatusChange,
             onSave: handleSave,
             onDelete: () => void handleDelete(),
             onPublish: openPublishDialog,
@@ -372,7 +377,11 @@ const PostEditor: React.FC<PostEditorProps> = ({
 
     return (
         <>
-            <PostEditorSection {...groupedProps} />
+            <PostEditorSection
+                {...groupedProps}
+                postListOpen={postListOpen}
+                onOpenPostList={onOpenPostList}
+            />
             <PublishDialog
                 open={publishDialogOpen}
                 draft={draft}

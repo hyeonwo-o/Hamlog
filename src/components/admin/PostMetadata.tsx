@@ -63,12 +63,12 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
             {/* Cover Image - Col 12 */}
             <div className={isInspector ? '' : 'md:col-span-12'}>
                 <label className="block text-[10px] text-[var(--text-muted)] mb-1">대표 이미지 (URL)</label>
-                <div className="flex gap-2">
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
                     <input
                         value={draft.cover}
                         onChange={(e) => updateDraft({ cover: e.target.value })}
                         placeholder="https://..."
-                        className={`angular-control flex-1 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
+                        className={`angular-control min-w-0 flex-1 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
                     />
                     <input
                         ref={coverInputRef}
@@ -86,7 +86,7 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
                     <button
                         type="button"
                         onClick={() => coverInputRef.current?.click()}
-                        className={`angular-control rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface-muted)]' : 'bg-[var(--surface)]'} px-3 py-2 text-sm font-medium hover:bg-[var(--surface-muted)]`}
+                        className={`angular-control shrink-0 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface-muted)]' : 'bg-[var(--surface)]'} px-3 py-2 text-sm font-medium hover:bg-[var(--surface-muted)]`}
                         title="이미지 업로드"
                     >
                         📁
@@ -97,15 +97,15 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
             {/* Summary - Full Width */}
             <div className={isInspector ? '' : 'md:col-span-12'}>
                 <label className="block text-[10px] text-[var(--text-muted)] mb-1">요약 / 인기글</label>
-                <div className="flex gap-2">
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
                     <textarea
                         value={draft.summary}
                         onChange={(e) => updateDraft({ summary: e.target.value })}
                         rows={1}
-                        className={`angular-control flex-1 rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none resize-none`}
+                        className={`angular-control min-w-0 flex-1 resize-none rounded-xl border border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} px-3 py-2 text-sm text-[var(--text)] focus:border-[color:var(--accent)] focus:outline-none`}
                         placeholder="글 요약..."
                     />
-                    <label className={`angular-control flex cursor-pointer items-center gap-2 rounded-xl border px-3 transition-colors ${draft.featured ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]' : `border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} text-[var(--text-muted)]`}`}>
+                    <label className={`angular-control flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border px-3 transition-colors ${draft.featured ? 'border-[color:var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]' : `border-[color:var(--border)] ${isInspector ? 'bg-[var(--surface)]' : 'bg-[var(--surface-muted)]'} text-[var(--text-muted)]`}`}>
                         <input type="checkbox" checked={draft.featured} onChange={(e) => updateDraft({ featured: e.target.checked })} className="hidden" />
                         <span className="text-xs font-bold">인기</span>
                     </label>

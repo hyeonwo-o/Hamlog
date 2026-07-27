@@ -106,6 +106,7 @@ test('admin editor toolbar is grouped and accessible', async ({ page }) => {
   await toolbar.getByRole('button', { name: '코드 블록' }).click();
   await expect(page.getByRole('group', { name: '코드 언어 선택' }).getByRole('button', { name: 'Mermaid' })).toBeVisible();
 
+  await page.getByRole('button', { name: '글 설정 열기' }).click();
   await expect(page.getByRole('heading', { name: '발행과 메타' })).toBeVisible();
   await page.getByRole('button', { name: /^SEO/ }).click();
   await expect(page.getByPlaceholder('검색 결과 제목')).toBeVisible();
@@ -122,6 +123,34 @@ test('admin editor toolbar is grouped and accessible', async ({ page }) => {
     clientWidth: node.clientWidth
   }));
   expect(toolbarOverflow.scrollWidth).toBeGreaterThan(toolbarOverflow.clientWidth);
+});
+
+test('admin editor keeps the mobile workspace focused without page overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openAdminEditor(page);
+
+  const titleInput = page.getByPlaceholder('제목을 입력하세요');
+  await expect(titleInput).toBeVisible();
+  await expect(page.getByLabel('현재 글 상태: 초안')).toContainText('현재: 초안');
+  await expect(page.locator('select[aria-label="글 상태"]')).toHaveCount(0);
+
+  const pageWidth = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth
+  }));
+  expect(pageWidth.scrollWidth).toBeLessThanOrEqual(pageWidth.clientWidth);
+
+  const listToggle = page.getByRole('button', { name: '목록', exact: true });
+  await expect(listToggle).toHaveAttribute('aria-expanded', 'false');
+  await listToggle.click();
+  await expect(titleInput).toBeHidden();
+  await expect(page.getByRole('heading', { name: /개 글/ })).toBeVisible();
+
+  const returnToEditor = page.getByRole('button', { name: '편집기로 돌아가기' });
+  await expect(returnToEditor).toBeFocused();
+  await returnToEditor.click();
+  await expect(titleInput).toBeVisible();
+  await expect(listToggle).toBeFocused();
 });
 
 test('admin editor inserts, renders, and reopens Mermaid diagrams', async ({ page }) => {
@@ -231,6 +260,20 @@ test('publish shortcut opens the confirmation dialog instead of publishing immed
 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
+});
+
+test('failed publish validation keeps the editor in draft status', async ({ page }) => {
+  await openAdminEditor(page);
+  await page.getByPlaceholder('제목을 입력하세요').fill('Publish validation status safety');
+
+  await page.getByTestId('post-publish-button').click();
+  const dialog = page.getByRole('dialog', { name: '발행 설정' });
+  await dialog.locator('input[type="radio"]').first().check();
+  await dialog.getByRole('button', { name: '공개 발행' }).click();
+
+  await expect(dialog).toBeVisible();
+  await expect(page.getByText('본문 내용을 입력하세요.')).toBeVisible();
+  await expect(page.getByLabel('현재 글 상태: 초안')).toContainText('현재: 초안');
 });
 
 test('admin editor detects autosave drafts with metadata-only changes', async ({ page }) => {
@@ -359,6 +402,12 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
   ]);
 
   await expect(page.getByText('발행되었습니다.')).toBeVisible();
+  await expect(page.getByLabel('현재 글 상태: 발행')).toContainText('현재: 발행');
+
+  await page.keyboard.press('Control+Shift+S');
+  await expect(publishDialog).toBeVisible();
+  await expect(publishDialog.locator('input[type="radio"]').first()).toBeChecked();
+  await page.keyboard.press('Escape');
 
   await page.goto(`/posts/${slug}`);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import AdminHeader from '../components/admin/AdminHeader';
 import AdminNotice from '../components/admin/AdminNotice';
 import AdminSidebar from '../components/admin/AdminSidebar';
@@ -32,6 +33,8 @@ const AdminPage: React.FC = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const [editorDirty, setEditorDirty] = useState(false);
+  const [postListOpen, setPostListOpen] = useState(false);
+  const postListFocusTargetRef = useRef<'list' | 'editor' | null>(null);
   const { activeId, activeSection, updateAdminLocation } = useAdminRouteState();
   const {
     adminNotice,
@@ -107,6 +110,37 @@ const AdminPage: React.FC = () => {
     }
   }, [activeId, hasLoaded, posts, updateAdminLocation]);
 
+  useEffect(() => {
+    const focusTarget = postListFocusTargetRef.current;
+    if (!focusTarget) return;
+    postListFocusTargetRef.current = null;
+
+    const frame = window.requestAnimationFrame(() => {
+      const targetPanel = document.getElementById(
+        focusTarget === 'list' ? 'admin-post-list-panel' : 'admin-post-editor-panel'
+      );
+      const preferredId = focusTarget === 'list'
+        ? 'admin-post-list-return'
+        : 'admin-post-list-toggle';
+      const preferredTarget = document.getElementById(preferredId);
+      const fallbackTarget = Array.from(targetPanel?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+      ) ?? []).find(element => element.offsetParent !== null);
+      const focusableTarget = preferredTarget && preferredTarget.offsetParent !== null
+        ? preferredTarget
+        : fallbackTarget;
+      focusableTarget?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [postListOpen]);
+
+  const setPostListVisibility = (open: boolean) => {
+    if (postListOpen === open) return;
+    postListFocusTargetRef.current = open ? 'list' : 'editor';
+    setPostListOpen(open);
+  };
+
   const handleSectionChange = (section: AdminSection) => {
     if (section === activeSection) return;
     if (!confirmEditorNavigation()) return;
@@ -114,20 +148,26 @@ const AdminPage: React.FC = () => {
   };
 
   const handleSelect = (post: Post) => {
-    if (post.id === activeId) return;
+    if (post.id === activeId) {
+      setPostListVisibility(false);
+      return;
+    }
     if (!confirmEditorNavigation()) return;
     updateAdminLocation({ section: 'posts', post: post.id });
+    setPostListVisibility(false);
   };
 
   const handleNew = () => {
     if (!confirmEditorNavigation()) return;
     updateAdminLocation({ section: 'posts', post: null });
+    setPostListVisibility(false);
   };
 
   // Switch to post tab when clicking dashboard item
   const handleDashboardSelect = (post: Post) => {
     if (!confirmEditorNavigation()) return;
     updateAdminLocation({ section: 'posts', post: post.id });
+    setPostListVisibility(false);
   };
 
   const handleSaveSuccess = (savedPost: Post) => {
@@ -138,6 +178,7 @@ const AdminPage: React.FC = () => {
   const handleDeleteSuccess = () => {
     setEditorDirty(false);
     updateAdminLocation({ post: null }, { replace: true });
+    setPostListVisibility(true);
   };
 
   const handleLogout = async () => {
@@ -176,7 +217,7 @@ const AdminPage: React.FC = () => {
         tone={adminNoticeTone}
         onClose={clearAdminNotice}
       />
-      <main className="mx-auto max-w-[1700px] px-4 py-5">
+      <main className="mx-auto max-w-[1700px] px-2 py-4 sm:px-4 sm:py-5">
         <section className="space-y-6">
           {activeSection === 'dashboard' && (
             <DashboardSection
@@ -218,33 +259,54 @@ const AdminPage: React.FC = () => {
           )}
 
           {activeSection === 'posts' && (
-            <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-              <AdminSidebar
-                show
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                filterStatus={filterStatus}
-                onFilterStatusChange={setFilterStatus}
-                filterCategory={filterCategory}
-                onFilterCategoryChange={setFilterCategory}
-                filterCategoryIncludeDescendants={filterCategoryIncludeDescendants}
-                onFilterCategoryIncludeDescendantsChange={setFilterCategoryIncludeDescendants}
-                page={page}
-                onPageChange={setPage}
-                onNew={handleNew}
-                saving={loading}
-                onSelect={handleSelect}
-                filteredPosts={filteredPosts}
-                activeId={activeId}
-                loading={loading}
-                error={postError}
-                onReload={() => void fetchPosts()}
-                totalCount={posts.length}
-                statusCount={dashboardStats.statusCount}
-                categoryTree={categoryTree}
-              />
+            <div className="grid min-w-0 gap-4 2xl:grid-cols-[340px_minmax(0,1fr)]">
+              <div
+                id="admin-post-list-panel"
+                className={`${postListOpen ? 'block' : 'hidden'} mx-auto min-w-0 w-full max-w-[640px] 2xl:mx-0 2xl:block 2xl:max-w-none`}
+              >
+                <div className="mb-3 flex justify-end 2xl:hidden">
+                  <button
+                    id="admin-post-list-return"
+                    type="button"
+                    onClick={() => setPostListVisibility(false)}
+                    aria-controls="admin-post-editor-panel"
+                    aria-expanded={false}
+                    className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
+                  >
+                    <ArrowLeft size={15} />
+                    편집기로 돌아가기
+                  </button>
+                </div>
+                <AdminSidebar
+                  show
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  filterStatus={filterStatus}
+                  onFilterStatusChange={setFilterStatus}
+                  filterCategory={filterCategory}
+                  onFilterCategoryChange={setFilterCategory}
+                  filterCategoryIncludeDescendants={filterCategoryIncludeDescendants}
+                  onFilterCategoryIncludeDescendantsChange={setFilterCategoryIncludeDescendants}
+                  page={page}
+                  onPageChange={setPage}
+                  onNew={handleNew}
+                  saving={loading}
+                  onSelect={handleSelect}
+                  filteredPosts={filteredPosts}
+                  activeId={activeId}
+                  loading={loading}
+                  error={postError}
+                  onReload={() => void fetchPosts()}
+                  totalCount={posts.length}
+                  statusCount={dashboardStats.statusCount}
+                  categoryTree={categoryTree}
+                />
+              </div>
 
-              <div className="min-w-0">
+              <div
+                id="admin-post-editor-panel"
+                className={`${postListOpen ? 'hidden' : 'block'} min-w-0 2xl:block`}
+              >
                 <PostEditor
                   post={activePost}
                   onSaveSuccess={handleSaveSuccess}
@@ -252,6 +314,8 @@ const AdminPage: React.FC = () => {
                   categoryTree={categoryTree}
                   onLoadCategories={loadCategories}
                   onDirtyChange={setEditorDirty}
+                  postListOpen={postListOpen}
+                  onOpenPostList={() => setPostListVisibility(true)}
                 />
               </div>
             </div>
