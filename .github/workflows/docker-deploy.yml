@@ -212,7 +212,7 @@ jobs:
             fi
 
             wait_for_health "${SITE_URL%/}/api/health" "$expected_version" || return 1
-            curl -fsS --max-time 10 "${SITE_URL%/}/graph" >/dev/null
+            curl -fsS --max-time 10 "${SITE_URL%/}/" >/dev/null
           }
 
           docker rm -f hamlog 2>/dev/null || true

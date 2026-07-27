@@ -154,7 +154,7 @@ docker compose up -d --build
 - 새 컨테이너의 로컬 및 `SITE_URL` 공개 헬스 응답에서 커밋 버전을 확인
 - 헬스체크 실패 시 직전 Docker 이미지로 자동 롤백
 - 컨테이너 로그는 파일당 10MB, 최대 3개로 회전
-- GitHub 호스티드 러너가 15분마다 홈·그래프·헬스 API를 외부에서 점검
+- GitHub 호스티드 러너가 15분마다 홈·헬스 API를 외부에서 점검
 
 외부 점검 주소를 바꾸려면 Repository Variable `PUBLIC_SITE_URL`을 설정합니다.
 미설정 시 `https://tech.hamwoo.co.kr`을 사용합니다.

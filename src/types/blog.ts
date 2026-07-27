@@ -77,7 +77,6 @@ export interface Post {
     scheduledAt?: string;
     seo?: PostSeo;
     sections?: PostSection[];
-    linkedPostSlugs?: string[];
 }
 
 export interface PostRevision {
