@@ -1,0 +1,42 @@
+name: Uptime Check
+
+concurrency:
+  group: uptime-check
+  cancel-in-progress: true
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-routes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CONFIGURED_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+
+    steps:
+      - name: Check public health and pages
+        run: |
+          set -euo pipefail
+
+          SITE_URL="${CONFIGURED_SITE_URL:-https://tech.hamwoo.co.kr}"
+          SITE_URL="${SITE_URL%/}"
+
+          HEALTH_RESPONSE=$(curl -fsS \
+            --retry 3 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --max-time 10 \
+            "$SITE_URL/api/health")
+
+          HEALTH_RESPONSE="$HEALTH_RESPONSE" node -e '
+            const health = JSON.parse(process.env.HEALTH_RESPONSE || "{}");
+            if (health.status !== "ok") process.exit(1);
+          '
+
+          curl -fsS --retry 3 --retry-all-errors --max-time 10 "$SITE_URL/" >/dev/null

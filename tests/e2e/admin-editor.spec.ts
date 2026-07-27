@@ -153,6 +153,73 @@ test('admin editor inserts, renders, and reopens Mermaid diagrams', async ({ pag
   await page.keyboard.press('Escape');
 });
 
+test('published fenced Mermaid code block renders as a public diagram', async ({ page }) => {
+  const uniqueId = Date.now();
+  const title = `E2E Mermaid Code Block ${uniqueId}`;
+  const slug = `e2e-mermaid-code-block-${uniqueId}`;
+  const mermaidSource = [
+    '```mermaid',
+    'flowchart LR',
+    '    A["사용자 브라우저"] --> B["Nginx<br/>80 · 443"]',
+    '```'
+  ].join('\n');
+  let postId: string | null = null;
+
+  await openAdminEditor(page);
+
+  try {
+    const created = await page.evaluate(async (payload) => {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json() as Promise<{ id: string }>;
+    }, {
+      slug,
+      title,
+      summary: 'Mermaid fenced code block E2E coverage.',
+      category: '미분류',
+      contentJson: {
+        type: 'doc',
+        content: [
+          {
+            type: 'codeBlock',
+            attrs: { language: 'plaintext' },
+            content: [{ type: 'text', text: mermaidSource }]
+          }
+        ]
+      },
+      publishedAt: '2026-07-14',
+      tags: ['e2e', 'mermaid'],
+      status: 'published',
+      sections: []
+    });
+
+    postId = created.id;
+
+    await page.goto(`/posts/${slug}`);
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+
+    const diagram = page.locator('.mermaid-block svg');
+    await expect(diagram).toBeVisible({ timeout: 15_000 });
+    await expect(diagram).toContainText('사용자 브라우저');
+    await expect(page.getByText('```mermaid')).toHaveCount(0);
+  } finally {
+    if (postId) {
+      await deletePostFromAdmin(page, postId);
+    }
+  }
+});
+
 test('publish shortcut opens the confirmation dialog instead of publishing immediately', async ({ page }) => {
   await openAdminEditor(page);
   await page.getByPlaceholder('제목을 입력하세요').fill('Shortcut publish safety');
