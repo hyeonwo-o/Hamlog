@@ -409,9 +409,29 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
   await expect(publishDialog.locator('input[type="radio"]').first()).toBeChecked();
   await page.keyboard.press('Escape');
 
+  await page.setViewportSize({ width: 1700, height: 900 });
   await page.goto(`/posts/${slug}`);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
   await expect(page.getByText(body)).toBeVisible();
+  const measurePostContentWidth = () => page.locator('.post-content').evaluate(element =>
+    Math.round(element.getBoundingClientRect().width)
+  );
+  const postContentWidth = await measurePostContentWidth();
+  expect(postContentWidth).toBeGreaterThanOrEqual(840);
+  expect(postContentWidth).toBeLessThanOrEqual(920);
+
+  await page.setViewportSize({ width: 1535, height: 900 });
+  const contentWidthBelowSidebarBreakpoint = await measurePostContentWidth();
+  await page.setViewportSize({ width: 1536, height: 900 });
+  const contentWidthWithSidebars = await measurePostContentWidth();
+  expect(Math.abs(contentWidthWithSidebars - contentWidthBelowSidebarBreakpoint)).toBeLessThanOrEqual(2);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobilePageWidth = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth
+  }));
+  expect(mobilePageWidth.scrollWidth).toBeLessThanOrEqual(mobilePageWidth.clientWidth);
 
   const seoResponse = await page.request.get(`${backendOrigin}/posts/${slug}`);
   expect(seoResponse.status()).toBe(200);
