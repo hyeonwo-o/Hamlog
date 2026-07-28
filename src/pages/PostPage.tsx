@@ -241,8 +241,8 @@ const PostPage: React.FC = () => {
           contextTitle={post.title}
         />
 
-        <div className="mx-auto max-w-6xl px-4 py-10 xl:py-12">
-          <div className="grid gap-6 2xl:grid-cols-[200px_minmax(0,1fr)_220px] xl:gap-8">
+        <div className="mx-auto max-w-6xl px-4 py-10 xl:py-12 2xl:max-w-[1480px]">
+          <div className="grid gap-6 xl:gap-8 2xl:grid-cols-[200px_minmax(0,960px)_220px]">
             <aside className="hidden 2xl:block relative">
               <div className="sticky top-8 space-y-8">
                 <CategorySidebar
@@ -259,7 +259,7 @@ const PostPage: React.FC = () => {
               </div>
             </aside>
 
-            <main className="min-w-0 space-y-8">
+            <main className="mx-auto w-full min-w-0 max-w-[960px] space-y-8 2xl:mx-0 2xl:max-w-none">
               <Link
                 to="/"
                 className="group inline-flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-[var(--accent)]"
@@ -293,7 +293,7 @@ const PostPage: React.FC = () => {
                     )}
                   </div>
 
-                  <h1 className="mt-4 max-w-[20ch] font-display text-[1.02rem] font-semibold leading-[1.45] tracking-[-0.025em] text-[var(--text)] sm:text-[1.35rem] lg:text-[1.75rem]">
+                  <h1 className="mt-4 max-w-[28ch] font-display text-[1.02rem] font-semibold leading-[1.45] tracking-[-0.025em] text-[var(--text)] sm:text-[1.35rem] lg:text-[1.75rem]">
                     {post.title}
                   </h1>
 
