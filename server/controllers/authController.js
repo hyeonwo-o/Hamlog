@@ -1,62 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { ADMIN_PASSWORD, JWT_SECRET } from '../config/auth.js';
+import { buildClearCookieOptions, buildCookieOptions } from '../config/cookies.js';
 
 const AUTH_COOKIE_MAX_AGE = 24 * 60 * 60 * 1000;
-const VALID_SAME_SITE = new Set(['strict', 'lax', 'none']);
-
-const normalizeSameSite = (value) => {
-    const normalized = String(value ?? '').trim().toLowerCase();
-    return VALID_SAME_SITE.has(normalized) ? normalized : '';
-};
-
-const resolveCookieSameSite = () => {
-    const configured = normalizeSameSite(process.env.COOKIE_SAME_SITE);
-    if (configured) {
-        return configured;
-    }
-
-    return process.env.CORS_ORIGINS?.trim() ? 'none' : 'lax';
-};
-
-const isHttpsRequest = (req) => (
-    req.secure
-    || req.protocol === 'https'
-);
-
-const resolveCookieSecure = (req, sameSite) => {
-    const configured = String(process.env.COOKIE_SECURE ?? '').trim().toLowerCase();
-
-    if (configured === 'true') {
-        return true;
-    }
-
-    if (configured === 'false') {
-        return false;
-    }
-
-    if (sameSite === 'none') {
-        return true;
-    }
-
-    return isHttpsRequest(req);
-};
-
-const buildAuthCookieOptions = (req) => {
-    const sameSite = resolveCookieSameSite();
-
-    return {
-        httpOnly: true,
-        secure: resolveCookieSecure(req, sameSite),
-        sameSite,
-        path: '/',
-        maxAge: AUTH_COOKIE_MAX_AGE
-    };
-};
-
-const buildAuthClearCookieOptions = (req) => {
-    const { httpOnly, secure, sameSite, path } = buildAuthCookieOptions(req);
-    return { httpOnly, secure, sameSite, path };
-};
 
 export const login = (req, res) => {
     const { password } = req.body;
@@ -68,7 +14,7 @@ export const login = (req, res) => {
     // Role is simple: 'admin'
     const user = { role: 'admin' };
     const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-    const cookieOptions = buildAuthCookieOptions(req);
+    const cookieOptions = buildCookieOptions(req, AUTH_COOKIE_MAX_AGE);
 
     res.cookie('token', token, cookieOptions);
 
@@ -76,7 +22,7 @@ export const login = (req, res) => {
 };
 
 export const logout = (req, res) => {
-    res.clearCookie('token', buildAuthClearCookieOptions(req));
+    res.clearCookie('token', buildClearCookieOptions(req));
     res.json({ message: '로그아웃 성공' });
 };
 

@@ -3,19 +3,36 @@ import type { Post } from '../../../data/blogData';
 import type { DashboardStats } from '../../../types/admin';
 import { formatDate } from '../../../utils/formatDate';
 import { formatScheduleLabel } from '../../../utils/adminDate';
+import AnalyticsSummaryPanel from '../dashboard/AnalyticsSummaryPanel';
+import type { AnalyticsSummary } from '../../../types/analytics';
 
 interface DashboardSectionProps {
   stats: DashboardStats;
   totalPosts: number;
   onSelectPost: (post: Post) => void;
+  analyticsSummary: AnalyticsSummary | null;
+  analyticsLoading: boolean;
+  analyticsError: string;
+  onRefreshAnalytics: () => void;
 }
 
 const DashboardSection: React.FC<DashboardSectionProps> = ({
   stats,
   totalPosts,
-  onSelectPost
+  onSelectPost,
+  analyticsSummary,
+  analyticsLoading,
+  analyticsError,
+  onRefreshAnalytics
 }) => (
   <div className="space-y-4">
+    <AnalyticsSummaryPanel
+      summary={analyticsSummary}
+      loading={analyticsLoading}
+      error={analyticsError}
+      onRefresh={onRefreshAnalytics}
+    />
+
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div className="rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-4 py-3">
         <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">

@@ -20,6 +20,7 @@ import { seoRouter } from './routes/seo.js';
 import { commentRouter } from './routes/comments.js';
 import { authRouter } from './routes/auth.js';
 import { previewRouter } from './routes/preview.js';
+import { analyticsRouter } from './routes/analytics.js';
 import { searchPosts } from './controllers/searchController.js';
 import { getRobots, injectPostMeta } from './controllers/seoController.js';
 import { searchRateLimiter } from './middleware/rateLimit.js';
@@ -241,6 +242,7 @@ app.use('/api/profile', profileRouter);
 app.use('/api/uploads', uploadRouter);
 app.use('/api/comments', commentRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/analytics', analyticsRouter);
 app.use('/api', previewRouter);
 app.get('/api/search', searchRateLimiter, searchPosts);
 app.use('/api', (_req, res) => {

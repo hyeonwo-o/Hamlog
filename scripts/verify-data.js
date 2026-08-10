@@ -9,6 +9,7 @@ const dataDir = path.join(rootDir, 'server', 'data');
 const postsFilePath = path.join(dataDir, 'posts.json');
 const postsDir = path.join(dataDir, 'posts');
 const postViewsFilePath = path.join(dataDir, 'post-views.json');
+const analyticsFilePath = path.join(dataDir, 'analytics.json');
 const categoriesFilePath = path.join(dataDir, 'categories.json');
 const commentsFilePath = path.join(dataDir, 'comments.json');
 const profileFilePath = path.join(dataDir, 'profile.json');
@@ -154,6 +155,49 @@ const verify = async () => {
       }
     } catch (error) {
       errors.push(`post-views.json을 읽을 수 없습니다: ${error.message}`);
+    }
+  }
+
+  if (await pathExists(analyticsFilePath)) {
+    try {
+      const analytics = await readJsonFile(analyticsFilePath);
+      if (!analytics || typeof analytics !== 'object' || Array.isArray(analytics)) {
+        errors.push('analytics.json 최상위 값은 객체여야 합니다.');
+      } else {
+        if (!Number.isInteger(analytics.totalPageViews) || analytics.totalPageViews < 0) {
+          errors.push('analytics.json의 totalPageViews가 유효하지 않습니다.');
+        }
+
+        if (!analytics.visitors || typeof analytics.visitors !== 'object' || Array.isArray(analytics.visitors)) {
+          errors.push('analytics.json의 visitors가 유효하지 않습니다.');
+        } else {
+          for (const [visitorHash, visitor] of Object.entries(analytics.visitors)) {
+            if (!/^[a-f0-9]{64}$/.test(visitorHash)) {
+              errors.push(`유효하지 않은 방문자 해시: ${visitorHash}`);
+            }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(visitor?.firstSeen ?? ''))
+              || !/^\d{4}-\d{2}-\d{2}$/.test(String(visitor?.lastSeen ?? ''))) {
+              errors.push(`유효하지 않은 방문자 날짜: ${visitorHash}`);
+            }
+          }
+        }
+
+        if (!analytics.days || typeof analytics.days !== 'object' || Array.isArray(analytics.days)) {
+          errors.push('analytics.json의 days가 유효하지 않습니다.');
+        } else {
+          for (const [date, day] of Object.entries(analytics.days)) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+              errors.push(`유효하지 않은 방문 통계 날짜: ${date}`);
+            }
+            if (!Number.isInteger(day?.visitors) || day.visitors < 0
+              || !Number.isInteger(day?.pageViews) || day.pageViews < 0) {
+              errors.push(`유효하지 않은 일별 방문 통계: ${date}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      errors.push(`analytics.json을 읽을 수 없습니다: ${error.message}`);
     }
   }
 
