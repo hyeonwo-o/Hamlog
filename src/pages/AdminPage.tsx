@@ -21,6 +21,7 @@ import type { AdminSection } from '../types/admin';
 import { DEFAULT_CATEGORY } from '../utils/category';
 import { ADMIN_SECTIONS } from '../utils/adminSections';
 import * as authApi from '../api/authApi';
+import { useAnalyticsSummary } from '../hooks/useAnalyticsSummary';
 
 const AdminPage: React.FC = () => {
   const posts = usePostStore(state => state.posts);
@@ -80,6 +81,7 @@ const AdminPage: React.FC = () => {
   } = useProfile();
 
   const dashboardStats = useDashboardStats(posts, categoryTree);
+  const visitorAnalytics = useAnalyticsSummary(activeSection === 'dashboard');
   const {
     searchQuery,
     setSearchQuery,
@@ -224,6 +226,10 @@ const AdminPage: React.FC = () => {
               stats={dashboardStats}
               totalPosts={posts.length}
               onSelectPost={handleDashboardSelect}
+              analyticsSummary={visitorAnalytics.summary}
+              analyticsLoading={visitorAnalytics.loading}
+              analyticsError={visitorAnalytics.error}
+              onRefreshAnalytics={() => void visitorAnalytics.refresh()}
             />
           )}
 

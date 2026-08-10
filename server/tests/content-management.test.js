@@ -20,6 +20,12 @@ import { ensurePostsFile, readPosts, writePosts } from '../models/postModel.js';
 import { readProfile, writeProfile } from '../models/profileModel.js';
 import { readPostRevisions } from '../models/revisionModel.js';
 import { readPostViews } from '../models/postViewModel.js';
+import {
+    createEmptyAnalytics,
+    readAnalytics,
+    writeAnalytics
+} from '../models/analyticsModel.js';
+import { resetAnalyticsPresence } from '../services/analyticsService.js';
 import { COMMENT_LIMITS } from '../services/commentService.js';
 import { SEARCH_QUERY_MAX_LENGTH, SEARCH_RESULT_LIMIT } from '../controllers/searchController.js';
 import { defaultProfile } from '../utils/normalizers/profileNormalizers.js';
@@ -80,6 +86,8 @@ const resetTestState = async () => {
     await writeCategories([]);
     await writeProfile(defaultProfile);
     await writeComments([]);
+    await writeAnalytics(createEmptyAnalytics());
+    resetAnalyticsPresence();
 };
 
 const loginAsAdmin = async () => {
@@ -988,6 +996,107 @@ test('public post views increment only for visible posts', async () => {
         publicPostsResponse.body.posts.map(post => ({ slug: post.slug, views: post.views })),
         [{ slug: 'public-post', views: 4 }]
     );
+});
+
+test('visitor analytics tracks anonymous totals, daily activity, and realtime presence', async () => {
+    const unauthenticatedSummary = await request(app).get('/api/analytics/summary');
+    assert.equal(unauthenticatedSummary.status, 401);
+
+    const untrustedVisit = await request(app)
+        .post('/api/analytics/visit')
+        .send({ path: '/' });
+    assert.equal(untrustedVisit.status, 403);
+
+    const firstVisit = await withTrustedOrigin(request(app)
+        .post('/api/analytics/visit'))
+        .send({ path: '/', eventId: 'visit-event-0001' });
+    assert.equal(firstVisit.status, 204);
+    assert.ok(Array.isArray(firstVisit.headers['set-cookie']));
+
+    const visitorCookies = firstVisit.headers['set-cookie'];
+    const visitorCookie = visitorCookies.find(cookie => cookie.startsWith('hamlog_visitor='));
+    assert.ok(visitorCookie);
+    assert.match(visitorCookie, /HttpOnly/i);
+    assert.match(visitorCookie, /SameSite=Lax/i);
+
+    const secondVisit = await withTrustedOrigin(request(app)
+        .post('/api/analytics/visit')
+        .set('Cookie', visitorCookies))
+        .send({ path: '/posts/analytics-test', eventId: 'visit-event-0002' });
+    assert.equal(secondVisit.status, 204);
+
+    const duplicateVisit = await withTrustedOrigin(request(app)
+        .post('/api/analytics/visit')
+        .set('Cookie', visitorCookies))
+        .send({ path: '/posts/analytics-test', eventId: 'visit-event-0002' });
+    assert.equal(duplicateVisit.status, 204);
+
+    const heartbeat = await withTrustedOrigin(request(app)
+        .post('/api/analytics/heartbeat')
+        .set('Cookie', visitorCookies))
+        .send({ path: '/posts/analytics-test' });
+    assert.equal(heartbeat.status, 204);
+
+    const secondVisitor = await withTrustedOrigin(request(app)
+        .post('/api/analytics/visit'))
+        .send({ path: '/p/analytics-test', eventId: 'visit-event-0003' });
+    assert.equal(secondVisitor.status, 204);
+
+    const adminCookies = await loginAsAdmin();
+    const summaryResponse = await request(app)
+        .get('/api/analytics/summary')
+        .set('Cookie', adminCookies);
+
+    assert.equal(summaryResponse.status, 200);
+    assert.equal(summaryResponse.headers['cache-control'], 'no-store');
+    assert.equal(summaryResponse.body.realtimeVisitors, 2);
+    assert.equal(summaryResponse.body.totalVisitors, 2);
+    assert.equal(summaryResponse.body.totalPageViews, 3);
+    assert.deepEqual(summaryResponse.body.today, { visitors: 2, pageViews: 3 });
+    assert.equal(summaryResponse.body.recentDays.length, 7);
+    assert.deepEqual(summaryResponse.body.recentDays.at(-1), {
+        date: summaryResponse.body.recentDays.at(-1).date,
+        visitors: 2,
+        pageViews: 3
+    });
+    assert.equal(summaryResponse.body.timeZone, 'Asia/Seoul');
+
+    const publicSummaryResponse = await request(app).get('/api/analytics/public');
+    assert.equal(publicSummaryResponse.status, 200);
+    assert.deepEqual(publicSummaryResponse.body, {
+        totalVisitors: 2,
+        realtimeVisitors: 2
+    });
+    assert.equal(
+        publicSummaryResponse.headers['cache-control'],
+        'public, max-age=10, s-maxage=30, stale-while-revalidate=30'
+    );
+    assert.equal(publicSummaryResponse.headers['set-cookie'], undefined);
+
+    const storedAnalytics = await readAnalytics();
+    const rawVisitorId = decodeURIComponent(visitorCookie.split(';')[0].split('=')[1]);
+    assert.equal(Object.hasOwn(storedAnalytics.visitors, rawVisitorId), false);
+    assert.equal(Object.keys(storedAnalytics.visitors).length, 2);
+});
+
+test('visitor analytics rejects non-public paths without changing totals', async () => {
+    const response = await withTrustedOrigin(request(app)
+        .post('/api/analytics/visit'))
+        .send({ path: '/admin', eventId: 'visit-event-0004' });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await readAnalytics(), createEmptyAnalytics());
+});
+
+test('visitor analytics excludes authenticated admin activity', async () => {
+    const adminCookies = await loginAsAdmin();
+    const visit = await withTrustedOrigin(request(app)
+        .post('/api/analytics/visit')
+        .set('Cookie', adminCookies))
+        .send({ path: '/', eventId: 'visit-event-0005' });
+
+    assert.equal(visit.status, 204);
+    assert.deepEqual(await readAnalytics(), createEmptyAnalytics());
 });
 
 test('public post summaries omit editor content and detail endpoint returns one visible post', async () => {

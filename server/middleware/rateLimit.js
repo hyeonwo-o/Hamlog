@@ -46,6 +46,20 @@ export const viewRateLimiter = rateLimit({
     message: { message: '조회 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' }
 });
 
+export const analyticsRateLimiter = rateLimit({
+    ...commonOptions,
+    windowMs: 10 * 60 * 1000,
+    max: parsePositiveInt(process.env.RATE_LIMIT_ANALYTICS_MAX, 1200),
+    message: { message: '방문 집계 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' }
+});
+
+export const publicAnalyticsRateLimiter = rateLimit({
+    ...commonOptions,
+    windowMs: 10 * 60 * 1000,
+    max: parsePositiveInt(process.env.RATE_LIMIT_ANALYTICS_PUBLIC_MAX, 120),
+    message: { message: '방문자 현황 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' }
+});
+
 export const commentRateLimiter = rateLimit({
     ...commonOptions,
     windowMs: 10 * 60 * 1000,

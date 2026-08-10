@@ -7,11 +7,13 @@ import { ensureCommentsFile } from '../models/commentModel.js';
 import { ensureRevisionsStorage } from '../models/revisionModel.js';
 import { readPosts } from '../models/postModel.js';
 import { ensurePostViewsFile } from '../models/postViewModel.js';
+import { ensureAnalyticsFile } from '../models/analyticsModel.js';
 
 export async function initializeDatabase() {
     try {
         await ensurePostsFile();
         await ensurePostViewsFile(await readPosts());
+        await ensureAnalyticsFile();
         await ensureCategoriesFile();
         await ensureProfileFile();
         await ensureCommentsFile();

@@ -18,6 +18,7 @@ export const postsFilePath = path.join(dataDir, 'posts.json');
 export const categoriesFilePath = path.join(dataDir, 'categories.json');
 export const profileFilePath = path.join(dataDir, 'profile.json');
 export const postViewsFilePath = path.join(dataDir, 'post-views.json');
+export const analyticsFilePath = path.join(dataDir, 'analytics.json');
 export const postsDir = path.join(dataDir, 'posts');
 export const revisionsDir = path.join(dataDir, 'revisions');
 export const uploadDir = resolveStoragePath('HAMLOG_UPLOAD_DIR', 'uploads');

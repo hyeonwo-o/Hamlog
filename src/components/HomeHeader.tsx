@@ -1,5 +1,6 @@
 import { Github, Linkedin, Mail, Twitter, Instagram, AtSign, Send } from 'lucide-react';
 import type { SiteMeta } from '../types/blog';
+import PublicNavigation from './PublicNavigation';
 
 interface HomeHeaderProps {
     profile: SiteMeta;
@@ -22,6 +23,7 @@ export const HomeHeader = ({ profile, postCount, categoryCount }: HomeHeaderProp
 
     return (
         <header className="border-b border-[color:var(--border)]">
+            <PublicNavigation profile={profile} />
             <div className="mx-auto max-w-6xl px-4 py-6">
                 <div className="grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
                     <div className="space-y-5">

@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import LoadingSpinner from './components/LoadingSpinner';
 import AdminGuard from './pages/AdminGuard';
 import HomePage from './pages/HomePage';
+import PublicAnalyticsTracker from './components/analytics/PublicAnalyticsTracker';
 
 // Helper to auto-reload page on chunk load error (deployment update)
 type LazyImport = Promise<{ default: ComponentType<object> }>;
@@ -43,22 +44,30 @@ const LoadingFallback = () => (
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <HomePage />
+    element: (
+      <PublicAnalyticsTracker>
+        <HomePage />
+      </PublicAnalyticsTracker>
+    )
   },
   {
     path: '/posts/:slug',
     element: (
-      <Suspense fallback={<LoadingFallback />}>
-        <PostPage />
-      </Suspense>
+      <PublicAnalyticsTracker>
+        <Suspense fallback={<LoadingFallback />}>
+          <PostPage />
+        </Suspense>
+      </PublicAnalyticsTracker>
     )
   },
   {
     path: '/p/:slug',
     element: (
-      <Suspense fallback={<LoadingFallback />}>
-        <PostPage />
-      </Suspense>
+      <PublicAnalyticsTracker>
+        <Suspense fallback={<LoadingFallback />}>
+          <PostPage />
+        </Suspense>
+      </PublicAnalyticsTracker>
     )
   },
   {

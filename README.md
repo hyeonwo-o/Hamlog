@@ -6,7 +6,7 @@ Node.js(Express) 백엔드와 React(Vite) 프론트엔드로 구성된 기술 �
 ## Architecture
 - **Frontend**: `src/` (React + Vite)
 - **Backend**: `server/` (Express API + 정적 파일 서빙)
-- **Storage**: `server/data/` (JSON, 조회수 분리 저장), `server/uploads/` (이미지 업로드)
+- **Storage**: `server/data/` (JSON, 조회수·익명 방문 통계 분리 저장), `server/uploads/` (이미지 업로드)
 - **Prod Serving**: 백엔드가 `dist/` 정적 자산을 서빙하고 SPA fallback을 제공합니다. (`server/app.js`)
 
 ## Tech Stack
@@ -21,6 +21,7 @@ Node.js(Express) 백엔드와 React(Vite) 프론트엔드로 구성된 기술 �
 - **Admin 글쓰기/관리**: Tiptap 기반 편집, 이미지 업로드/붙여넣기, 미리보기
 - **자동 목차(TOC)**: 글 본문의 `h1/h2/h3` 기반 TOC 생성 + 스크롤 스파이
 - **검색/필터링**: 카테고리/태그/검색 기반 탐색
+- **방문 통계**: 실시간 접속자, 오늘·누적 순 방문자/페이지뷰, 최근 7일 집계
 - **SEO**: 메타/OG, 라우트 기반 메타 주입, 사이트맵/RSS
 - **보안**: JWT 인증(쿠키), CORS 제어, Rate Limit, 링크 프리뷰 SSRF 방어
 
@@ -78,6 +79,11 @@ npm run verify:data
   - production에서는 **필수**
 - `ADMIN_PASSWORD`
   - production에서는 **필수**
+- `ANALYTICS_SECRET` (optional)
+  - 익명 방문자 식별자를 HMAC 처리하는 별도 비밀값. 미설정 시 `JWT_SECRET`을 사용합니다.
+  - 값을 바꾸면 기존 방문자는 새 방문자로 집계되므로 운영 중에는 고정하는 것을 권장합니다.
+- `ANALYTICS_TIME_ZONE` (optional, default: `Asia/Seoul`)
+  - 오늘·일별 방문 통계의 날짜 기준 시간대
 - `CORS_ORIGINS` (optional)
   - 허용할 Origin 목록을 콤마(`,`)로 구분
   - 예: `https://hamlog.com,https://www.hamlog.com`
@@ -87,6 +93,8 @@ npm run verify:data
 - `RATE_LIMIT_SEARCH_MAX` (optional, default: `180`)
 - `RATE_LIMIT_COMMENT_MAX` (optional, default: `20`)
 - `RATE_LIMIT_VIEW_MAX` (optional, default: `240`)
+- `RATE_LIMIT_ANALYTICS_MAX` (optional, default: `1200`)
+- `RATE_LIMIT_ANALYTICS_PUBLIC_MAX` (optional, default: `120`)
 - `TRUST_PROXY` (optional, default: `0`)
   - Express 앞에 신뢰할 수 있는 reverse proxy가 있을 때만 hop 수 또는 IP/subnet을 지정
   - 예: 프록시가 정확히 한 단계면 `1`, 직접 노출이면 `0`
@@ -111,6 +119,19 @@ npm run verify:data
 ### Frontend (`vite`)
 - `VITE_API_BASE_URL` (optional)
   - 기본값은 `'/api'`이며, dev에서는 Vite proxy로 백엔드에 연결됩니다.
+
+## Visitor Analytics
+
+공개 홈과 포스트 페이지는 1년 유효의 `HttpOnly` 익명 방문자 쿠키를 사용합니다. 원본 쿠키 ID와
+IP는 통계 파일에 저장하지 않고, 서버 비밀값으로 만든 HMAC과 집계 수치만 저장합니다. 일별 데이터는
+최근 90일을 보관하며 누적 방문자와 페이지뷰는 계속 유지합니다.
+
+실시간 접속자는 화면이 활성화된 동안 전송되는 30초 heartbeat를 기준으로 최근 90초 이내 방문자를
+계산합니다. 이 presence 정보는 프로세스 메모리에 있으므로 서버 재시작 때 초기화되고, 여러 서버
+인스턴스 사이에서는 공유되지 않습니다.
+
+공개 화면의 상단 네비게이션에는 누적 방문자와 실시간 접속자만 표시합니다. 오늘 수치와 페이지뷰,
+최근 7일 내역은 인증된 관리자 대시보드에서만 조회할 수 있습니다.
 
 ## Editor Guide (Admin)
 ### Shortcuts
