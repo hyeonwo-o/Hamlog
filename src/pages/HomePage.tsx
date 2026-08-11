@@ -6,6 +6,7 @@ import { FeaturedSection } from '../components/home/FeaturedSection';
 import { PostListSection } from '../components/home/PostListSection';
 
 import { useSeo } from '../hooks/useSeo';
+import { useSchema } from '../hooks/useSchema';
 import { useHomeData } from '../hooks/useHomeData';
 import { useHomePostFilter } from '../hooks/useHomePostFilter';
 
@@ -47,16 +48,27 @@ const HomePage = () => {
         'Kubernetes',
         ...profile.stack
     ]));
+    const configuredFavicon = profile.favicon?.trim();
+    const homeFavicon = !configuredFavicon || configuredFavicon === '/avatar.jpg'
+        ? '/favicon.svg'
+        : configuredFavicon;
+    const homeImage = profile.profileImage?.trim()
+        || configuredFavicon
+        || '/avatar.jpg';
 
     // 3. SEO Hook
     useSeo({
         title: homeTitle,
         description: homeDescription,
+        image: homeImage,
         keywords: homeKeywords,
         url: profile.siteUrl,
         type: 'website',
-        favicon: profile.favicon
+        favicon: homeFavicon,
+        twitterHandle: profile.social.twitter,
+        robots: 'index, follow'
     });
+    useSchema({ post: undefined });
 
     if (loading) {
         return (

@@ -2,12 +2,13 @@ import type { Editor } from '@tiptap/core';
 import { API_BASE_URL } from '../../api/client';
 import { promptForText, showEditorToast } from '../../utils/editorDialog';
 import { DEFAULT_MERMAID_SOURCE, normalizeMermaidSource } from '../../utils/mermaid';
+import { createDefaultImageAlt } from '../utils/imageAlt';
 import type { SlashCommandContext, SlashCommandItem } from './types';
 
 const createColumnContent = (count: 2 | 3, contentType: 'paragraph' | 'image') => {
   const layout = count === 3 ? 'three-column' : 'two-column';
   const columnContent = contentType === 'image'
-    ? { type: 'image', attrs: { src: '' } }
+    ? { type: 'image', attrs: { src: '', alt: '' } }
     : { type: 'paragraph' };
 
   return {
@@ -57,20 +58,9 @@ const createPromptedCommand = (
 export const getSlashCommandItems = (): SlashCommandItem[] => [
   createStaticCommand(
     {
-      title: '제목 1',
-      description: '가장 큰 제목',
-      searchTerms: ['h1', 'heading', '제목'],
-      icon: 'H1'
-    },
-    ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run();
-    }
-  ),
-  createStaticCommand(
-    {
       title: '제목 2',
-      description: '중간 크기 제목',
-      searchTerms: ['h2', 'heading', '제목'],
+      description: '본문 최상위 제목 · 페이지 제목은 H1',
+      searchTerms: ['h1', 'h2', 'heading', '제목'],
       icon: 'H2'
     },
     ({ editor, range }) => {
@@ -165,8 +155,18 @@ export const getSlashCommandItems = (): SlashCommandItem[] => [
       title: '이미지 URL 입력',
       placeholder: 'https://'
     }),
-    ({ editor, range }, url) => {
-      editor.chain().focus().deleteRange(range).setImage({ src: url }).run();
+    async ({ editor, range }, url) => {
+      const rawAlt = await promptForText({
+        title: '이미지 대체 텍스트',
+        description: '이미지가 전달하는 내용을 간결히 적어 주세요. 장식용 이미지라면 비워둘 수 있습니다.',
+        placeholder: '예: Kubernetes 배포 흐름도',
+        defaultValue: createDefaultImageAlt(url)
+      });
+      if (rawAlt === null) return;
+      editor.chain().focus().deleteRange(range).setImage({
+        src: url,
+        alt: rawAlt.trim().slice(0, 180)
+      }).run();
     }
   ),
   createStaticCommand(

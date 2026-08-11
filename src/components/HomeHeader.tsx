@@ -1,5 +1,6 @@
 import { Github, Linkedin, Mail, Twitter, Instagram, AtSign, Send } from 'lucide-react';
 import type { SiteMeta } from '../types/blog';
+import { buildImageVariantUrl } from '../utils/imageUrl';
 import PublicNavigation from './PublicNavigation';
 
 interface HomeHeaderProps {
@@ -9,6 +10,7 @@ interface HomeHeaderProps {
 }
 
 export const HomeHeader = ({ profile, postCount, categoryCount }: HomeHeaderProps) => {
+    const displayProfileImage = buildImageVariantUrl(profile.profileImage, { width: 96, height: 96 });
     const showContactLinks = (
         (profile.display.showSocialLinks && (
             profile.social.github
@@ -64,12 +66,16 @@ export const HomeHeader = ({ profile, postCount, categoryCount }: HomeHeaderProp
                     <div>
                         <div className="space-y-4 border border-[color:var(--border)] bg-[var(--surface)] p-4">
                             <div className="flex items-center gap-3">
-                                {profile.display.showProfileImage && profile.profileImage && (
+                                {profile.display.showProfileImage && displayProfileImage && (
                                     <img
-                                        src={profile.profileImage}
-                                        alt={`${profile.name} portrait`}
+                                        src={displayProfileImage}
+                                        alt={`${profile.name} 프로필 사진`}
                                         className="angular-control h-12 w-12 rounded-lg object-cover"
-                                        loading="lazy"
+                                        width={48}
+                                        height={48}
+                                        loading="eager"
+                                        decoding="async"
+                                        fetchPriority="auto"
                                     />
                                 )}
                                 <div>

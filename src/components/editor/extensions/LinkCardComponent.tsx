@@ -34,6 +34,11 @@ export const LinkCardComponent: React.FC<LinkCardProps> = ({ node, selected }) =
                         <img
                             src={image}
                             alt=""
+                            width={160}
+                            height={96}
+                            loading="lazy"
+                            decoding="async"
+                            fetchPriority="low"
                             className="absolute inset-0 h-full w-full object-cover"
                         />
                     </div>

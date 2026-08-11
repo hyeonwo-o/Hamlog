@@ -458,3 +458,145 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
     }
   }, slug);
 });
+
+test('public SPA keeps images, robots, and BlogPosting schema in sync across routes', async ({ page }) => {
+  const uniqueId = Date.now();
+  const title = `E2E SEO Route State ${uniqueId}`;
+  const slug = `e2e-seo-route-state-${uniqueId}`;
+  let postId: string | null = null;
+
+  const readBlogPostingSchemas = () => page.evaluate(() => (
+    Array.from(document.head.querySelectorAll<HTMLScriptElement>('script[type="application/ld+json"]'))
+      .map(script => {
+        try {
+          return JSON.parse(script.textContent ?? '');
+        } catch {
+          return null;
+        }
+      })
+      .filter(schema => schema?.['@type'] === 'BlogPosting')
+  ));
+  const navigateInSpa = (path: string) => page.evaluate(nextPath => {
+    window.history.pushState({}, '', nextPath);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, path);
+
+  await openAdminEditor(page);
+
+  try {
+    const created = await page.evaluate(async (payload) => {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json() as Promise<{ id: string }>;
+    }, {
+      slug,
+      title,
+      summary: 'Client-side SEO state regression coverage.',
+      category: '미분류',
+      contentJson: createParagraphDocument('SEO route state body.'),
+      publishedAt: '2026-08-10',
+      tags: ['e2e', 'seo'],
+      status: 'published',
+      sections: []
+    });
+    postId = created.id;
+
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: '전체 글' })).toBeVisible();
+    const homeOgImage = page.locator('meta[property="og:image"]');
+    const homeTwitterImage = page.locator('meta[name="twitter:image"]');
+    await expect(homeOgImage).toHaveCount(1);
+    await expect(homeTwitterImage).toHaveCount(1);
+    await expect.poll(() => homeOgImage.getAttribute('content')).not.toBe('');
+    const hydratedHomeImage = await homeOgImage.getAttribute('content');
+    expect(hydratedHomeImage).toBeTruthy();
+    await expect(homeTwitterImage).toHaveAttribute('content', hydratedHomeImage!);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /\/favicon\.svg$/);
+
+    let releasePostRequest: (() => void) | undefined;
+    let markPostRequestStarted: (() => void) | undefined;
+    const postRequestGate = new Promise<void>(resolve => {
+      releasePostRequest = resolve;
+    });
+    const postRequestStarted = new Promise<void>(resolve => {
+      markPostRequestStarted = resolve;
+    });
+    await page.route(`**/api/posts/${slug}`, async route => {
+      markPostRequestStarted?.();
+      await postRequestGate;
+      await route.continue();
+    });
+
+    await page.evaluate(({ postTitle, postSlug }) => {
+      document.title = postTitle;
+      document.querySelector('link[rel="canonical"]')?.setAttribute(
+        'href',
+        `${window.location.origin}/posts/${postSlug}`
+      );
+      const script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.text = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: postTitle
+      });
+      document.head.appendChild(script);
+    }, { postTitle: title, postSlug: slug });
+
+    await navigateInSpa(`/posts/${slug}`);
+    await postRequestStarted;
+    try {
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+      await expect(page).toHaveTitle(title);
+      expect(await readBlogPostingSchemas()).toHaveLength(1);
+    } finally {
+      releasePostRequest?.();
+    }
+
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await page.unroute(`**/api/posts/${slug}`);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+    await expect.poll(async () => (await readBlogPostingSchemas()).length).toBe(1);
+    const [postSchema] = await readBlogPostingSchemas();
+    expect(postSchema.headline).toBe(title);
+    expect(postSchema.publisher?.logo?.url).toMatch(/\/favicon\.svg$/);
+
+    await page.getByRole('link', { name: '메인화면으로 돌아가기' }).click();
+    await expect(page.getByRole('heading', { name: '전체 글' })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+    await expect.poll(async () => (await readBlogPostingSchemas()).length).toBe(0);
+
+    await navigateInSpa(`/posts/${slug}`);
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+    await expect.poll(async () => (await readBlogPostingSchemas()).length).toBe(1);
+
+    await navigateInSpa(`/posts/missing-${uniqueId}`);
+    await expect(page.getByRole('heading', { name: '해당 글이 존재하지 않습니다.' })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
+    await expect.poll(async () => (await readBlogPostingSchemas()).length).toBe(0);
+
+    await navigateInSpa(`/missing-page-${uniqueId}`);
+    await expect(page.getByRole('heading', { name: '페이지를 찾을 수 없습니다' })).toBeVisible();
+    await expect(page.getByText('404 · Not Found')).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
+    expect(await readBlogPostingSchemas()).toHaveLength(0);
+
+    await page.getByRole('link', { name: '홈으로 돌아가기' }).click();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+    await expect.poll(() => page.locator('meta[property="og:image"]').getAttribute('content')).not.toBe('');
+    await expect.poll(() => page.locator('meta[name="twitter:image"]').getAttribute('content')).not.toBe('');
+  } finally {
+    if (postId) {
+      await deletePostFromAdmin(page, postId);
+    }
+  }
+});

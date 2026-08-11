@@ -4,6 +4,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import request from 'supertest';
+import sharp from 'sharp';
 
 import app from '../app.js';
 import {
@@ -537,8 +538,52 @@ test('profile update and uploads require authentication and persist', async () =
 
     assert.equal(uploadResponse.status, 201);
     assert.match(uploadResponse.body.url, /^\/uploads\/upload-.*\.webp$/);
+    assert.equal(uploadResponse.body.width, 1);
+    assert.equal(uploadResponse.body.height, 1);
 
     await access(path.join(uploadDir, uploadResponse.body.filename));
+});
+
+test('public image endpoint safely resizes allowlisted uploads and the legacy avatar', async () => {
+    const sourceFilename = 'public-thumbnail.png';
+    await sharp({
+        create: {
+            width: 240,
+            height: 120,
+            channels: 4,
+            background: { r: 15, g: 118, b: 110, alpha: 1 }
+        }
+    }).png().toFile(path.join(uploadDir, sourceFilename));
+
+    const resizedResponse = await request(app)
+        .get(`/api/images/${sourceFilename}?width=100&height=100`);
+
+    assert.equal(resizedResponse.status, 200);
+    assert.match(resizedResponse.headers['content-type'], /image\/webp/);
+    assert.match(resizedResponse.headers['cache-control'], /immutable/);
+    assert.equal(resizedResponse.headers['x-image-width'], '96');
+    assert.equal(resizedResponse.headers['x-image-height'], '96');
+    const resizedMetadata = await sharp(resizedResponse.body).metadata();
+    assert.equal(resizedMetadata.format, 'webp');
+    assert.equal(resizedMetadata.width, 96);
+    assert.equal(resizedMetadata.height, 96);
+
+    const avatarResponse = await request(app)
+        .get('/api/images/avatar.jpg?width=96&height=96');
+    assert.equal(avatarResponse.status, 200);
+    assert.match(avatarResponse.headers['cache-control'], /max-age=3600/);
+    assert.doesNotMatch(avatarResponse.headers['cache-control'], /immutable/);
+
+    const invalidSizeResponse = await request(app)
+        .get(`/api/images/${sourceFilename}?width=not-a-number`);
+    assert.equal(invalidSizeResponse.status, 400);
+    assert.equal(invalidSizeResponse.headers['cache-control'], 'no-store');
+
+    const invalidFilenameResponse = await request(app).get('/api/images/readme.txt');
+    assert.equal(invalidFilenameResponse.status, 400);
+
+    const missingResponse = await request(app).get('/api/images/missing-image.png?width=96');
+    assert.equal(missingResponse.status, 404);
 });
 
 test('unused upload cleanup keeps referenced images and deletes selected unused files', async () => {
@@ -1163,6 +1208,13 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     const pastScheduledAt = new Date(now - 60_000).toISOString();
     const futureScheduledAt = new Date(now + 60 * 60 * 1000).toISOString();
 
+    await writeProfile({
+        ...defaultProfile,
+        title: 'SEO Site',
+        name: 'SEO Author',
+        description: '검색 엔진과 방문자 모두를 위한 클라우드 엔지니어링 기술 기록입니다.'
+    });
+
     await writePosts([
         {
             id: 'post-visible',
@@ -1178,6 +1230,47 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             seo: {
                 keywords: ['openclaw', '기여']
             },
+            sections: []
+        },
+        {
+            id: 'post-prerender-safe',
+            slug: 'prerender-safe-post',
+            title: 'Safe Prerender',
+            summary: '짧은 요약',
+            category: 'Security',
+            contentHtml: '<h1>본문 제목</h1><script>alert("xss")</script><p>배포 구성도 <img src="/uploads/map.png" alt="image.png" onerror="alert(1)" /></p><a href="javascript:alert(1)">위험 링크</a><link-card url="https://docs.example.com/guide" title="안전한 가이드" description="참고 문서"></link-card>',
+            publishedAt: '2026-03-07',
+            tags: ['security'],
+            status: 'published',
+            sections: []
+        },
+        {
+            id: 'post-custom-canonical',
+            slug: 'canonical-local-post',
+            title: 'Canonical Local',
+            summary: '로컬 canonical 테스트를 위한 충분히 구체적인 게시글 설명입니다.',
+            category: 'Testing',
+            contentHtml: '<p>Canonical local body</p>',
+            publishedAt: '2026-03-05',
+            tags: [],
+            status: 'published',
+            seo: {
+                canonicalUrl: 'https://tech.hamwoo.co.kr/guides/canonical-local',
+                description: '사용자가 직접 작성한 canonical 게시글 SEO 설명'
+            },
+            sections: []
+        },
+        {
+            id: 'post-external-canonical',
+            slug: 'canonical-external-post',
+            title: 'Canonical External',
+            summary: '외부 원문 canonical 테스트를 위한 게시글 설명입니다.',
+            category: 'Testing',
+            contentHtml: '<p>Canonical external body</p>',
+            publishedAt: '2026-03-04',
+            tags: [],
+            status: 'published',
+            seo: { canonicalUrl: 'https://example.com/original-post' },
             sections: []
         },
         {
@@ -1223,7 +1316,7 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     const visibleMetaResponse = await request(app).get('/posts/meta-visible-post');
     assert.equal(visibleMetaResponse.status, 200);
     assert.match(visibleMetaResponse.text, /<title>A &quot;quoted&quot; &lt;title&gt;<\/title>/);
-    assert.match(visibleMetaResponse.text, /<meta name="description" content="desc with &quot;quotes&quot; &amp; &lt;tags&gt;" \/>/);
+    assert.match(visibleMetaResponse.text, /<meta name="description" content="desc with &quot;quotes&quot; &amp; &lt;tags&gt; Visible body" \/>/);
     assert.match(
         visibleMetaResponse.text,
         /<link rel="canonical" href="https:\/\/tech\.hamwoo\.co\.kr\/posts\/meta-visible-post" \/>/
@@ -1244,6 +1337,32 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
         visibleMetaResponse.text,
         /"mainEntityOfPage":"https:\/\/tech\.hamwoo\.co\.kr\/posts\/meta-visible-post"/
     );
+    assert.match(visibleMetaResponse.text, /"name":"SEO Author"/);
+    assert.match(visibleMetaResponse.text, /"name":"SEO Site"/);
+    assert.match(visibleMetaResponse.text, /<link rel="icon" href="https:\/\/tech\.hamwoo\.co\.kr\/favicon\.svg" \/>/);
+    assert.match(visibleMetaResponse.text, /<main data-prerendered="post">/);
+    assert.match(visibleMetaResponse.text, /<h1>A &quot;quoted&quot; &lt;title&gt;<\/h1>/);
+    assert.match(visibleMetaResponse.text, /<p>Visible body<\/p>/);
+
+    const safePrerenderResponse = await request(app).get('/posts/prerender-safe-post');
+    assert.equal(safePrerenderResponse.status, 200);
+    assert.match(safePrerenderResponse.text, /<h2>본문 제목<\/h2>/);
+    assert.match(safePrerenderResponse.text, /alt="배포 구성도"/);
+    assert.match(safePrerenderResponse.text, /href="https:\/\/docs\.example\.com\/guide"/);
+    assert.doesNotMatch(safePrerenderResponse.text, /alert\(&quot;xss&quot;\)|onerror=|javascript:/i);
+
+    const localCanonicalResponse = await request(app).get('/posts/canonical-local-post');
+    assert.equal(localCanonicalResponse.status, 200);
+    assert.match(localCanonicalResponse.text, /<meta name="description" content="사용자가 직접 작성한 canonical 게시글 SEO 설명" \/>/);
+    assert.match(localCanonicalResponse.text, /<link rel="canonical" href="https:\/\/tech\.hamwoo\.co\.kr\/guides\/canonical-local" \/>/);
+    assert.match(localCanonicalResponse.text, /<meta property="og:url" content="https:\/\/tech\.hamwoo\.co\.kr\/guides\/canonical-local" \/>/);
+    assert.match(localCanonicalResponse.text, /"mainEntityOfPage":"https:\/\/tech\.hamwoo\.co\.kr\/guides\/canonical-local"/);
+    assert.match(localCanonicalResponse.text, /"url":"https:\/\/tech\.hamwoo\.co\.kr\/guides\/canonical-local"/);
+
+    const externalCanonicalResponse = await request(app).get('/posts/canonical-external-post');
+    assert.equal(externalCanonicalResponse.status, 200);
+    assert.match(externalCanonicalResponse.text, /<meta property="og:url" content="https:\/\/example\.com\/original-post" \/>/);
+    assert.match(externalCanonicalResponse.text, /"mainEntityOfPage":"https:\/\/example\.com\/original-post"/);
 
     const draftMetaResponse = await request(app).get('/posts/meta-draft-post');
     assert.equal(draftMetaResponse.status, 404);
@@ -1266,11 +1385,13 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.match(rssResponse.text, /<!\[CDATA\[A "quoted" <title>\]\]>/);
     assert.match(rssResponse.text, /meta-visible-post/);
     assert.match(rssResponse.text, /meta-scheduled-visible/);
+    assert.match(rssResponse.text, /https:\/\/tech\.hamwoo\.co\.kr\/uploads\/map\.png/);
+    assert.match(rssResponse.text, /<dc:creator><!\[CDATA\[SEO Author\]\]><\/dc:creator>/);
     assert.doesNotMatch(rssResponse.text, /meta-future-post/);
     assert.doesNotMatch(rssResponse.text, /meta-draft-post/);
     assert.match(
         rssResponse.text,
-        new RegExp(new Date('2026-03-08T04:05:06.000Z').toUTCString())
+        new RegExp(new Date('2026-03-06').toUTCString())
     );
 
     const sitemapResponse = await request(app).get('/sitemap.xml');
@@ -1279,6 +1400,10 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.match(sitemapResponse.text, /meta-visible-post/);
     assert.match(sitemapResponse.text, /<lastmod>2026-03-08<\/lastmod>/);
     assert.match(sitemapResponse.text, /meta-scheduled-visible/);
+    assert.match(sitemapResponse.text, /https:\/\/tech\.hamwoo\.co\.kr\/guides\/canonical-local/);
+    assert.doesNotMatch(sitemapResponse.text, /canonical-local-post/);
+    assert.doesNotMatch(sitemapResponse.text, /canonical-external-post/);
+    assert.doesNotMatch(sitemapResponse.text, /example\.com\/original-post/);
     assert.doesNotMatch(sitemapResponse.text, /meta-future-post/);
     assert.doesNotMatch(sitemapResponse.text, /meta-draft-post/);
 
@@ -1365,6 +1490,32 @@ test('home page reflects profile SEO metadata and search engine verification', a
             profileImage: '/uploads/profile-home.png',
             stack: ['Terraform', 'AWS']
         });
+        await writePosts([
+            {
+                id: 'home-public-post',
+                slug: 'home-public-post',
+                title: '홈 프리렌더 공개 글',
+                summary: '검색 엔진이 초기 HTML에서 확인할 수 있는 공개 글입니다.',
+                category: 'SEO',
+                contentHtml: '<p>본문</p>',
+                publishedAt: '2026-03-06',
+                tags: [],
+                status: 'published',
+                sections: []
+            },
+            {
+                id: 'home-draft-post',
+                slug: 'home-draft-post',
+                title: '홈에 노출되면 안 되는 초안',
+                summary: '초안',
+                category: 'SEO',
+                contentHtml: '<p>초안</p>',
+                publishedAt: '2026-03-07',
+                tags: [],
+                status: 'draft',
+                sections: []
+            }
+        ]);
 
         const response = await request(app).get('/');
 
@@ -1375,7 +1526,7 @@ test('home page reflects profile SEO metadata and search engine verification', a
         assert.match(response.text, /<title>HamLog Ops \| 클라우드 엔지니어링과 개발 기록<\/title>/);
         assert.match(
             response.text,
-            /<meta name="description" content="운영 관점의 클라우드 엔지니어링 기록입니다\." \/>/
+            /<meta name="description" content="운영 관점의 클라우드 엔지니어링 기록입니다\. · Terraform, AWS 기술 스택" \/>/
         );
         assert.match(
             response.text,
@@ -1390,6 +1541,10 @@ test('home page reflects profile SEO metadata and search engine verification', a
             /<link rel="canonical" href="https:\/\/tech\.hamwoo\.co\.kr" \/>/
         );
         assert.match(response.text, /Terraform/);
+        assert.match(response.text, /<main data-prerendered="home">/);
+        assert.match(response.text, /<h1>HamLog Ops<\/h1>/);
+        assert.match(response.text, /href="\/posts\/home-public-post"/);
+        assert.doesNotMatch(response.text, /home-draft-post/);
         assert.match(
             response.text,
             /<meta name="google-site-verification" content="google-verification-token" \/>/
@@ -1435,4 +1590,24 @@ test('home page reflects profile SEO metadata and search engine verification', a
             process.env.DAUM_WEBMASTER_PIN = previousDaumPin;
         }
     }
+});
+
+test('home page replaces the legacy avatar favicon with the lightweight static favicon', async () => {
+    await writeProfile({
+        ...defaultProfile,
+        title: 'Legacy Favicon Site',
+        favicon: '/avatar.jpg'
+    });
+
+    const response = await request(app).get('/');
+
+    assert.equal(response.status, 200);
+    assert.match(
+        response.text,
+        /<link rel="icon" href="https:\/\/tech\.hamwoo\.co\.kr\/favicon\.svg" \/>/
+    );
+    assert.match(
+        response.text,
+        /<link rel="apple-touch-icon" href="https:\/\/tech\.hamwoo\.co\.kr\/favicon\.svg" \/>/
+    );
 });

@@ -22,6 +22,13 @@ export const replaceHeadTag = (html, pattern, replacement) => (
 
 export const removeHeadTag = (html, pattern) => html.replace(pattern, '');
 
+export const injectAppRootContent = (html, content) => {
+  const emptyRootPattern = /<div\s+id=(["'])root\1\s*><\/div>/i;
+  return emptyRootPattern.test(html)
+    ? html.replace(emptyRootPattern, `<div id="root">${content}</div>`)
+    : html;
+};
+
 export const normalizeBaseUrl = (value, fallback) => {
   const candidate = String(value || fallback).trim().replace(/\/+$/, '');
   return /^https?:\/\//i.test(candidate) ? candidate : fallback;

@@ -9,13 +9,62 @@ interface SeoProps {
     type?: 'article' | 'website';
     favicon?: string;
     twitterHandle?: string;
+    robots?: RobotsDirective;
+    preserveExisting?: boolean;
 }
+
+export type RobotsDirective = 'index, follow' | 'noindex, nofollow';
 
 const toAbsoluteUrl = (value?: string) => {
     if (!value) return '';
     if (/^https?:\/\//i.test(value)) return value;
     if (typeof window === 'undefined') return value;
     return `${window.location.origin}${value.startsWith('/') ? '' : '/'}${value}`;
+};
+
+const setMetaTag = (key: string, content: string, attr: 'name' | 'property') => {
+    const selector = `meta[${attr}="${key}"]`;
+    const elements = Array.from(document.head.querySelectorAll<HTMLMetaElement>(selector));
+    const [first, ...duplicates] = elements;
+    duplicates.forEach(element => element.remove());
+
+    if (!content) {
+        first?.remove();
+        return;
+    }
+
+    const element = first ?? document.createElement('meta');
+    if (!first) {
+        element.setAttribute(attr, key);
+        document.head.appendChild(element);
+    }
+    element.setAttribute('content', content);
+};
+
+const setLinkTag = (rel: string, href: string) => {
+    const selector = `link[rel="${rel}"]`;
+    const elements = Array.from(document.head.querySelectorAll<HTMLLinkElement>(selector));
+    const [first, ...duplicates] = elements;
+    duplicates.forEach(element => element.remove());
+
+    if (!href) {
+        first?.remove();
+        return;
+    }
+
+    const element = first ?? document.createElement('link');
+    if (!first) {
+        element.setAttribute('rel', rel);
+        document.head.appendChild(element);
+    }
+    element.setAttribute('href', href);
+};
+
+export const useRobots = (robots: RobotsDirective) => {
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        setMetaTag('robots', robots, 'name');
+    }, [robots]);
 };
 
 export const useSeo = ({
@@ -27,53 +76,29 @@ export const useSeo = ({
     type = 'article',
     favicon,
     twitterHandle,
+    robots,
+    preserveExisting = false,
 }: SeoProps) => {
     useEffect(() => {
         if (typeof document === 'undefined') return;
+        if (preserveExisting) return;
 
         const seoTitle = title ?? '';
         const seoDescription = description ?? '';
         const seoImage = toAbsoluteUrl(image);
         const seoKeywords = keywords?.join(', ') ?? '';
         const canonicalUrl = toAbsoluteUrl(url) || window.location.href;
-        const seoFavicon = toAbsoluteUrl(favicon ?? '/avatar.jpg');
+        const seoFavicon = toAbsoluteUrl(favicon ?? '/favicon.svg');
 
         if (seoTitle) {
             document.title = seoTitle;
         }
 
-        const setMetaTag = (key: string, content: string, attr: 'name' | 'property') => {
-            const selector = `meta[${attr}="${key}"]`;
-            let element = document.head.querySelector(selector) as HTMLMetaElement | null;
-            if (!content) {
-                if (element) element.remove();
-                return;
-            }
-            if (!element) {
-                element = document.createElement('meta');
-                element.setAttribute(attr, key);
-                document.head.appendChild(element);
-            }
-            element.setAttribute('content', content);
-        };
-
-        const setLinkTag = (rel: string, href: string) => {
-            const selector = `link[rel="${rel}"]`;
-            let element = document.head.querySelector(selector) as HTMLLinkElement | null;
-            if (!href) {
-                if (element) element.remove();
-                return;
-            }
-            if (!element) {
-                element = document.createElement('link');
-                element.setAttribute('rel', rel);
-                document.head.appendChild(element);
-            }
-            element.setAttribute('href', href);
-        };
-
         setMetaTag('description', seoDescription, 'name');
         setMetaTag('keywords', seoKeywords, 'name');
+        if (robots) {
+            setMetaTag('robots', robots, 'name');
+        }
         setMetaTag('og:title', seoTitle, 'property');
         setMetaTag('og:description', seoDescription, 'property');
         setMetaTag('og:image', seoImage, 'property');
@@ -88,5 +113,5 @@ export const useSeo = ({
         setLinkTag('canonical', canonicalUrl);
         setLinkTag('icon', seoFavicon);
         setLinkTag('apple-touch-icon', seoFavicon);
-    }, [title, description, image, keywords, url, type, favicon, twitterHandle]);
+    }, [title, description, image, keywords, url, type, favicon, twitterHandle, robots, preserveExisting]);
 };

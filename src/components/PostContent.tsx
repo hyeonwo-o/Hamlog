@@ -4,6 +4,8 @@ import parse from 'html-react-parser';
 import type { DOMNode, HTMLReactParserOptions, Element } from 'html-react-parser';
 import type { ChildNode } from 'domhandler';
 import { Copy, Check, Terminal } from 'lucide-react';
+import { resolveMeaningfulImageAlt } from '../editor/utils/imageAlt';
+import { buildImageVariantSrcSet, buildImageVariantUrl } from '../utils/imageUrl';
 import { resolveMermaidCodeBlockSource } from '../utils/mermaid';
 
 interface PostContentProps {
@@ -13,8 +15,23 @@ interface PostContentProps {
 const sanitizeHtml = (html: string) =>
   DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
-    ADD_ATTR: ['data-size', 'data-width', 'style', 'width', 'class', 'colspan', 'rowspan', 'colwidth', 'data-caption', 'id'],
-    ADD_TAGS: ['figure', 'figcaption']
+    ADD_ATTR: [
+      'data-size',
+      'data-width',
+      'style',
+      'width',
+      'class',
+      'colspan',
+      'rowspan',
+      'colwidth',
+      'data-caption',
+      'id',
+      'url',
+      'description',
+      'image',
+      'domain'
+    ],
+    ADD_TAGS: ['figure', 'figcaption', 'link-card']
   });
 
 type HtmlNode = DOMNode | ChildNode;
@@ -37,6 +54,71 @@ const getCodeText = (node: HtmlNode): string => {
     return `${content}\n`;
   }
   return content;
+};
+
+const cleanContextText = (value = '') => value.replace(/\s+/g, ' ').trim().slice(0, 140);
+
+const getElementParent = (node: Element) => {
+  const parent = node.parent;
+  return parent && parent.type === 'tag' ? parent as Element : null;
+};
+
+const getImageCaption = (node: Element) => {
+  const dataCaption = cleanContextText(node.attribs['data-caption']);
+  if (dataCaption) return dataCaption;
+
+  const parent = getElementParent(node);
+  if (parent?.name !== 'figure') return '';
+  const caption = (parent.children ?? []).find(
+    (child): child is Element => isElementNode(child) && child.name === 'figcaption'
+  );
+  return caption ? cleanContextText(getNodeText(caption)) : '';
+};
+
+const getNearbyImageContext = (node: Element) => {
+  const parent = getElementParent(node);
+  if (parent && ['p', 'a'].includes(parent.name)) {
+    const inlineContext = cleanContextText(getNodeText(parent));
+    if (inlineContext) return inlineContext;
+  }
+
+  const anchorNode = parent?.name === 'figure' ? parent : node;
+  const container = getElementParent(anchorNode);
+  if (!container) return '';
+  const siblings = container.children ?? [];
+  const anchorIndex = siblings.indexOf(anchorNode);
+  if (anchorIndex < 0) return '';
+
+  for (let distance = 1; distance <= 3; distance += 1) {
+    for (const index of [anchorIndex - distance, anchorIndex + distance]) {
+      const sibling = siblings[index];
+      if (!sibling || !isElementNode(sibling)) continue;
+      if (!['h1', 'h2', 'h3', 'p', 'figcaption'].includes(sibling.name)) continue;
+      const context = cleanContextText(getNodeText(sibling));
+      if (context) return context;
+    }
+  }
+
+  return '';
+};
+
+const resolveImageAlt = (node: Element) => resolveMeaningfulImageAlt({
+  existingAlt: node.attribs.alt,
+  caption: getImageCaption(node),
+  context: getNearbyImageContext(node),
+  src: node.attribs.src
+});
+
+const normalizeHttpOrLocalUrl = (value = '') => {
+  const candidate = String(value).trim();
+  if (candidate.startsWith('/') && !candidate.startsWith('//')) return candidate;
+
+  try {
+    const parsed = new URL(candidate);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+  } catch {
+    return '';
+  }
 };
 
 interface SyntaxHighlighterProps {
@@ -192,6 +274,83 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
 
           domNode.attribs.id = `heading-${domNode.startIndex ?? ''}-${slug}`;
         }
+      }
+
+      if (domNode.name === 'img') {
+        const originalSrc = domNode.attribs.src;
+        const responsiveSrcSet = buildImageVariantSrcSet(originalSrc, [
+          { width: 480, descriptor: '480w' },
+          { width: 800, descriptor: '800w' },
+          { width: 1200, descriptor: '1200w' }
+        ]);
+        domNode.attribs.alt = resolveImageAlt(domNode);
+        domNode.attribs.src = buildImageVariantUrl(originalSrc, { width: 1200 });
+        if (responsiveSrcSet) {
+          domNode.attribs.srcset = responsiveSrcSet;
+          domNode.attribs.sizes = '(min-width: 1024px) 880px, 100vw';
+        }
+        domNode.attribs.loading = 'lazy';
+        domNode.attribs.decoding = 'async';
+        domNode.attribs.fetchpriority = 'low';
+      }
+
+      if (domNode.name === 'link-card') {
+        const href = normalizeHttpOrLocalUrl(domNode.attribs.url);
+        const title = cleanContextText(domNode.attribs.title) || cleanContextText(domNode.attribs.domain) || href;
+        const description = cleanContextText(domNode.attribs.description);
+        const domain = cleanContextText(domNode.attribs.domain);
+        const originalImage = normalizeHttpOrLocalUrl(domNode.attribs.image);
+        const image = buildImageVariantUrl(originalImage, { width: 320, height: 192 });
+        const imageSrcSet = buildImageVariantSrcSet(originalImage, [
+          { width: 160, height: 96, descriptor: '1x' },
+          { width: 320, height: 192, descriptor: '2x' }
+        ]);
+
+        if (!href) {
+          return title ? <p>{title}</p> : <></>;
+        }
+
+        const isExternal = /^https?:\/\//i.test(href);
+        return (
+          <a
+            href={href}
+            target={isExternal ? '_blank' : undefined}
+            rel={isExternal ? 'noopener noreferrer' : undefined}
+            className="group my-4 flex overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--surface)] no-underline transition-all hover:border-[color:var(--accent)]"
+          >
+            {image && (
+              <span className="relative hidden h-24 w-40 shrink-0 sm:block">
+                <img
+                  src={image}
+                  srcSet={imageSrcSet}
+                  sizes="160px"
+                  alt=""
+                  width={160}
+                  height={96}
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </span>
+            )}
+            <span className="flex min-w-0 flex-1 flex-col justify-center p-4">
+              <span className="line-clamp-1 text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent-strong)]">
+                {title}
+              </span>
+              {description && (
+                <span className="mt-1 line-clamp-2 text-xs text-[var(--text-muted)]">
+                  {description}
+                </span>
+              )}
+              {domain && (
+                <span className="mt-2 text-[10px] text-[var(--text-muted)]">
+                  {domain}
+                </span>
+              )}
+            </span>
+          </a>
+        );
       }
 
       if (domNode.name === 'span' && domNode.attribs['data-type'] === 'math') {

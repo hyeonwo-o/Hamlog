@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Post } from '../data/blogData';
 import { formatDate } from '../utils/formatDate';
+import { buildImageVariantSrcSet, buildImageVariantUrl } from '../utils/imageUrl';
 
 interface PostCardProps {
   post: Post;
@@ -37,8 +38,31 @@ const TagList: React.FC<{ tags: string[] }> = ({ tags }) => (
   </>
 );
 
-const PostImage: React.FC<{ post: Post; variant: 'featured' | 'compact' }> = ({ post, variant }) => {
+interface PostImageProps {
+  post: Post;
+  variant: 'featured' | 'compact';
+  eager?: boolean;
+  priority?: boolean;
+}
+
+const PostImage: React.FC<PostImageProps> = ({ post, variant, eager = false, priority = false }) => {
   if (!post.cover) return null;
+
+  const isFeatured = variant === 'featured';
+  const imageWidth = isFeatured ? 720 : 320;
+  const imageHeight = isFeatured ? 256 : 192;
+  const imageSrc = buildImageVariantUrl(post.cover, { width: imageWidth, height: imageHeight });
+  const imageSrcSet = buildImageVariantSrcSet(post.cover, isFeatured
+    ? [
+        { width: 480, height: 171, descriptor: '480w' },
+        { width: 720, height: 256, descriptor: '720w' },
+        { width: 960, height: 341, descriptor: '960w' }
+      ]
+    : [
+        { width: 320, height: 192, descriptor: '320w' },
+        { width: 640, height: 384, descriptor: '640w' },
+        { width: 960, height: 576, descriptor: '960w' }
+      ]);
 
   const wrapperClass = variant === 'featured'
     ? "angular-control relative overflow-hidden rounded-lg"
@@ -51,10 +75,18 @@ const PostImage: React.FC<{ post: Post; variant: 'featured' | 'compact' }> = ({ 
   return (
     <div className={wrapperClass}>
       <img
-        src={post.cover}
+        src={imageSrc}
+        srcSet={imageSrcSet}
+        sizes={isFeatured
+          ? '(min-width: 1024px) 352px, (min-width: 640px) 50vw, 100vw'
+          : '(min-width: 768px) 160px, 100vw'}
         alt={post.title}
         className={imgClass}
-        loading="lazy"
+        width={imageWidth}
+        height={imageHeight}
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+        fetchPriority={priority ? 'high' : eager ? 'auto' : 'low'}
       />
       {variant === 'featured' && (
         <span className="angular-chip absolute left-3 top-3 rounded-lg border border-[color:var(--border)] bg-[var(--surface-strong)] px-2 py-0.5 text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] backdrop-blur-sm">
@@ -83,7 +115,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
       {isFeatured ? (
         // Featured Layout
         <>
-          <PostImage post={post} variant="featured" />
+          <PostImage
+            post={post}
+            variant="featured"
+            eager={index < 3}
+            priority={index === 0}
+          />
           <PostMeta post={post} />
           <h3 className="font-display text-base font-bold leading-snug text-[var(--text)]">
             {post.title}

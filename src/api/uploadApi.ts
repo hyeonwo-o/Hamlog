@@ -1,8 +1,10 @@
 import { requestJson } from './client';
 
-interface UploadResponse {
+export interface UploadResponse {
   url: string;
   filename: string;
+  width?: number;
+  height?: number;
 }
 
 export interface UploadFileInfo {

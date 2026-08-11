@@ -56,10 +56,15 @@ const PostPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState('');
   const recordedViewSlugRef = useRef<string | null>(null);
+  const loadRequestIdRef = useRef(0);
 
   const loadPost = useCallback(async () => {
+    const requestId = loadRequestIdRef.current + 1;
+    loadRequestIdRef.current = requestId;
+    setPost(null);
+
     if (!slug) {
-      setPost(null);
+      setDetailError('');
       setDetailLoading(false);
       return;
     }
@@ -67,9 +72,11 @@ const PostPage: React.FC = () => {
     setDetailLoading(true);
     setDetailError('');
     try {
-      setPost(await fetchPostBySlug(slug));
+      const nextPost = await fetchPostBySlug(slug);
+      if (loadRequestIdRef.current !== requestId) return;
+      setPost(nextPost);
     } catch (loadError) {
-      setPost(null);
+      if (loadRequestIdRef.current !== requestId) return;
       if (!(loadError instanceof ApiError && loadError.status === 404)) {
         setDetailError(
           loadError instanceof Error && loadError.message
@@ -78,12 +85,17 @@ const PostPage: React.FC = () => {
         );
       }
     } finally {
-      setDetailLoading(false);
+      if (loadRequestIdRef.current === requestId) {
+        setDetailLoading(false);
+      }
     }
   }, [slug]);
 
   useEffect(() => {
     void loadPost();
+    return () => {
+      loadRequestIdRef.current += 1;
+    };
   }, [loadPost]);
 
   useEffect(() => {
@@ -149,19 +161,52 @@ const PostPage: React.FC = () => {
     return node ? getCategoryPathLabel(node, categoryTree.nodesById) : categoryName;
   }, [categoryTree, post?.category]);
 
+  const siteTitle = profile.title.trim() || 'Hamlog';
+  const configuredFavicon = profile.favicon?.trim();
+  const pageFavicon = !configuredFavicon || configuredFavicon === '/avatar.jpg'
+    ? '/favicon.svg'
+    : configuredFavicon;
+  const fallbackImage = profile.profileImage?.trim() || '/avatar.jpg';
+  const isUnavailable = !detailLoading && !post;
+  const unavailableTitle = detailError || error
+    ? `글을 불러오지 못했습니다 | ${siteTitle}`
+    : `페이지를 찾을 수 없습니다 | ${siteTitle}`;
+
   useSeo({
-    title: post?.seo?.title ?? post?.title,
-    description: post?.seo?.description ?? post?.summary,
-    image: post?.seo?.ogImage ?? post?.cover,
-    keywords: post ? (post.seo?.keywords?.length ? post.seo.keywords : post.tags) : undefined,
+    title: post
+      ? post.seo?.title || post.title
+      : isUnavailable
+        ? unavailableTitle
+        : `글을 불러오는 중 | ${siteTitle}`,
+    description: post
+      ? post.seo?.description || post.summary
+      : isUnavailable
+        ? '요청한 글을 표시할 수 없습니다.'
+        : '글 정보를 불러오는 중입니다.',
+    image: post?.seo?.ogImage || post?.cover || fallbackImage,
+    keywords: post ? (post.seo?.keywords?.length ? post.seo.keywords : post.tags) : [],
     url: post
       ? post.seo?.canonicalUrl
-        ?? `${typeof window !== 'undefined' ? window.location.origin : siteMeta.siteUrl}/posts/${post.slug}`
-      : undefined,
-    type: 'article'
+        || `${typeof window !== 'undefined' ? window.location.origin : siteMeta.siteUrl}/posts/${post.slug}`
+      : typeof window !== 'undefined'
+        ? window.location.href
+        : siteMeta.siteUrl,
+    type: post ? 'article' : 'website',
+    favicon: pageFavicon,
+    twitterHandle: profile.social.twitter,
+    robots: post
+      ? 'index, follow'
+      : isUnavailable
+        ? 'noindex, nofollow'
+        : undefined,
+    preserveExisting: detailLoading && !post
   });
 
-  useSchema({ post: post ?? undefined });
+  useSchema({
+    post: post ?? undefined,
+    profile,
+    preserveExisting: detailLoading && !post
+  });
 
   if (detailLoading || (!hasLoaded && posts.length === 0)) {
     return (

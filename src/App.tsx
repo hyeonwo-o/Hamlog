@@ -1,10 +1,12 @@
 import { Suspense, lazy } from 'react';
-import type { ComponentType } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import type { ComponentType, ReactNode } from 'react';
+import { Link, createBrowserRouter, RouterProvider } from 'react-router-dom';
 import LoadingSpinner from './components/LoadingSpinner';
 import AdminGuard from './pages/AdminGuard';
 import HomePage from './pages/HomePage';
 import PublicAnalyticsTracker from './components/analytics/PublicAnalyticsTracker';
+import { useRobots, useSeo } from './hooks/useSeo';
+import { useSchema } from './hooks/useSchema';
 
 // Helper to auto-reload page on chunk load error (deployment update)
 type LazyImport = Promise<{ default: ComponentType<object> }>;
@@ -41,6 +43,48 @@ const LoadingFallback = () => (
   </div>
 );
 
+const NoIndexRoute = ({ children }: { children: ReactNode }) => {
+  useRobots('noindex, nofollow');
+  useSchema({ post: undefined });
+  return children;
+};
+
+const NotFoundPage = () => {
+  useSeo({
+    title: '페이지를 찾을 수 없습니다 | Hamlog',
+    description: '요청한 페이지가 존재하지 않거나 이동되었습니다.',
+    image: '/avatar.jpg',
+    keywords: [],
+    url: typeof window !== 'undefined' ? window.location.href : undefined,
+    type: 'website',
+    favicon: '/favicon.svg',
+    robots: 'noindex, nofollow'
+  });
+  useSchema({ post: undefined });
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 text-[var(--text)]">
+      <section aria-labelledby="not-found-title" className="w-full max-w-xl border border-[color:var(--border)] bg-[var(--surface)] p-8 text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">
+          404 · Not Found
+        </p>
+        <h1 id="not-found-title" className="mt-4 font-display text-3xl font-semibold">
+          페이지를 찾을 수 없습니다
+        </h1>
+        <p className="mt-3 text-sm leading-7 text-[var(--text-muted)]">
+          주소가 올바른지 확인하거나 홈에서 원하는 글을 다시 찾아보세요.
+        </p>
+        <Link
+          to="/"
+          className="mt-7 inline-flex min-h-11 items-center justify-center bg-[var(--text)] px-6 text-sm font-semibold text-[var(--bg)] transition hover:opacity-90"
+        >
+          홈으로 돌아가기
+        </Link>
+      </section>
+    </main>
+  );
+};
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -73,12 +117,18 @@ const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <AdminGuard>
-        <Suspense fallback={<LoadingFallback />}>
-          <AdminPage />
-        </Suspense>
-      </AdminGuard>
+      <NoIndexRoute>
+        <AdminGuard>
+          <Suspense fallback={<LoadingFallback />}>
+            <AdminPage />
+          </Suspense>
+        </AdminGuard>
+      </NoIndexRoute>
     )
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />
   },
 ]);
 
