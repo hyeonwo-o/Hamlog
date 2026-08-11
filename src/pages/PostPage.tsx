@@ -338,7 +338,7 @@ const PostPage: React.FC = () => {
                     )}
                   </div>
 
-                  <h1 className="mt-4 max-w-[28ch] font-display text-[1.02rem] font-semibold leading-[1.45] tracking-[-0.025em] text-[var(--text)] sm:text-[1.35rem] lg:text-[1.75rem]">
+                  <h1 className="mt-4 break-keep font-display text-[1.02rem] font-semibold leading-[1.45] tracking-[-0.025em] text-[var(--text)] sm:text-[1.35rem] lg:text-[1.75rem]">
                     {post.title}
                   </h1>
 
