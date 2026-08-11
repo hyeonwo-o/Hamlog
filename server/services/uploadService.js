@@ -48,9 +48,9 @@ export async function processImageUpload(dataUrl) {
             sharpInstance = sharpInstance.resize({ width: 1200, withoutEnlargement: true });
         }
 
-        const optimizedBuffer = await sharpInstance
+        const { data: optimizedBuffer, info } = await sharpInstance
             .webp({ quality: 80, animated: true }) // Ensure animated: true for WebP
-            .toBuffer();
+            .toBuffer({ resolveWithObject: true });
 
         await writeFile(path.join(uploadDir, filename), optimizedBuffer);
 
@@ -58,7 +58,9 @@ export async function processImageUpload(dataUrl) {
             success: true,
             data: {
                 url: `/uploads/${filename}`,
-                filename
+                filename,
+                width: info.width,
+                height: info.height
             }
         };
     } catch (error) {

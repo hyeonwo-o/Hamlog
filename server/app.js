@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 // Config
 import { uploadDir } from './config/paths.js';
 import { resolveCorsOptions, resolveTrustProxy } from './config/security.js';
+import { readPosts } from './models/postModel.js';
 import { readProfile } from './models/profileModel.js';
 
 // Routers
@@ -21,12 +22,27 @@ import { commentRouter } from './routes/comments.js';
 import { authRouter } from './routes/auth.js';
 import { previewRouter } from './routes/preview.js';
 import { analyticsRouter } from './routes/analytics.js';
+import { publicImageRouter } from './routes/images.js';
 import { searchPosts } from './controllers/searchController.js';
 import { getRobots, injectPostMeta } from './controllers/seoController.js';
+import { createHttpsRedirectMiddleware } from './middleware/httpsRedirect.js';
 import { searchRateLimiter } from './middleware/rateLimit.js';
-import { readSpaIndexHtml, resolveSpaIndexPath } from './utils/spaIndex.js';
+import { readSpaIndexHtml } from './utils/spaIndex.js';
 import { injectSearchVerificationMeta } from './utils/searchVerification.js';
-import { escapeHtml, normalizeBaseUrl, replaceHeadTag, toAbsoluteUrl } from './utils/seoHtml.js';
+import { filterPublicPosts } from './utils/postVisibility.js';
+import {
+    buildHomePrerenderContent,
+    buildNotFoundPrerenderContent,
+    resolveHomeMetaDescription,
+    resolveSeoFavicon
+} from './utils/seoContent.js';
+import {
+    escapeHtml,
+    injectAppRootContent,
+    normalizeBaseUrl,
+    replaceHeadTag,
+    toAbsoluteUrl
+} from './utils/seoHtml.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,7 +80,7 @@ const resolveHomeTitle = (profile) => {
     return title.includes('|') ? title : `${title} | ${HOME_TITLE_SUFFIX}`;
 };
 const resolveHomeDescription = (profile) => (
-    String(profile?.description ?? '').trim() || HOME_DESCRIPTION
+    resolveHomeMetaDescription(profile, HOME_DESCRIPTION)
 );
 const resolveHomeKeywords = (profile) => {
     const profileStack = Array.isArray(profile?.stack)
@@ -94,14 +110,14 @@ const buildHomeSchema = (profile, baseUrl, description) => JSON.stringify({
     inLanguage: 'ko-KR'
 }).replace(/</g, '\\u003c');
 
-const injectHomeSeoMeta = (html, profile) => {
+const injectHomeSeoMeta = (html, profile, posts = []) => {
     const baseUrl = resolveBaseUrl(profile);
     const title = resolveHomeTitle(profile);
     const description = resolveHomeDescription(profile);
     const keywords = resolveHomeKeywords(profile);
     const author = String(profile?.name ?? '').trim() || 'Hamwoo';
     const siteName = String(profile?.title ?? '').trim() || 'Hamlog';
-    const favicon = toAbsoluteUrl(baseUrl, profile?.favicon || '/avatar.jpg');
+    const favicon = toAbsoluteUrl(baseUrl, resolveSeoFavicon(profile));
     const image = toAbsoluteUrl(baseUrl, profile?.profileImage || profile?.favicon || '/avatar.jpg');
     const schema = buildHomeSchema(profile, baseUrl, description);
 
@@ -183,13 +199,22 @@ const injectHomeSeoMeta = (html, profile) => {
         `<script type="application/ld+json">${schema}</script>`
     );
 
+    nextHtml = injectAppRootContent(
+        nextHtml,
+        buildHomePrerenderContent(profile, posts, description)
+    );
+
     return injectSearchVerificationMeta(nextHtml);
 };
 
 const injectHomeAppShell = async (req, res, next) => {
     try {
-        const [html, profile] = await Promise.all([readSpaIndexHtml(), readProfile()]);
-        res.send(injectHomeSeoMeta(html, profile));
+        const [html, profile, posts] = await Promise.all([
+            readSpaIndexHtml(),
+            readProfile(),
+            readPosts()
+        ]);
+        res.send(injectHomeSeoMeta(html, profile, filterPublicPosts(posts)));
     } catch (error) {
         next(error);
     }
@@ -213,12 +238,61 @@ const injectNoindexAppShell = async (req, res, next) => {
     }
 };
 
+const isHtmlNavigationRequest = (req) => (
+    !path.extname(req.path)
+    && Boolean(req.accepts('html'))
+);
+
+const injectNotFoundAppShell = async (req, res, next) => {
+    if (!isHtmlNavigationRequest(req)) {
+        return res
+            .status(404)
+            .set('X-Robots-Tag', 'noindex, nofollow')
+            .type('text/plain')
+            .send('Not Found');
+    }
+
+    try {
+        const [template, profile] = await Promise.all([readSpaIndexHtml(), readProfile()]);
+        const baseUrl = resolveBaseUrl(profile);
+        const siteName = String(profile?.title ?? '').trim() || 'Hamlog';
+        const requestedPath = req.originalUrl.startsWith('/') ? req.originalUrl : `/${req.originalUrl}`;
+        let html = injectSearchVerificationMeta(template);
+        html = replaceHeadTag(
+            html,
+            /<title>.*?<\/title>/,
+            `<title>페이지를 찾을 수 없습니다 | ${escapeHtml(siteName)}</title>`
+        );
+        html = replaceHeadTag(
+            html,
+            /<meta name="robots" content=".*?" \/>/,
+            '<meta name="robots" content="noindex, nofollow" />'
+        );
+        html = replaceHeadTag(
+            html,
+            /<link rel="canonical" href=".*?" \/>/,
+            `<link rel="canonical" href="${escapeHtml(`${baseUrl}${requestedPath}`)}" />`
+        );
+        html = injectAppRootContent(html, buildNotFoundPrerenderContent());
+
+        return res
+            .status(404)
+            .set('X-Robots-Tag', 'noindex, nofollow')
+            .send(html);
+    } catch (error) {
+        return next(error);
+    }
+};
+
 // Middleware
 app.use(helmet({
     contentSecurityPolicy: {
         directives: cspDirectives
     },
     crossOriginEmbedderPolicy: false
+}));
+app.use(createHttpsRedirectMiddleware({
+    resolveCanonicalBaseUrl: async () => resolveBaseUrl(await readProfile())
 }));
 app.use(cors((req, callback) => {
     callback(null, resolveCorsOptions(req));
@@ -243,6 +317,7 @@ app.use('/api/uploads', uploadRouter);
 app.use('/api/comments', commentRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/images', publicImageRouter);
 app.use('/api', previewRouter);
 app.get('/api/search', searchRateLimiter, searchPosts);
 app.use('/api', (_req, res) => {
@@ -253,12 +328,6 @@ app.get(['/posts/:slug', '/p/:slug'], injectPostMeta);
 app.use('/', seoRouter);
 
 // Fallback for SPA
-app.get('*', async (req, res, next) => {
-    try {
-        res.sendFile(await resolveSpaIndexPath());
-    } catch (error) {
-        next(error);
-    }
-});
+app.get('*', injectNotFoundAppShell);
 
 export default app;

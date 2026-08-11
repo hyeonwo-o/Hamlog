@@ -35,6 +35,7 @@ interface EditorToolbarProps {
 }
 
 const toolbarGroupClass = 'flex shrink-0 items-center gap-0.5 border border-[color:var(--border)] bg-white/80 px-1 py-0.5';
+const articleHeadingOptions = HEADING_OPTIONS.filter(option => option.value !== 'h1');
 
 function ToolbarGroup({
   children,
@@ -152,7 +153,7 @@ export function EditorToolbar({
                 label="본문"
                 value={headingValue}
                 width="w-24"
-                options={HEADING_OPTIONS}
+                options={articleHeadingOptions}
                 onSelect={value => {
                   if (!editor) return;
                   if (value === 'paragraph') {
@@ -160,10 +161,13 @@ export function EditorToolbar({
                     return;
                   }
 
+                  const level = Number(value.replace('h', ''));
+                  if (level !== 2 && level !== 3) return;
+
                   editor
                     .chain()
                     .focus()
-                    .toggleHeading({ level: Number(value.replace('h', '')) as 1 | 2 | 3 })
+                    .toggleHeading({ level })
                     .run();
                 }}
                 disabled={!editor}

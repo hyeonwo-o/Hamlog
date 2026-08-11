@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { EditorView } from '@tiptap/pm/view';
 import { detectImageDropZone } from '../editor/utils/dragDropUtils';
+import { createDefaultImageAlt } from '../editor/utils/imageAlt';
 import { promptForText } from '../utils/editorDialog';
 
 interface UseEditorImageControlsProps {
@@ -58,7 +59,7 @@ export const useEditorImageControls = ({
       if (!currentEditor) return;
       try {
         const { url } = await uploadValidatedImage(file);
-        const imageAttrs = { src: url, alt: file.name, size: 'full' };
+        const imageAttrs = { src: url, alt: createDefaultImageAlt(file.name), size: 'full' };
         currentEditor.chain().focus().setImage(imageAttrs).run();
       } catch {
         // uploadValidatedImage reports the user-facing error.
@@ -158,7 +159,11 @@ export const useEditorImageControls = ({
 
                           // Create new column node with the uploaded image
                           const newSchema = view.state.schema;
-                          const newImageNode = newSchema.nodes.image.create({ src: url, size: 'full' });
+                          const newImageNode = newSchema.nodes.image.create({
+                            src: url,
+                            alt: createDefaultImageAlt(file.name),
+                            size: 'full'
+                          });
                           const newColumn = newSchema.nodes.column.create(null, [newImageNode]);
 
                           const newCols = [col1, col2];
@@ -196,7 +201,10 @@ export const useEditorImageControls = ({
                   }
 
                   if (fallbackNode) {
-                    const newImageNode = { type: 'image', attrs: { src: url, size: 'full' } };
+                    const newImageNode = {
+                      type: 'image',
+                      attrs: { src: url, alt: createDefaultImageAlt(file.name), size: 'full' }
+                    };
                     const existingImageNode = { type: 'image', attrs: { ...fallbackNode.attrs } };
                     const leftContent = dropSide === 'left' ? newImageNode : existingImageNode;
                     const rightContent = dropSide === 'left' ? existingImageNode : newImageNode;
@@ -226,9 +234,15 @@ export const useEditorImageControls = ({
             // Fallback: Standard insert at coords
             const freshCoords = view.posAtCoords({ left: clientX, top: clientY });
             if (freshCoords) {
-              editorRef.current?.chain().focus().setTextSelection(freshCoords.pos).setImage({ src: url }).run();
+              editorRef.current?.chain().focus().setTextSelection(freshCoords.pos).setImage({
+                src: url,
+                alt: createDefaultImageAlt(file.name)
+              }).run();
             } else {
-              editorRef.current?.chain().focus().setImage({ src: url }).run();
+              editorRef.current?.chain().focus().setImage({
+                src: url,
+                alt: createDefaultImageAlt(file.name)
+              }).run();
             }
           }
         } catch (error) {
@@ -257,7 +271,14 @@ export const useEditorImageControls = ({
       });
       const url = rawUrl?.trim();
       if (!url) return;
-      const imageAttrs = { src: url, size: 'full' };
+      const rawAlt = await promptForText({
+        title: '이미지 대체 텍스트',
+        description: '이미지가 전달하는 내용을 간결히 적어 주세요. 장식용 이미지라면 비워둘 수 있습니다.',
+        placeholder: '예: Kubernetes 배포 흐름도',
+        defaultValue: createDefaultImageAlt(url)
+      });
+      if (rawAlt === null) return;
+      const imageAttrs = { src: url, alt: rawAlt.trim().slice(0, 180), size: 'full' };
       editor.chain().focus().setImage(imageAttrs).run();
     })();
   }, [editorRef]);

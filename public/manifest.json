@@ -1,7 +1,7 @@
 {
   "name": "Hamlog | 기술 블로그",
   "short_name": "Hamlog",
-  "description": "프론트엔드 시스템, UI 아키텍처, 제품 제작 경험을 기록하는 기술 블로그입니다.",
+  "description": "클라우드 엔지니어링, 인프라, DevOps, 개발 경험을 기록하는 기술 블로그입니다.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f4ef",
@@ -9,9 +9,9 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/avatar.jpg",
-      "sizes": "2048x2048",
-      "type": "image/jpeg",
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ],

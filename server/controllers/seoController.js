@@ -4,8 +4,17 @@ import { filterPublicPosts, findPublicPostBySlug } from '../utils/postVisibility
 import { readSpaIndexHtml, resolveSpaIndexPath } from '../utils/spaIndex.js';
 import { buildRobotsTxt, injectSearchVerificationMeta } from '../utils/searchVerification.js';
 import {
+  buildNotFoundPrerenderContent,
+  buildPostPrerenderContent,
+  resolveHomeMetaDescription,
+  resolvePostMetaDescription,
+  resolveSeoFavicon,
+  sanitizePostContentHtml
+} from '../utils/seoContent.js';
+import {
   escapeHtml,
   escapeXml,
+  injectAppRootContent,
   normalizeBaseUrl,
   removeHeadTag,
   replaceHeadTag,
@@ -14,8 +23,7 @@ import {
 } from '../utils/seoHtml.js';
 
 const DEFAULT_SITE_URL = (process.env.SITE_URL?.trim() || 'https://tech.hamwoo.co.kr').replace(/\/+$/, '');
-const SITE_NAME = 'Hamlog';
-const AUTHOR_NAME = 'Hamwoo';
+const HOME_DESCRIPTION = '클라우드 엔지니어링, 인프라, DevOps, 개발 경험을 기록하는 기술 블로그입니다.';
 
 const resolvePostKeywords = (post) => {
   if (Array.isArray(post?.seo?.keywords) && post.seo.keywords.length > 0) {
@@ -44,12 +52,20 @@ const getArticleDate = (value = '') => {
   return timestamp.toISOString();
 };
 
-const buildArticleSchema = (post, canonicalUrl, image, baseUrl) => {
+const resolveCanonicalUrl = (post, baseUrl) => {
+  const postUrl = `${baseUrl}/posts/${post.slug}`;
+  return toAbsoluteUrl(baseUrl, post.seo?.canonicalUrl || postUrl);
+};
+
+const buildArticleSchema = (post, canonicalUrl, image, baseUrl, profile, description) => {
+  const authorName = String(profile?.name ?? '').trim() || 'Hamwoo';
+  const siteName = String(profile?.title ?? '').trim() || 'Hamlog';
+  const logo = toAbsoluteUrl(baseUrl, resolveSeoFavicon(profile));
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: post.seo?.title || post.title,
-    description: post.seo?.description || post.summary,
+    description,
     image: image ? [image] : [],
     datePublished: getArticleDate(post.publishedAt),
     dateModified: getArticleDate(post.updatedAt || post.publishedAt),
@@ -57,17 +73,23 @@ const buildArticleSchema = (post, canonicalUrl, image, baseUrl) => {
     url: canonicalUrl,
     author: {
       '@type': 'Person',
-      name: AUTHOR_NAME,
+      name: authorName,
       url: baseUrl
     },
     publisher: {
       '@type': 'Organization',
-      name: SITE_NAME,
+      name: siteName,
       logo: {
         '@type': 'ImageObject',
-        url: `${baseUrl}/avatar.jpg`
+        url: logo
       }
-    }
+    },
+    isPartOf: {
+      '@type': 'WebSite',
+      name: siteName,
+      url: baseUrl
+    },
+    inLanguage: 'ko-KR'
   };
 
   if (post.category) {
@@ -93,7 +115,8 @@ export const injectPostMeta = async (req, res) => {
 
     if (!post) {
       const requestedUrl = `${baseUrl}${req.originalUrl}`;
-      const notFoundTitle = `페이지를 찾을 수 없습니다 | ${SITE_NAME}`;
+      const siteName = String(profile?.title ?? '').trim() || 'Hamlog';
+      const notFoundTitle = `페이지를 찾을 수 없습니다 | ${siteName}`;
 
       html = replaceHeadTag(html, /<title>.*?<\/title>/, `<title>${escapeHtml(notFoundTitle)}</title>`);
       html = setRobotsDirective(html, 'noindex, nofollow');
@@ -102,6 +125,7 @@ export const injectPostMeta = async (req, res) => {
         /<link rel="canonical" href=".*?" \/>/,
         `<link rel="canonical" href="${escapeHtml(requestedUrl)}" />`
       );
+      html = injectAppRootContent(html, buildNotFoundPrerenderContent());
 
       return res
         .status(404)
@@ -110,17 +134,25 @@ export const injectPostMeta = async (req, res) => {
     }
 
     const title = post.seo?.title || post.title;
-    const description = post.seo?.description || post.summary;
+    const description = resolvePostMetaDescription(post);
     const image = toAbsoluteUrl(baseUrl, post.seo?.ogImage || post.cover || '/avatar.jpg');
-    const fullUrl = `${baseUrl}/posts/${post.slug}`;
-    const canonicalUrl = toAbsoluteUrl(baseUrl, post.seo?.canonicalUrl || fullUrl);
+    const canonicalUrl = resolveCanonicalUrl(post, baseUrl);
+    const siteName = String(profile?.title ?? '').trim() || 'Hamlog';
+    const authorName = String(profile?.name ?? '').trim() || 'Hamwoo';
+    const favicon = toAbsoluteUrl(baseUrl, resolveSeoFavicon(profile));
     const escapedTitle = escapeHtml(title);
     const escapedDescription = escapeHtml(description);
     const escapedImage = escapeHtml(image);
-    const escapedFullUrl = escapeHtml(fullUrl);
     const escapedCanonicalUrl = escapeHtml(canonicalUrl);
     const escapedKeywords = escapeHtml(resolvePostKeywords(post).join(', '));
-    const articleSchema = buildArticleSchema(post, canonicalUrl, image, baseUrl);
+    const articleSchema = buildArticleSchema(
+      post,
+      canonicalUrl,
+      image,
+      baseUrl,
+      profile,
+      description
+    );
 
     // Update basic meta
     html = replaceHeadTag(html, /<title>.*?<\/title>/, `<title>${escapedTitle}</title>`);
@@ -133,6 +165,11 @@ export const injectPostMeta = async (req, res) => {
       html,
       /<meta name="keywords" content=".*?" \/>/,
       `<meta name="keywords" content="${escapedKeywords}" />`
+    );
+    html = replaceHeadTag(
+      html,
+      /<meta name="author" content=".*?" \/>/,
+      `<meta name="author" content="${escapeHtml(authorName)}" />`
     );
     html = setRobotsDirective(html, 'index, follow');
 
@@ -155,12 +192,17 @@ export const injectPostMeta = async (req, res) => {
     html = replaceHeadTag(
       html,
       /<meta property="og:url" content=".*?" \/>/,
-      `<meta property="og:url" content="${escapedFullUrl}" />`
+      `<meta property="og:url" content="${escapedCanonicalUrl}" />`
     );
     html = replaceHeadTag(
       html,
       /<meta property="og:image" content=".*?" \/>/,
       `<meta property="og:image" content="${escapedImage}" />`
+    );
+    html = replaceHeadTag(
+      html,
+      /<meta property="og:site_name" content=".*?" \/>/,
+      `<meta property="og:site_name" content="${escapeHtml(siteName)}" />`
     );
 
     // Update Twitter meta
@@ -202,6 +244,26 @@ export const injectPostMeta = async (req, res) => {
       /<script type="application\/ld\+json">[\s\S]*?<\/script>/,
       `<script type="application/ld+json">${articleSchema}</script>`
     );
+    html = replaceHeadTag(
+      html,
+      /<link rel="icon"[^>]*href=".*?"[^>]*\/>/,
+      `<link rel="icon" href="${escapeHtml(favicon)}" />`
+    );
+    html = replaceHeadTag(
+      html,
+      /<link rel="apple-touch-icon"[^>]*href=".*?"[^>]*\/>/,
+      `<link rel="apple-touch-icon" href="${escapeHtml(favicon)}" />`
+    );
+    html = injectAppRootContent(
+      html,
+      buildPostPrerenderContent(
+        post,
+        profile,
+        filterPublicPosts(posts),
+        description,
+        baseUrl
+      )
+    );
 
     res.send(injectSearchVerificationMeta(html));
   } catch (error) {
@@ -224,23 +286,41 @@ export const getRss = async (req, res) => {
     const publishedPosts = filterPublicPosts(posts)
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
-    const items = publishedPosts.map(post => `
+    const authorName = String(profile?.name ?? '').trim() || 'Hamwoo';
+    const feedDescription = String(profile?.tagline ?? '').trim()
+      || resolveHomeMetaDescription(profile, HOME_DESCRIPTION);
+    const items = publishedPosts.map(post => {
+      const canonicalUrl = resolveCanonicalUrl(post, baseUrl);
+      const publishedDate = new Date(post.publishedAt);
+      const pubDate = Number.isNaN(publishedDate.getTime())
+        ? new Date(post.updatedAt || 0).toUTCString()
+        : publishedDate.toUTCString();
+      const safeContent = sanitizePostContentHtml(post.contentHtml || '', {
+        postTitle: post.title,
+        baseUrl,
+        absoluteUploads: true,
+        demoteH1: false
+      });
+
+      return `
     <item>
       <title>${wrapCdata(post.title)}</title>
-      <link>${escapeXml(`${baseUrl}/posts/${post.slug}`)}</link>
-      <guid>${escapeXml(`${baseUrl}/posts/${post.slug}`)}</guid>
-      <pubDate>${new Date(post.updatedAt || post.publishedAt).toUTCString()}</pubDate>
+      <link>${escapeXml(canonicalUrl)}</link>
+      <guid>${escapeXml(canonicalUrl)}</guid>
+      <pubDate>${pubDate}</pubDate>
+      <dc:creator>${wrapCdata(authorName)}</dc:creator>
       <description>${wrapCdata(post.summary)}</description>
-      <content:encoded>${wrapCdata(post.contentHtml || '')}</content:encoded>
+      <content:encoded>${wrapCdata(safeContent)}</content:encoded>
       ${post.category ? `<category>${escapeXml(post.category)}</category>` : ''}
-    </item>`).join('');
+    </item>`;
+    }).join('');
 
     const rss = `<?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>${escapeXml(profile.title)}</title>
     <link>${escapeXml(baseUrl)}</link>
-    <description>${escapeXml(profile.tagline)}</description>
+    <description>${escapeXml(feedDescription)}</description>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     ${items}
   </channel>
@@ -260,9 +340,20 @@ export const getSitemap = async (req, res) => {
     const baseUrl = resolveBaseUrl(profile);
     const publishedPosts = filterPublicPosts(posts);
 
-    const urls = publishedPosts.map(post => `
+    const baseOrigin = new URL(baseUrl).origin;
+    const sitemapPosts = Array.from(new Map(publishedPosts.flatMap(post => {
+      const canonicalUrl = resolveCanonicalUrl(post, baseUrl);
+      try {
+        return new URL(canonicalUrl).origin === baseOrigin
+          ? [[canonicalUrl, post]]
+          : [];
+      } catch {
+        return [];
+      }
+    })).entries());
+    const urls = sitemapPosts.map(([canonicalUrl, post]) => `
   <url>
-    <loc>${escapeXml(`${baseUrl}/posts/${post.slug}`)}</loc>
+    <loc>${escapeXml(canonicalUrl)}</loc>
     <lastmod>${(post.updatedAt || post.publishedAt).slice(0, 10)}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

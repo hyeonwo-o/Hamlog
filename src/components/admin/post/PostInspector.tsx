@@ -100,6 +100,10 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   const [selectedUploads, setSelectedUploads] = useState<Set<string>>(() => new Set());
   const [uploadCleanupLoading, setUploadCleanupLoading] = useState(false);
   const [uploadCleanupNotice, setUploadCleanupNotice] = useState('');
+  const seoTitleLength = Array.from(draft.seoTitle.trim() || draft.title.trim()).length;
+  const effectiveSeoDescription = draft.seoDescription.trim() || draft.summary.trim();
+  const seoDescriptionLength = Array.from(effectiveSeoDescription).length;
+  const seoDescriptionNeedsWork = seoDescriptionLength < 40;
 
   const loadUnusedUploads = async () => {
     setUploadCleanupLoading(true);
@@ -292,8 +296,13 @@ const PostInspector: React.FC<PostInspectorProps> = ({
               value={draft.seoTitle}
               onChange={(event) => onUpdateDraft({ seoTitle: event.target.value })}
               placeholder="검색 결과 제목"
+              aria-describedby="seo-title-guidance"
               className="w-full rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[color:var(--accent)]"
             />
+            <p id="seo-title-guidance" className="flex justify-between gap-3 text-[11px] text-[var(--text-muted)]">
+              <span>{draft.seoTitle.trim() ? '검색 전용 제목을 사용합니다.' : '비워두면 글 제목을 사용합니다.'}</span>
+              <span>{seoTitleLength}자</span>
+            </p>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
@@ -303,9 +312,21 @@ const PostInspector: React.FC<PostInspectorProps> = ({
               value={draft.seoDescription}
               onChange={(event) => onUpdateDraft({ seoDescription: event.target.value })}
               rows={3}
-              placeholder="검색 설명"
+              placeholder="검색자가 글의 답과 범위를 이해할 수 있는 구체적인 1~2문장"
+              aria-describedby="seo-description-guidance"
               className="w-full rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[color:var(--accent)]"
             />
+            <p
+              id="seo-description-guidance"
+              className={`flex justify-between gap-3 text-[11px] ${seoDescriptionNeedsWork ? 'text-amber-700' : 'text-[var(--text-muted)]'}`}
+            >
+              <span>
+                {draft.seoDescription.trim()
+                  ? (seoDescriptionNeedsWork ? '조금 더 구체적인 설명을 권장합니다.' : '검색 전용 설명을 사용합니다.')
+                  : (seoDescriptionNeedsWork ? '대체할 글 요약도 더 구체적으로 작성해 주세요.' : '비워두면 글 요약을 사용합니다.')}
+              </span>
+              <span>{seoDescriptionLength}자</span>
+            </p>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">

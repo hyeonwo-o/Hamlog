@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Hamlog">
+  <rect width="64" height="64" rx="14" fill="#0f766e"/>
+  <path d="M17 15h8v13h14V15h8v34h-8V36H25v13h-8z" fill="#fff"/>
+  <path d="M51 13h3v38h-3z" fill="#99f6e4" opacity=".9"/>
+</svg>

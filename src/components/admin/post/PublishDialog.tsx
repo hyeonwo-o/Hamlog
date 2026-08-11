@@ -96,6 +96,8 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
   const isScheduled = status === 'scheduled';
   const slug = slugify(draft.slug.trim() || draft.title.trim());
   const postUrl = resolvePostUrl(slug);
+  const summaryLength = Array.from(draft.summary.trim()).length;
+  const summaryNeedsWork = !isPrivate && summaryLength < 40;
   const confirmLabel = saving
     ? '저장 중...'
     : isPrivate
@@ -213,9 +215,17 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
                 value={draft.summary}
                 onChange={event => onUpdateDraft({ summary: event.target.value })}
                 rows={2}
-                placeholder="목록과 SEO에 사용할 짧은 설명"
+                placeholder="목록과 검색 결과에서 글의 핵심을 설명하는 구체적인 1~2문장"
+                aria-describedby="publish-summary-guidance"
                 className="w-full resize-none border border-transparent bg-transparent px-0 py-2 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[color:var(--border)] focus:px-2"
               />
+              <p
+                id="publish-summary-guidance"
+                className={`col-start-2 flex justify-between gap-3 pb-1 text-[11px] ${summaryNeedsWork ? 'text-amber-700' : 'text-[var(--text-muted)]'}`}
+              >
+                <span>{summaryNeedsWork ? '검색 설명으로 쓰기에는 짧습니다.' : '검색 스니펫 기본값으로 사용됩니다.'}</span>
+                <span>{summaryLength}자</span>
+              </p>
             </div>
 
             <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center border-b border-[color:var(--border)] py-3 text-sm">
