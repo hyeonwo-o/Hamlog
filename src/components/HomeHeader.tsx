@@ -1,4 +1,3 @@
-import { Github, Linkedin, Mail, Twitter, Instagram, AtSign, Send } from 'lucide-react';
 import type { SiteMeta } from '../types/blog';
 import { buildImageVariantUrl } from '../utils/imageUrl';
 import PublicNavigation from './PublicNavigation';
@@ -9,196 +8,133 @@ interface HomeHeaderProps {
     categoryCount: number;
 }
 
+interface SocialLink {
+    label: string;
+    href?: string;
+}
+
 export const HomeHeader = ({ profile, postCount, categoryCount }: HomeHeaderProps) => {
-    const displayProfileImage = buildImageVariantUrl(profile.profileImage, { width: 96, height: 96 });
-    const showContactLinks = (
-        (profile.display.showSocialLinks && (
-            profile.social.github
-            || profile.social.linkedin
-            || profile.social.twitter
-            || profile.social.instagram
-            || profile.social.threads
-            || profile.social.telegram
-        ))
-        || (profile.display.showEmail && profile.email)
-    );
+    const displayProfileImage = buildImageVariantUrl(profile.profileImage, { width: 112, height: 112 });
+    const socialLinks: SocialLink[] = [
+        { label: 'GitHub', href: profile.social.github },
+        { label: 'LinkedIn', href: profile.social.linkedin },
+        { label: 'Twitter', href: profile.social.twitter },
+        { label: 'Instagram', href: profile.social.instagram },
+        { label: 'Threads', href: profile.social.threads },
+        { label: 'Telegram', href: profile.social.telegram }
+    ].filter(link => Boolean(link.href));
 
     return (
         <header className="border-b border-[color:var(--border)]">
             <PublicNavigation profile={profile} />
-            <div className="mx-auto max-w-6xl px-4 py-6">
-                <div className="grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
-                    <div className="space-y-5">
-                        <div>
-                            <h1 className="break-keep font-display text-2xl font-bold leading-tight tracking-tight text-[var(--text)] sm:text-3xl">
-                                {profile.tagline}
-                            </h1>
-                            <p className="mt-3 max-w-2xl break-keep text-base leading-relaxed text-[var(--text-muted)]">
-                                {profile.description}
-                            </p>
-                        </div>
 
-                        {profile.display.showEmail && profile.email && (
-                            <div className="flex flex-wrap gap-3">
+            <div className="mx-auto max-w-6xl px-4 py-9 sm:py-12">
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.65fr)] lg:gap-10">
+                    <section className="min-w-0">
+                        <h1 className="max-w-3xl break-keep font-display text-[1.65rem] font-bold leading-[1.3] tracking-[-0.035em] text-[var(--text)] sm:text-[2rem] lg:text-[2.25rem]">
+                            {profile.tagline}
+                        </h1>
+                        <p className="mt-4 max-w-2xl break-keep text-sm leading-7 text-[var(--text-muted)] sm:text-base">
+                            {profile.description}
+                        </p>
+
+                        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-[color:var(--border)] pt-5">
+                            <dl className="flex items-center" aria-label="블로그 현황">
+                                <div className="flex items-baseline gap-2 pr-5">
+                                    <dt className="text-xs text-[var(--text-muted)]">글</dt>
+                                    <dd className="font-display text-xl font-bold leading-none text-[var(--text)]">
+                                        {postCount}
+                                    </dd>
+                                </div>
+                                <div className="flex items-baseline gap-2 border-l border-[color:var(--border)] pl-5">
+                                    <dt className="text-xs text-[var(--text-muted)]">카테고리</dt>
+                                    <dd className="font-display text-xl font-bold leading-none text-[var(--text)]">
+                                        {categoryCount}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            {profile.display.showEmail && profile.email && (
                                 <a
                                     href={`mailto:${profile.email}`}
-                                    className="angular-control inline-flex items-center gap-2 border border-[color:var(--border)] bg-transparent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:border-[var(--text)] hover:text-[var(--text)]"
+                                    className="ml-auto inline-flex min-h-11 items-center border-b border-[color:var(--text)] text-xs font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent-strong)] hover:text-[var(--accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
                                 >
-                                    메일 보내기
+                                    이메일로 연락하기
+                                    <span className="ml-2" aria-hidden="true">&rarr;</span>
                                 </a>
+                            )}
+                        </div>
+                    </section>
+
+                    <aside
+                        className="border-t border-[color:var(--border)] pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0"
+                        aria-label="작성자 정보"
+                    >
+                        <div className="flex items-center gap-3.5">
+                            {profile.display.showProfileImage && displayProfileImage && (
+                                <img
+                                    src={displayProfileImage}
+                                    alt={`${profile.name} 프로필 사진`}
+                                    className="angular-control h-14 w-14 shrink-0 object-cover"
+                                    width={56}
+                                    height={56}
+                                    loading="eager"
+                                    decoding="async"
+                                    fetchPriority="auto"
+                                />
+                            )}
+                            <div className="min-w-0">
+                                <p className="truncate font-display text-base font-bold text-[var(--text)]">
+                                    {profile.name}
+                                </p>
+                                <p className="mt-0.5 truncate text-xs leading-5 text-[var(--text-muted)]">
+                                    {profile.role}
+                                    {profile.display.showLocation && profile.location && (
+                                        <span> · {profile.location}</span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        {profile.display.showNow && profile.now && (
+                            <div className="mt-5">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                                    현재
+                                </p>
+                                <p className="mt-1.5 text-xs leading-5 text-[var(--text)]">{profile.now}</p>
                             </div>
                         )}
 
-                        <div>
-                            <dl className="grid grid-cols-2 gap-3 border-t border-[color:var(--border)] pt-4">
-                                <div className="angular-control flex min-h-[72px] flex-col justify-center border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2">
-                                    <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Post</dt>
-                                    <dd className="mt-0.5 font-display text-lg font-bold text-[var(--text)]">{postCount}</dd>
-                                </div>
-                                <div className="angular-control flex min-h-[72px] flex-col justify-center border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2">
-                                    <dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)]">Category</dt>
-                                    <dd className="mt-0.5 font-display text-lg font-bold text-[var(--text)]">{categoryCount}</dd>
-                                </div>
-                            </dl>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="space-y-4 border border-[color:var(--border)] bg-[var(--surface)] p-4">
-                            <div className="flex items-center gap-3">
-                                {profile.display.showProfileImage && displayProfileImage && (
-                                    <img
-                                        src={displayProfileImage}
-                                        alt={`${profile.name} 프로필 사진`}
-                                        className="angular-control h-12 w-12 rounded-lg object-cover"
-                                        width={48}
-                                        height={48}
-                                        loading="eager"
-                                        decoding="async"
-                                        fetchPriority="auto"
-                                    />
-                                )}
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                                        작성자
-                                    </p>
-                                    <p className="font-display text-base font-semibold">{profile.name}</p>
-                                    <p className="text-xs text-[var(--text-muted)]">{profile.role}</p>
-                                </div>
+                        {profile.display.showStack && profile.stack.length > 0 && (
+                            <div className="mt-5">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                                    주력 스택
+                                </p>
+                                <p className="mt-1.5 text-xs leading-5 text-[var(--text)]">
+                                    {profile.stack.join(' · ')}
+                                </p>
                             </div>
+                        )}
 
-                            {showContactLinks && (
-                                <div className="flex gap-3">
-                                    {profile.display.showSocialLinks && profile.social.github && (
-                                        <a
-                                            href={profile.social.github}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                                            aria-label="GitHub"
-                                        >
-                                            <Github size={18} />
-                                        </a>
-                                    )}
-                                    {profile.display.showSocialLinks && profile.social.linkedin && (
-                                        <a
-                                            href={profile.social.linkedin}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                                            aria-label="LinkedIn"
-                                        >
-                                            <Linkedin size={18} />
-                                        </a>
-                                    )}
-                                    {profile.display.showSocialLinks && profile.social.twitter && (
-                                        <a
-                                            href={profile.social.twitter}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                                            aria-label="Twitter"
-                                        >
-                                            <Twitter size={18} />
-                                        </a>
-                                    )}
-                                    {profile.display.showSocialLinks && profile.social.instagram && (
-                                        <a
-                                            href={profile.social.instagram}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                                            aria-label="Instagram"
-                                        >
-                                            <Instagram size={18} />
-                                        </a>
-                                    )}
-                                    {profile.display.showSocialLinks && profile.social.threads && (
-                                        <a
-                                            href={profile.social.threads}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                                            aria-label="Threads"
-                                        >
-                                            <AtSign size={18} />
-                                        </a>
-                                    )}
-                                    {profile.display.showSocialLinks && profile.social.telegram && (
-                                        <a
-                                            href={profile.social.telegram}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                                            aria-label="Telegram"
-                                        >
-                                            <Send size={18} />
-                                        </a>
-                                    )}
-                                    {profile.display.showEmail && profile.email && (
-                                        <a
-                                            href={`mailto:${profile.email}`}
-                                            className="angular-control rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-2 text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                                            aria-label="Email"
-                                        >
-                                            <Mail size={18} />
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-
-                            {profile.display.showNow && profile.now && (
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                                        지금
-                                    </p>
-                                    <p className="mt-1 text-xs text-[var(--text-muted)]">{profile.now}</p>
-                                </div>
-                            )}
-                            {profile.display.showStack && profile.stack.length > 0 && (
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                                        주력 스택
-                                    </p>
-                                    <div className="mt-2 flex flex-wrap gap-1.5">
-                                        {profile.stack.map(item => (
-                                            <span
-                                                key={item}
-                                                className="angular-chip rounded-md border border-[color:var(--border)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] text-[var(--text-muted)]"
-                                            >
-                                                {item}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            {profile.display.showLocation && profile.location && (
-                                <div className="text-xs text-[var(--text-muted)]">
-                                    {profile.location} 기반
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                        {profile.display.showSocialLinks && socialLinks.length > 0 && (
+                            <nav
+                                className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-[color:var(--border)] pt-4"
+                                aria-label="소셜 링크"
+                            >
+                                {socialLinks.map(({ label, href }) => (
+                                    <a
+                                        key={label}
+                                        href={href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex min-h-8 items-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)] transition-colors hover:text-[var(--accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                                    >
+                                        {label}
+                                    </a>
+                                ))}
+                            </nav>
+                        )}
+                    </aside>
                 </div>
             </div>
         </header>
