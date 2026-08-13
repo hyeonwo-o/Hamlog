@@ -20,6 +20,8 @@
   --shadow-strong: none;
   --font-body: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
   --font-display: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
+  --font-public: 'Noto Serif KR', 'Noto Serif CJK KR', 'Nanum Myeongjo', serif;
+  --font-ui: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'Menlo', monospace;
   --bg-overlay: none;
 }
@@ -35,7 +37,7 @@ button,
 input,
 select,
 textarea {
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
 }
 
 body::before {
@@ -54,6 +56,12 @@ body::before {
 
 .font-mono {
   font-family: var(--font-mono);
+}
+
+.public-site {
+  --font-body: var(--font-public);
+  --font-display: var(--font-public);
+  font-family: var(--font-body);
 }
 
 @layer components {

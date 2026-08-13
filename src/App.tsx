@@ -63,7 +63,7 @@ const NotFoundPage = () => {
   useSchema({ post: undefined });
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 text-[var(--text)]">
+    <main className="public-site flex min-h-screen items-center justify-center bg-[var(--bg)] px-4 text-[var(--text)]">
       <section aria-labelledby="not-found-title" className="w-full max-w-xl border border-[color:var(--border)] bg-[var(--surface)] p-8 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--text-muted)]">
           404 · Not Found
