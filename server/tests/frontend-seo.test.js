@@ -73,7 +73,10 @@ test('static SEO assets expose RSS discovery without false OG dimensions', async
   assert.match(indexHtml, /rel="icon" type="image\/svg\+xml" href="\/favicon\.svg"/);
   assert.doesNotMatch(indexHtml, /og:image:(?:width|height)/);
   assert.match(indexHtml, /rel="stylesheet" href="https:\/\/fonts\.googleapis\.com/);
+  assert.match(indexHtml, /family=Noto\+Serif\+KR:wght@400;600;700/);
   assert.doesNotMatch(stylesheet, /@import\s+url\(['"]https:\/\/fonts\.googleapis\.com/);
+  assert.match(stylesheet, /--font-public:\s*'Noto Serif KR'/);
+  assert.match(stylesheet, /\.public-site\s*\{[^}]*--font-body:\s*var\(--font-public\)/s);
   assert.match(manifest, /클라우드 엔지니어링/);
   assert.match(manifest, /"src": "\/favicon\.svg"/);
   await access(new URL('../../public/favicon.svg', import.meta.url));

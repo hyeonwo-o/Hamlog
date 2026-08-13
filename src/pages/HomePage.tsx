@@ -80,7 +80,7 @@ const HomePage = () => {
 
     return (
         <ErrorBoundary>
-            <div className="min-h-screen text-[var(--text)]">
+            <div className="public-site min-h-screen text-[var(--text)]">
                 <HomeHeader
                     profile={profile}
                     postCount={sortedPosts.length}

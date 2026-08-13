@@ -211,7 +211,7 @@ const PostPage: React.FC = () => {
   if (detailLoading || (!hasLoaded && posts.length === 0)) {
     return (
       <ErrorBoundary>
-        <div className="min-h-screen text-[var(--text)]">
+        <div className="public-site min-h-screen text-[var(--text)]">
           <SiteHeader profile={profile} eyebrow="Loading" contextTitle="글을 불러오는 중" />
           <div className="mx-auto max-w-3xl px-4 py-20">
             <LoadingSpinner message="글 불러오는 중..." />
@@ -225,7 +225,7 @@ const PostPage: React.FC = () => {
   if ((detailError || error) && !post) {
     return (
       <ErrorBoundary>
-        <div className="min-h-screen text-[var(--text)]">
+        <div className="public-site min-h-screen text-[var(--text)]">
           <SiteHeader profile={profile} eyebrow="Error" contextTitle="글을 불러오지 못했습니다" />
           <div className="mx-auto max-w-3xl px-4 py-20 text-center">
             <p className="text-sm text-[var(--text-muted)]">{detailError || error}</p>
@@ -246,7 +246,7 @@ const PostPage: React.FC = () => {
   if (!post) {
     return (
       <ErrorBoundary>
-        <div className="min-h-screen text-[var(--text)]">
+        <div className="public-site min-h-screen text-[var(--text)]">
           <SiteHeader profile={profile} eyebrow="Not Found" contextTitle="해당 글을 찾을 수 없습니다" />
           <div className="mx-auto max-w-3xl px-4 py-20">
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
@@ -279,7 +279,7 @@ const PostPage: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen text-[var(--text)]">
+      <div className="public-site min-h-screen text-[var(--text)]">
         <SiteHeader
           profile={profile}
           eyebrow={categoryPathLabel}
