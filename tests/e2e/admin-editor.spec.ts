@@ -236,7 +236,7 @@ test('published fenced Mermaid code block renders as a public diagram', async ({
     postId = created.id;
 
     await page.goto(`/posts/${slug}`);
-    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 
     const diagram = page.locator('.mermaid-block svg');
     await expect(diagram).toBeVisible({ timeout: 15_000 });
@@ -411,7 +411,7 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
 
   await page.setViewportSize({ width: 1700, height: 900 });
   await page.goto(`/posts/${slug}`);
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
   await expect(page.getByText(body)).toBeVisible();
   const measurePostContentWidth = () => page.locator('.post-content').evaluate(element =>
     Math.round(element.getBoundingClientRect().width)
@@ -561,7 +561,7 @@ test('public SPA keeps images, robots, and BlogPosting schema in sync across rou
       releasePostRequest?.();
     }
 
-    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
     await page.unroute(`**/api/posts/${slug}`);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
     await expect.poll(async () => (await readBlogPostingSchemas()).length).toBe(1);
@@ -575,7 +575,7 @@ test('public SPA keeps images, robots, and BlogPosting schema in sync across rou
     await expect.poll(async () => (await readBlogPostingSchemas()).length).toBe(0);
 
     await navigateInSpa(`/posts/${slug}`);
-    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
     await expect.poll(async () => (await readBlogPostingSchemas()).length).toBe(1);
 

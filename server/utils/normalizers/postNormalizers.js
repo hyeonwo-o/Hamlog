@@ -18,7 +18,12 @@ export function normalizeTags(tags) {
 export function normalizePostStatus(status) {
     const normalized = status ? String(status).toLowerCase().trim() : '';
     if (allowedPostStatuses.has(normalized)) return normalized;
-    return 'published';
+    return 'draft';
+}
+
+export function isAllowedPostStatus(status) {
+    const normalized = status ? String(status).toLowerCase().trim() : '';
+    return allowedPostStatuses.has(normalized);
 }
 
 export function normalizePostViews(value) {

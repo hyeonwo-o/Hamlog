@@ -35,7 +35,7 @@ const adminPassword = process.env.ADMIN_PASSWORD ?? 'test-password';
 const TRUSTED_ORIGIN = 'http://hamlog.test';
 const tinyPngDataUrl =
     'data:image/png;base64,'
-    + 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0mQAAAAASUVORK5CYII=';
+    + 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWP4////fwAJ+wP9CNHoHgAAAABJRU5ErkJggg==';
 const sampleContentJson = {
     type: 'doc',
     content: [
@@ -306,6 +306,105 @@ test('post slugs are normalized before file persistence', async () => {
     await assert.rejects(
         () => access(path.join(uploadDir, 'evil-post.json')),
         error => error.code === 'ENOENT'
+    );
+});
+
+test('new posts default to draft and invalid API statuses are rejected', async () => {
+    const cookies = await loginAsAdmin();
+
+    const createDraftResponse = await withTrustedOrigin(request(app)
+        .post('/api/posts')
+        .set('Cookie', cookies))
+        .send({
+            slug: 'safe-default-draft',
+            title: 'Safe Default Draft',
+            category: 'Security'
+        });
+
+    assert.equal(createDraftResponse.status, 201);
+    assert.equal(createDraftResponse.body.status, 'draft');
+
+    const publicDraftResponse = await request(app).get('/api/posts/safe-default-draft');
+    assert.equal(publicDraftResponse.status, 404);
+
+    const invalidCreateResponse = await withTrustedOrigin(request(app)
+        .post('/api/posts')
+        .set('Cookie', cookies))
+        .send({
+            slug: 'invalid-status-create',
+            title: 'Invalid Status Create',
+            category: 'Security',
+            status: 'publshed'
+        });
+
+    assert.equal(invalidCreateResponse.status, 400);
+    assert.equal(invalidCreateResponse.body.message, '유효하지 않은 포스트 상태입니다.');
+
+    const invalidUpdateResponse = await withTrustedOrigin(request(app)
+        .put(`/api/posts/${createDraftResponse.body.id}`)
+        .set('Cookie', cookies))
+        .send({ status: null });
+
+    assert.equal(invalidUpdateResponse.status, 400);
+    assert.equal(invalidUpdateResponse.body.message, '유효하지 않은 포스트 상태입니다.');
+
+    const [storedPost] = await readPosts();
+    assert.equal(storedPost.status, 'draft');
+});
+
+test('unknown or missing persisted statuses stay private without changing valid statuses', async () => {
+    const basePost = {
+        summary: 'status safety summary',
+        category: 'Security',
+        contentHtml: '<p>status safety body</p>',
+        publishedAt: '2026-03-06',
+        tags: [],
+        sections: []
+    };
+
+    await writeFile(postsFilePath, JSON.stringify([
+        {
+            ...basePost,
+            id: 'post-status-valid',
+            slug: 'status-valid',
+            title: 'Status Valid',
+            status: 'published'
+        },
+        {
+            ...basePost,
+            id: 'post-status-unknown',
+            slug: 'status-unknown',
+            title: 'Status Unknown',
+            status: 'publshed'
+        },
+        {
+            ...basePost,
+            id: 'post-status-missing',
+            slug: 'status-missing',
+            title: 'Status Missing'
+        }
+    ], null, 2), 'utf8');
+
+    const publicPostsResponse = await request(app).get('/api/posts');
+    assert.equal(publicPostsResponse.status, 200);
+    assert.deepEqual(
+        publicPostsResponse.body.posts.map(post => post.slug),
+        ['status-valid']
+    );
+
+    const cookies = await loginAsAdmin();
+    const adminPostsResponse = await request(app)
+        .get('/api/posts')
+        .set('Cookie', cookies);
+
+    assert.equal(adminPostsResponse.status, 200);
+    assert.deepEqual(
+        Object.fromEntries(adminPostsResponse.body.posts.map(post => [post.slug, post.status])),
+        {
+            'status-valid': 'published',
+            'status-unknown': 'draft',
+            'status-missing': 'draft'
+        }
     );
 });
 

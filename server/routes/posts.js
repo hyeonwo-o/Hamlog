@@ -13,15 +13,19 @@ import {
 import { attachOptionalUser, authenticateToken } from '../middleware/auth.js';
 import { requireTrustedOrigin } from '../middleware/trustedOrigin.js';
 import { viewRateLimiter } from '../middleware/rateLimit.js';
+import {
+  adminContentBodyParsers,
+  publicBodyParsers
+} from '../middleware/bodyParser.js';
 
 const router = express.Router();
 
 router.get('/', attachOptionalUser, getPosts);
-router.post('/', authenticateToken, requireTrustedOrigin, createPost);
-router.post('/:slug/view', viewRateLimiter, recordPostView);
+router.post('/', authenticateToken, requireTrustedOrigin, ...adminContentBodyParsers, createPost);
+router.post('/:slug/view', viewRateLimiter, ...publicBodyParsers, recordPostView);
 router.get('/:id/revisions', authenticateToken, getPostRevisions);
 router.post('/:id/revisions/:revisionId/restore', authenticateToken, requireTrustedOrigin, restorePostRevision);
-router.put('/:id', authenticateToken, requireTrustedOrigin, updatePost);
+router.put('/:id', authenticateToken, requireTrustedOrigin, ...adminContentBodyParsers, updatePost);
 router.delete('/:id', authenticateToken, requireTrustedOrigin, deletePost);
 router.get('/:slug', getPostBySlug);
 

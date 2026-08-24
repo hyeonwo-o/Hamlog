@@ -45,7 +45,7 @@ export const createComment = async (req, res) => {
 export const deleteComment = async (req, res) => {
     try {
         const { id } = req.params;
-        const { password } = req.body;
+        const { password } = req.body ?? {};
 
         const result = await deleteCommentService(id, password);
 

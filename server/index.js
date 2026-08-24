@@ -1,14 +1,19 @@
 ﻿import app from './app.js';
+import { resolveServerNetworkConfig } from './config/network.js';
 import { initializeDatabase } from './services/db.js';
 
-const PORT = process.env.PORT ?? 4000;
+if (process.env.NODE_ENV === 'production') {
+  process.umask(0o027);
+}
 
 async function start() {
   try {
+    const { host, port } = resolveServerNetworkConfig();
     await initializeDatabase();
 
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`API server listening on http://0.0.0.0:${PORT}`);
+    app.listen(port, host, () => {
+      const displayHost = host.includes(':') ? `[${host}]` : host;
+      console.log(`API server listening on http://${displayHost}:${port}`);
     });
   } catch (error) {
     console.error('Failed to start server', error);

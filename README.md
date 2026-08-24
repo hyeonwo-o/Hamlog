@@ -48,6 +48,22 @@ npm run dev
 ```
 
 Vite는 기본적으로 `/api`, `/uploads`를 `http://localhost:4000`으로 프록시합니다. (`vite.config.ts`)
+API와 Vite는 개발 환경에서 기본적으로 `127.0.0.1`에만 바인딩됩니다.
+
+Tailscale 또는 LAN에 개발 서버를 의도적으로 공개하려면 임시 기본 계정을 사용하지 말고,
+두 프로세스에 동일한 명시적 허용 플래그와 별도 비밀값을 전달해야 합니다.
+
+```bash
+# 예시는 실제 Tailscale IP와 충분히 긴 임의 값으로 바꿉니다.
+HOST=100.64.0.10 HAMLOG_ALLOW_EXTERNAL_DEV=true \
+  JWT_SECRET='<random-secret>' ADMIN_PASSWORD='<strong-password>' npm run server
+
+VITE_DEV_HOST=100.64.0.10 HAMLOG_ALLOW_EXTERNAL_DEV=true \
+  VITE_DEV_API_TARGET=http://100.64.0.10:4000 \
+  JWT_SECRET='<random-secret>' ADMIN_PASSWORD='<strong-password>' npm run dev
+```
+
+`npm run dev -- --host 0.0.0.0`처럼 CLI로 호스트를 덮어써도 위 안전 검사를 우회할 수 없습니다.
 
 ### 3) Build
 ```bash
@@ -69,6 +85,11 @@ npm run verify:data
 ## Environment Variables
 ### Backend (`server`)
 - `PORT` (default: `4000`)
+- `HOST` (optional)
+  - 개발 기본값은 `127.0.0.1`, production 기본값은 컨테이너 내부 통신을 위한 `0.0.0.0`
+- `HAMLOG_ALLOW_EXTERNAL_DEV` (optional, default: `false`)
+  - production이 아닌 서버를 loopback 밖에 열 때만 `true`로 지정
+  - 이 경우 기본값이 아닌 `JWT_SECRET`, `ADMIN_PASSWORD`도 반드시 필요
 - `APP_VERSION` (optional)
   - `/api/health`에 노출할 배포 버전. 운영 GitHub Actions는 커밋 SHA 앞 7자를 자동 주입합니다.
 - `HAMLOG_DATA_DIR` (optional, default: `server/data`)
@@ -119,6 +140,10 @@ npm run verify:data
 ### Frontend (`vite`)
 - `VITE_API_BASE_URL` (optional)
   - 기본값은 `'/api'`이며, dev에서는 Vite proxy로 백엔드에 연결됩니다.
+- `VITE_DEV_HOST` (optional, default: `127.0.0.1`)
+  - 외부 주소를 지정하면 `HAMLOG_ALLOW_EXTERNAL_DEV=true`와 기본값이 아닌 관리자 비밀값이 필요
+- `VITE_DEV_API_TARGET` (optional, default: `http://127.0.0.1:4000`)
+  - 개발 프록시가 연결할 API 주소
 
 ## Visitor Analytics
 
@@ -163,6 +188,18 @@ docker compose up -d --build
 환경변수는 `.env`를 사용합니다. (`docker-compose.yml`)
 `.env.example`을 복사한 뒤 `JWT_SECRET`, `ADMIN_PASSWORD`를 반드시 변경해야 합니다.
 운영 컨테이너는 두 값이 없으면 시작하지 않습니다.
+컨테이너 프로세스는 root가 아닌 Node 사용자로 실행되며, 호스트의 4000번 포트는 기본적으로
+`127.0.0.1`에만 열립니다. 같은 호스트의 reverse proxy가 아닌 곳에서 직접 연결해야 하는 명확한
+이유가 있을 때만 `.env`의 `HAMLOG_BIND_ADDRESS`를 변경합니다. GitHub Actions 운영 배포는 같은
+이름의 Repository Variable을 사용합니다.
+Compose는 앱 실행 전에 마운트 권한을 제한적으로 준비합니다. 호스트 기본 그룹 ID가 1000이 아니면
+`.env`의 `HAMLOG_DATA_GID`를 `id -g` 결과로 설정합니다.
+
+`bash scripts/setup-server.sh`로 수동 재배포할 때도 기존 `hamlog` 컨테이너가 있으면 중단 전에
+데이터를 검증하여 백업합니다. 기본 백업 위치는 `$HOME/hamlog-backups`, 보관 기간은 30일이며
+`HAMLOG_BACKUP_DIR`, `BACKUP_RETENTION_DAYS`, `HAMLOG_BACKUP_HOOK`으로 기존 백업 정책을 그대로
+지정할 수 있습니다. 데이터가 완전히 비어 있는 최초 설치만 `HAMLOG_ALLOW_EMPTY_BACKUP=true`를
+명시해야 하며, 백업이나 검증이 실패하면 기존 컨테이너를 건드리지 않고 배포를 중단합니다.
 
 파일 저장소의 쓰기 잠금은 단일 Node.js 프로세스 안에서만 유효합니다. 여러 컨테이너나
 여러 호스트가 동시에 쓰는 구성에는 SQLite/PostgreSQL 같은 공유 데이터베이스를 사용해야 합니다.
@@ -171,7 +208,9 @@ docker compose up -d --build
 `.github/workflows/docker-deploy.yml`
 - `main` push 시 Docker 이미지를 빌드하여 GHCR에 업로드
 - Self-Hosted Runner가 운영 서버에서 최신 이미지를 pull/run (포트 4000)
-- 배포 전 `$HOME/hamlog-data`를 `$HOME/hamlog-backups`에 백업하고 14일간 보관
+- 배포 전 `$HOME/hamlog-data`를 `$HOME/hamlog-backups`에 백업하고 30일간 보관
+- 매일 03:17(KST)에 같은 백업을 실행하고 30일간 보관
+- 운영 데이터 무결성, 압축 목록, SHA-256 재검증 중 하나라도 실패하면 백업과 배포를 중단
 - 새 컨테이너의 로컬 및 `SITE_URL` 공개 헬스 응답에서 커밋 버전을 확인
 - 헬스체크 실패 시 직전 Docker 이미지로 자동 롤백
 - 컨테이너 로그는 파일당 10MB, 최대 3개로 회전
@@ -186,9 +225,13 @@ docker compose up -d --build
 수동 백업도 같은 스크립트를 사용할 수 있습니다.
 
 ```bash
-BACKUP_RETENTION_DAYS=14 \
+BACKUP_RETENTION_DAYS=30 \
+  HAMLOG_VERIFY_DATA=true \
   bash scripts/backup-data.sh "$HOME/hamlog-data" "$HOME/hamlog-backups"
 ```
+
+데이터 디렉터리가 없거나 비어 있으면 기본적으로 실패합니다. 완전한 최초 설치를 확인한 경우에만
+`HAMLOG_ALLOW_EMPTY_BACKUP=true`를 명시할 수 있습니다.
 
 복구 전에는 체크섬과 압축 파일을 먼저 검증합니다.
 
@@ -203,6 +246,17 @@ docker start hamlog
 
 이 백업은 동일 호스트의 배포·데이터 손상 복구용입니다. 호스트 장애에 대비하려면
 `$HOME/hamlog-backups`를 별도의 암호화된 오브젝트 스토리지나 백업 서버로 동기화해야 합니다.
+
+저장소는 특정 외부 공급자로 데이터를 보내지 않습니다. 오프사이트 저장소와 자격 증명을 선택한 뒤,
+self-hosted runner에 아래 계약을 따르는 실행 파일을 설치하고 Repository Variable
+`HAMLOG_BACKUP_HOOK`에 그 **절대 경로**를 지정할 수 있습니다.
+
+```text
+backup-hook /absolute/path/hamlog-....tar.gz /absolute/path/hamlog-....tar.gz.sha256
+```
+
+훅은 업로드와 원격 체크섬 확인까지 성공했을 때 0을 반환해야 합니다. 설정된 훅이 없으면 외부 전송은
+일어나지 않으며, 훅이 실패하면 로컬 백업은 보존되지만 해당 백업·배포 작업은 실패 처리됩니다.
 
 ## Recommended Branch Protection
 

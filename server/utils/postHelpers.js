@@ -1,5 +1,6 @@
 import {
     normalizePostStatus,
+    isAllowedPostStatus,
     normalizeScheduledAt,
     normalizeSeo,
     normalizeTags,
@@ -80,6 +81,10 @@ export function normalizePostData(body, existing = {}) {
     }
 
     // 3. Status
+    if (status !== undefined && !isAllowedPostStatus(status)) {
+        return { error: '유효하지 않은 포스트 상태입니다.', data: null };
+    }
+
     const normalizedStatus = status !== undefined
         ? normalizePostStatus(status)
         : normalizePostStatus(existing.status);

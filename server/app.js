@@ -27,6 +27,7 @@ import { searchPosts } from './controllers/searchController.js';
 import { getRobots, injectPostMeta } from './controllers/seoController.js';
 import { createHttpsRedirectMiddleware } from './middleware/httpsRedirect.js';
 import { searchRateLimiter } from './middleware/rateLimit.js';
+import { handleBodyParserError } from './middleware/bodyParser.js';
 import { readSpaIndexHtml } from './utils/spaIndex.js';
 import { injectSearchVerificationMeta } from './utils/searchVerification.js';
 import { filterPublicPosts } from './utils/postVisibility.js';
@@ -298,8 +299,6 @@ app.use(cors((req, callback) => {
     callback(null, resolveCorsOptions(req));
 }));
 app.use(cookieParser());
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ limit: '25mb', extended: true }));
 
 app.get('/', injectHomeAppShell);
 app.get('/robots.txt', getRobots);
@@ -323,6 +322,7 @@ app.get('/api/search', searchRateLimiter, searchPosts);
 app.use('/api', (_req, res) => {
     res.status(404).json({ message: 'API 경로를 찾을 수 없습니다.' });
 });
+app.use(handleBodyParserError);
 app.get(/^\/admin(?:\/.*)?$/, injectNoindexAppShell);
 app.get(['/posts/:slug', '/p/:slug'], injectPostMeta);
 app.use('/', seoRouter);

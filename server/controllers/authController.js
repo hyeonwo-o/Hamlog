@@ -5,7 +5,7 @@ import { buildClearCookieOptions, buildCookieOptions } from '../config/cookies.j
 const AUTH_COOKIE_MAX_AGE = 24 * 60 * 60 * 1000;
 
 export const login = (req, res) => {
-    const { password } = req.body;
+    const { password } = req.body ?? {};
 
     if (password !== ADMIN_PASSWORD) {
         return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' });

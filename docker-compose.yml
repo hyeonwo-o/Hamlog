@@ -1,8 +1,40 @@
 services:
+  prepare-data:
+    build: .
+    image: ${HAMLOG_IMAGE:-hamlog-local}
+    user: root
+    network_mode: none
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        chown -R "node:$$DATA_GID" /app/server/data /app/server/uploads
+        chmod -R u=rwX,g=rX,o= /app/server/data /app/server/uploads
+        find /app/server/data /app/server/uploads -type d -exec chmod g+s {} +
+    environment:
+      DATA_GID: ${HAMLOG_DATA_GID:-1000}
+    volumes:
+      - ./server/data:/app/server/data
+      - ./server/uploads:/app/server/uploads
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - FSETID
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
   app:
     build: .
+    image: ${HAMLOG_IMAGE:-hamlog-local}
+    depends_on:
+      prepare-data:
+        condition: service_completed_successfully
     ports:
-      - "4000:4000"
+      - "${HAMLOG_BIND_ADDRESS:-127.0.0.1}:4000:4000"
     volumes:
       - ./server/data:/app/server/data
       - ./server/uploads:/app/server/uploads
@@ -13,6 +45,10 @@ services:
       APP_VERSION: ${APP_VERSION:-local}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     logging:
       driver: json-file
       options:

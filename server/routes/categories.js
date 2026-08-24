@@ -9,13 +9,14 @@ import {
 
 import { authenticateToken } from '../middleware/auth.js';
 import { requireTrustedOrigin } from '../middleware/trustedOrigin.js';
+import { publicBodyParsers } from '../middleware/bodyParser.js';
 
 const router = express.Router();
 
 router.get('/', getCategories);
-router.post('/', authenticateToken, requireTrustedOrigin, createCategory);
-router.patch('/reorder', authenticateToken, requireTrustedOrigin, reorderCategories); // Specific routes before parameters
+router.post('/', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, createCategory);
+router.patch('/reorder', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, reorderCategories); // Specific routes before parameters
 router.delete('/:name', authenticateToken, requireTrustedOrigin, deleteCategory);
-router.patch('/:id', authenticateToken, requireTrustedOrigin, updateCategory);
+router.patch('/:id', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, updateCategory);
 
 export const categoryRouter = router;

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const dataDir = path.join(rootDir, 'server', 'data');
+const dataDir = path.resolve(process.env.HAMLOG_DATA_DIR || path.join(rootDir, 'server', 'data'));
+const requireData = process.env.HAMLOG_REQUIRE_DATA === 'true';
 const postsFilePath = path.join(dataDir, 'posts.json');
 const postsDir = path.join(dataDir, 'posts');
 const postViewsFilePath = path.join(dataDir, 'post-views.json');
@@ -14,6 +15,7 @@ const categoriesFilePath = path.join(dataDir, 'categories.json');
 const commentsFilePath = path.join(dataDir, 'comments.json');
 const profileFilePath = path.join(dataDir, 'profile.json');
 const revisionsDir = path.join(dataDir, 'revisions');
+const allowedPostStatuses = new Set(['draft', 'scheduled', 'published']);
 
 const pathExists = async (targetPath) => {
   try {
@@ -59,8 +61,12 @@ const verify = async () => {
   const hasPostsDirectory = await pathExists(postsDir);
 
   if (!hasPostsIndex && !hasPostsDirectory) {
-    console.log('데이터 파일이 없어 무결성 점검을 건너뜁니다.');
-    return;
+    if (requireData) {
+      errors.push(`필수 글 데이터를 찾을 수 없습니다: ${dataDir}`);
+    } else {
+      console.log('데이터 파일이 없어 무결성 점검을 건너뜁니다.');
+      return;
+    }
   }
 
   try {
@@ -88,6 +94,13 @@ const verify = async () => {
 
   addDuplicateErrors(indexPosts, 'id', '글 ID', errors);
   addDuplicateErrors(indexPosts, 'slug', '글 slug', errors);
+
+  for (const post of indexPosts) {
+    const status = String(post?.status ?? '').trim().toLowerCase();
+    if (!allowedPostStatuses.has(status)) {
+      errors.push(`유효하지 않은 글 상태: ${post?.slug ?? post?.id ?? '(식별자 없음)'}`);
+    }
+  }
 
   const postsBySlug = new Map(indexPosts.map(post => [String(post?.slug ?? '').trim(), post]));
   const postIds = new Set(indexPosts.map(post => String(post?.id ?? '').trim()).filter(Boolean));
