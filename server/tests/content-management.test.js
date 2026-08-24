@@ -1306,6 +1306,7 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     const now = Date.now();
     const pastScheduledAt = new Date(now - 60_000).toISOString();
     const futureScheduledAt = new Date(now + 60 * 60 * 1000).toISOString();
+    const unsafePostHtml = '<h1>본문 제목</h1><script>alert("xss")</script><p>배포 구성도 <img src="/uploads/map.png" alt="image.png" onerror="alert(1)" /></p><a href="javascript:alert(1)">위험 링크</a><link-card url="https://docs.example.com/guide" title="안전한 가이드" description="참고 문서"></link-card>';
 
     await writeProfile({
         ...defaultProfile,
@@ -1337,7 +1338,7 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             title: 'Safe Prerender',
             summary: '짧은 요약',
             category: 'Security',
-            contentHtml: '<h1>본문 제목</h1><script>alert("xss")</script><p>배포 구성도 <img src="/uploads/map.png" alt="image.png" onerror="alert(1)" /></p><a href="javascript:alert(1)">위험 링크</a><link-card url="https://docs.example.com/guide" title="안전한 가이드" description="참고 문서"></link-card>',
+            contentHtml: unsafePostHtml,
             publishedAt: '2026-03-07',
             tags: ['security'],
             status: 'published',
@@ -1464,15 +1465,23 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.match(safePrerenderResponse.text, /<h2>본문 제목<\/h2>/);
     assert.match(safePrerenderResponse.text, /alt="배포 구성도"/);
     assert.match(safePrerenderResponse.text, /href="https:\/\/docs\.example\.com\/guide"/);
-    assert.doesNotMatch(safePrerenderResponse.text, /alert\(&quot;xss&quot;\)|onerror=|javascript:/i);
+    const bootstrapMarker = '<script id="hamlog-bootstrap" type="application/json">';
+    const bootstrapMarkerIndex = safePrerenderResponse.text.indexOf(bootstrapMarker);
+    assert.notEqual(bootstrapMarkerIndex, -1);
+    const prerenderDocument = safePrerenderResponse.text.slice(
+        0,
+        bootstrapMarkerIndex
+    );
+    assert.doesNotMatch(prerenderDocument, /alert\(&quot;xss&quot;\)|onerror=|javascript:/i);
+    assert.match(safePrerenderResponse.text, /\\u003cscript\\u003ealert\(/);
+    assert.match(safePrerenderResponse.text, /\\u003c\/script\\u003e/);
+    assert.doesNotMatch(safePrerenderResponse.text, /<script>alert\("xss"\)<\/script>/i);
     const safePostBootstrapMatch = safePrerenderResponse.text.match(
         /<script id="hamlog-bootstrap" type="application\/json">([^<]+)<\/script>/
     );
     assert.ok(safePostBootstrapMatch);
     const safePostBootstrap = JSON.parse(safePostBootstrapMatch[1]);
-    assert.match(safePostBootstrap.post.contentHtml, /<h1>본문 제목<\/h1>/);
-    assert.match(safePostBootstrap.post.contentHtml, /alt="배포 구성도"/);
-    assert.doesNotMatch(safePostBootstrap.post.contentHtml, /alert|onerror=|javascript:/i);
+    assert.equal(safePostBootstrap.post.contentHtml, unsafePostHtml);
 
     const localCanonicalResponse = await request(app).get('/posts/canonical-local-post');
     assert.equal(localCanonicalResponse.status, 200);

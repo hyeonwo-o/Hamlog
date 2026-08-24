@@ -45,3 +45,95 @@ test('production home keeps a styled shell until bootstrap hydration completes',
   await expect(page.getByText('블로그 정보 불러오는 중...', { exact: true })).toHaveCount(0);
   await expect(page.locator('.public-site h1').first()).toBeVisible();
 });
+
+test('direct production post preserves rich editor content through bootstrap', async ({ page, request }) => {
+  const uniqueId = Date.now();
+  const title = `Bootstrap rich content ${uniqueId}`;
+  const slug = `bootstrap-rich-content-${uniqueId}`;
+  let postId = '';
+
+  const loginResponse = await request.post(`${backendOrigin}/api/auth/login`, {
+    data: { password: process.env.ADMIN_PASSWORD ?? 'e2e-password' }
+  });
+  expect(loginResponse.status()).toBe(200);
+  const authCookie = loginResponse.headers()['set-cookie']?.split(';', 1)[0] ?? '';
+  expect(authCookie).not.toBe('');
+
+  try {
+    const createResponse = await request.post(`${backendOrigin}/api/posts`, {
+      headers: { Cookie: authCookie, Origin: backendOrigin },
+      data: {
+        slug,
+        title,
+        summary: '초기 데이터가 리치 콘텐츠 표현을 보존하는지 확인합니다.',
+        category: '미분류',
+        contentJson: {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: '인라인 수식 ' },
+                { type: 'math', attrs: { latex: 'x^2' } }
+              ]
+            },
+            {
+              type: 'mermaid',
+              attrs: { source: 'flowchart LR\n    A[직접 접속] --> B[정상 표시]' }
+            },
+            {
+              type: 'columns',
+              attrs: { layout: 'two-column' },
+              content: [
+                {
+                  type: 'column',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: '왼쪽 열' }] }]
+                },
+                {
+                  type: 'column',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: '오른쪽 열' }] }]
+                }
+              ]
+            },
+            {
+              type: 'linkCard',
+              attrs: {
+                url: 'https://example.com/guide',
+                title: '문서 카드',
+                description: '링크 카드 설명',
+                image: '',
+                domain: 'example.com'
+              }
+            }
+          ]
+        },
+        publishedAt: '2026-08-24',
+        tags: ['bootstrap', 'rich-content'],
+        status: 'published',
+        sections: []
+      }
+    });
+    expect(createResponse.status()).toBe(201);
+    const created = await createResponse.json() as { id: string };
+    postId = created.id;
+
+    await page.goto(`${backendOrigin}/posts/${slug}`);
+
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
+    await expect(page.getByText('글 불러오는 중...', { exact: true })).toHaveCount(0);
+    await expect(page.locator('.math-render .katex')).toBeVisible();
+    await expect(page.locator('.mermaid-block svg')).toContainText('직접 접속', { timeout: 15_000 });
+    await expect(page.locator('div[data-type="columns"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: /문서 카드/ })).toHaveAttribute(
+      'href',
+      'https://example.com/guide'
+    );
+  } finally {
+    if (postId) {
+      const deleteResponse = await request.delete(`${backendOrigin}/api/posts/${postId}`, {
+        headers: { Cookie: authCookie, Origin: backendOrigin }
+      });
+      expect(deleteResponse.status()).toBe(204);
+    }
+  }
+});

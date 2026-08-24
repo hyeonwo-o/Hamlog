@@ -60,18 +60,17 @@ const resolveCanonicalUrl = (post, baseUrl) => {
   return toAbsoluteUrl(baseUrl, post.seo?.canonicalUrl || postUrl);
 };
 
-const toPostBootstrap = (post, baseUrl) => {
+const toPostBootstrap = (post) => {
   const postWithoutEditorState = { ...post };
   delete postWithoutEditorState.contentJson;
   delete postWithoutEditorState.sections;
 
   return {
     ...postWithoutEditorState,
-    contentHtml: sanitizePostContentHtml(post.contentHtml || '', {
-      postTitle: post.title,
-      baseUrl,
-      demoteH1: false
-    })
+    // This value stays inert inside application/json and is sanitized by
+    // PostContent immediately before rendering. Keeping the canonical editor
+    // HTML here preserves rich nodes such as math, Mermaid, columns and cards.
+    contentHtml: String(post.contentHtml ?? '')
   };
 };
 
@@ -292,7 +291,7 @@ export const injectPostMeta = async (req, res) => {
       profile,
       posts: toPostSummaries(publicPosts),
       categories,
-      post: toPostBootstrap(post, baseUrl)
+      post: toPostBootstrap(post)
     });
 
     res.send(injectSearchVerificationMeta(html));
