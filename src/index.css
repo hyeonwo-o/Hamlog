@@ -64,6 +64,302 @@ body::before {
   font-family: var(--font-body);
 }
 
+/*
+ * The server sends a small, indexable document before the client bundle starts.
+ * Keep that document visually compatible with the public site so a cold load
+ * never exposes browser-default headings and lists.
+ */
+.prerender-shell {
+  min-height: 100vh;
+  color: var(--text);
+  background: var(--bg);
+  font-family: var(--font-public);
+}
+
+.prerender-shell a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.prerender-container {
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+}
+
+.prerender-topbar {
+  min-height: 3.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.prerender-topbar .prerender-container {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+}
+
+.prerender-brand {
+  overflow: hidden;
+  max-width: 20rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prerender-hero {
+  padding-block: clamp(2.25rem, 6vw, 4rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.prerender-hero h1 {
+  max-width: 48rem;
+  font-size: clamp(1.65rem, 4vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+  word-break: keep-all;
+}
+
+.prerender-hero > p {
+  max-width: 42rem;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  word-break: keep-all;
+}
+
+.prerender-hero dl {
+  display: flex;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.prerender-hero dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.prerender-hero dt {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.prerender-hero dd {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.prerender-section {
+  padding-block: 2rem 3rem;
+}
+
+.prerender-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.prerender-section-heading h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.prerender-section-heading span,
+.prerender-post-meta {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.prerender-post-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+  list-style: none;
+}
+
+.prerender-post-item {
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.prerender-post-item a {
+  display: block;
+}
+
+.prerender-post-item article {
+  min-height: 10rem;
+  padding: 1rem;
+}
+
+.prerender-post-item h3 {
+  margin-top: 0.65rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+.prerender-post-item article > p:last-child {
+  margin-top: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.prerender-empty {
+  margin-top: 1.25rem;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.prerender-post-layout {
+  padding-block: 2.5rem 4rem;
+}
+
+.prerender-back-link {
+  display: inline-flex;
+  margin-bottom: 1.5rem;
+  color: var(--text-muted) !important;
+  font-size: 0.875rem;
+}
+
+.prerender-back-link::before {
+  content: '‹';
+  margin-right: 0.5rem;
+}
+
+.prerender-article-header,
+.prerender-article-body,
+.prerender-related {
+  width: min(100%, 60rem);
+  margin-inline: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.prerender-article-header {
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.prerender-category {
+  display: inline-flex;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 0.7rem;
+}
+
+.prerender-article-header h1 {
+  margin-top: 1rem;
+  font-size: clamp(1.1rem, 3vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.025em;
+  word-break: keep-all;
+}
+
+.prerender-article-header > p:not(.prerender-category) {
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+.prerender-article-header .prerender-post-meta {
+  margin-top: 1rem;
+}
+
+.prerender-article-body {
+  margin-top: 1.5rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.prerender-related {
+  margin-top: 2rem;
+  padding: 1.5rem;
+}
+
+.prerender-related h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.prerender-related ul {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  list-style: none;
+}
+
+.prerender-related a {
+  display: block;
+  padding-block: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.prerender-not-found {
+  width: min(100% - 2rem, 36rem);
+  margin-inline: auto;
+  padding-block: 18vh 3rem;
+  text-align: center;
+}
+
+.prerender-not-found > p:first-child {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.prerender-not-found h1 {
+  margin-top: 1rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+}
+
+.prerender-not-found h1 + p {
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.prerender-not-found a {
+  display: inline-flex;
+  margin-top: 1.5rem;
+  border-bottom: 1px solid var(--text);
+  padding-bottom: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+@media (max-width: 767px) {
+  .prerender-post-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prerender-post-item article {
+    min-height: auto;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .prerender-post-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @layer components {
   .angular-panel {
     border-radius: 4px !important;

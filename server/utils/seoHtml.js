@@ -29,6 +29,19 @@ export const injectAppRootContent = (html, content) => {
     : html;
 };
 
+const serializeJsonForHtml = (value) => JSON.stringify(value)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029');
+
+export const injectJsonData = (html, id, value) => {
+  const safeId = escapeHtml(id);
+  const dataBlock = `<script id="${safeId}" type="application/json">${serializeJsonForHtml(value)}</script>`;
+  return html.replace('</head>', `  ${dataBlock}\n</head>`);
+};
+
 export const normalizeBaseUrl = (value, fallback) => {
   const candidate = String(value || fallback).trim().replace(/\/+$/, '');
   return /^https?:\/\//i.test(candidate) ? candidate : fallback;

@@ -8,8 +8,9 @@ import { fileURLToPath } from 'url';
 // Config
 import { uploadDir } from './config/paths.js';
 import { resolveCorsOptions, resolveTrustProxy } from './config/security.js';
-import { readPosts } from './models/postModel.js';
 import { readProfile } from './models/profileModel.js';
+import { readCategories } from './models/categoryModel.js';
+import { getAllPostsService } from './services/postService.js';
 
 // Routers
 import { categoryRouter } from './routes/categories.js';
@@ -30,7 +31,6 @@ import { searchRateLimiter } from './middleware/rateLimit.js';
 import { handleBodyParserError } from './middleware/bodyParser.js';
 import { readSpaIndexHtml } from './utils/spaIndex.js';
 import { injectSearchVerificationMeta } from './utils/searchVerification.js';
-import { filterPublicPosts } from './utils/postVisibility.js';
 import {
     buildHomePrerenderContent,
     buildNotFoundPrerenderContent,
@@ -40,6 +40,7 @@ import {
 import {
     escapeHtml,
     injectAppRootContent,
+    injectJsonData,
     normalizeBaseUrl,
     replaceHeadTag,
     toAbsoluteUrl
@@ -111,7 +112,7 @@ const buildHomeSchema = (profile, baseUrl, description) => JSON.stringify({
     inLanguage: 'ko-KR'
 }).replace(/</g, '\\u003c');
 
-const injectHomeSeoMeta = (html, profile, posts = []) => {
+const injectHomeSeoMeta = (html, profile, posts = [], categories = []) => {
     const baseUrl = resolveBaseUrl(profile);
     const title = resolveHomeTitle(profile);
     const description = resolveHomeDescription(profile);
@@ -204,18 +205,25 @@ const injectHomeSeoMeta = (html, profile, posts = []) => {
         nextHtml,
         buildHomePrerenderContent(profile, posts, description)
     );
+    nextHtml = injectJsonData(nextHtml, 'hamlog-bootstrap', {
+        route: 'home',
+        profile,
+        posts,
+        categories
+    });
 
     return injectSearchVerificationMeta(nextHtml);
 };
 
 const injectHomeAppShell = async (req, res, next) => {
     try {
-        const [html, profile, posts] = await Promise.all([
+        const [html, profile, postsResult, categories] = await Promise.all([
             readSpaIndexHtml(),
             readProfile(),
-            readPosts()
+            getAllPostsService(false, true),
+            readCategories()
         ]);
-        res.send(injectHomeSeoMeta(html, profile, filterPublicPosts(posts)));
+        res.send(injectHomeSeoMeta(html, profile, postsResult.data, categories));
     } catch (error) {
         next(error);
     }

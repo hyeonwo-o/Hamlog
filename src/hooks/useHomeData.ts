@@ -4,6 +4,7 @@ import { fetchCategories } from '../api/categoryApi';
 import { fetchProfile } from '../api/profileApi';
 import { usePostStore } from '../store/postStore';
 import type { Category } from '../types/category';
+import { appBootstrapData } from '../utils/appBootstrap';
 
 const normalizeHomeProfile = (profile: typeof siteMeta) => ({
     ...siteMeta,
@@ -20,9 +21,13 @@ const normalizeHomeProfile = (profile: typeof siteMeta) => ({
 });
 
 export function useHomeData() {
-    const [profile, setProfile] = useState(siteMeta);
-    const [initialLoading, setInitialLoading] = useState(true);
-    const [managedCategories, setManagedCategories] = useState<Category[]>([]);
+    const [profile, setProfile] = useState(() => (
+        appBootstrapData ? normalizeHomeProfile(appBootstrapData.profile) : siteMeta
+    ));
+    const [initialLoading, setInitialLoading] = useState(appBootstrapData === null);
+    const [managedCategories, setManagedCategories] = useState<Category[]>(
+        () => appBootstrapData?.categories ?? []
+    );
 
     const posts = usePostStore(state => state.posts);
     const loading = usePostStore(state => state.loading);
@@ -41,6 +46,8 @@ export function useHomeData() {
 
     // Fetch Profile
     useEffect(() => {
+        if (appBootstrapData) return;
+
         let isActive = true;
         const loadProfile = async () => {
             try {
@@ -64,6 +71,8 @@ export function useHomeData() {
 
     // Fetch Categories
     useEffect(() => {
+        if (appBootstrapData) return;
+
         let isActive = true;
         const loadCategories = async () => {
             try {

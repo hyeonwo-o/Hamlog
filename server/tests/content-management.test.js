@@ -1439,9 +1439,25 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.match(visibleMetaResponse.text, /"name":"SEO Author"/);
     assert.match(visibleMetaResponse.text, /"name":"SEO Site"/);
     assert.match(visibleMetaResponse.text, /<link rel="icon" href="https:\/\/tech\.hamwoo\.co\.kr\/favicon\.svg" \/>/);
-    assert.match(visibleMetaResponse.text, /<main data-prerendered="post">/);
+    assert.match(
+        visibleMetaResponse.text,
+        /<main class="public-site prerender-shell" data-prerendered="post">/
+    );
     assert.match(visibleMetaResponse.text, /<h1>A &quot;quoted&quot; &lt;title&gt;<\/h1>/);
     assert.match(visibleMetaResponse.text, /<p>Visible body<\/p>/);
+    const postBootstrapMatch = visibleMetaResponse.text.match(
+        /<script id="hamlog-bootstrap" type="application\/json">([^<]+)<\/script>/
+    );
+    assert.ok(postBootstrapMatch);
+    const postBootstrap = JSON.parse(postBootstrapMatch[1]);
+    assert.equal(postBootstrap.route, 'post');
+    assert.equal(postBootstrap.post.slug, 'meta-visible-post');
+    assert.equal(postBootstrap.post.contentHtml, '<p>Visible body</p>');
+    assert.ok(!Object.hasOwn(postBootstrap.post, 'contentJson'));
+    assert.ok(!Object.hasOwn(postBootstrap.post, 'sections'));
+    assert.equal(postBootstrap.profile.title, 'SEO Site');
+    assert.ok(!Object.hasOwn(postBootstrap.posts[0], 'contentHtml'));
+    assert.ok(!Object.hasOwn(postBootstrap.posts[0], 'contentJson'));
 
     const safePrerenderResponse = await request(app).get('/posts/prerender-safe-post');
     assert.equal(safePrerenderResponse.status, 200);
@@ -1449,6 +1465,14 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
     assert.match(safePrerenderResponse.text, /alt="배포 구성도"/);
     assert.match(safePrerenderResponse.text, /href="https:\/\/docs\.example\.com\/guide"/);
     assert.doesNotMatch(safePrerenderResponse.text, /alert\(&quot;xss&quot;\)|onerror=|javascript:/i);
+    const safePostBootstrapMatch = safePrerenderResponse.text.match(
+        /<script id="hamlog-bootstrap" type="application\/json">([^<]+)<\/script>/
+    );
+    assert.ok(safePostBootstrapMatch);
+    const safePostBootstrap = JSON.parse(safePostBootstrapMatch[1]);
+    assert.match(safePostBootstrap.post.contentHtml, /<h1>본문 제목<\/h1>/);
+    assert.match(safePostBootstrap.post.contentHtml, /alt="배포 구성도"/);
+    assert.doesNotMatch(safePostBootstrap.post.contentHtml, /alert|onerror=|javascript:/i);
 
     const localCanonicalResponse = await request(app).get('/posts/canonical-local-post');
     assert.equal(localCanonicalResponse.status, 200);
@@ -1640,10 +1664,22 @@ test('home page reflects profile SEO metadata and search engine verification', a
             /<link rel="canonical" href="https:\/\/tech\.hamwoo\.co\.kr" \/>/
         );
         assert.match(response.text, /Terraform/);
-        assert.match(response.text, /<main data-prerendered="home">/);
-        assert.match(response.text, /<h1>HamLog Ops<\/h1>/);
+        assert.match(
+            response.text,
+            /<main class="public-site prerender-shell" data-prerendered="home">/
+        );
+        assert.match(response.text, /<h1>Tagline<\/h1>/);
         assert.match(response.text, /href="\/posts\/home-public-post"/);
         assert.doesNotMatch(response.text, /home-draft-post/);
+        const homeBootstrapMatch = response.text.match(
+            /<script id="hamlog-bootstrap" type="application\/json">([^<]+)<\/script>/
+        );
+        assert.ok(homeBootstrapMatch);
+        const homeBootstrap = JSON.parse(homeBootstrapMatch[1]);
+        assert.equal(homeBootstrap.route, 'home');
+        assert.equal(homeBootstrap.profile.title, 'HamLog Ops');
+        assert.deepEqual(homeBootstrap.posts.map(post => post.slug), ['home-public-post']);
+        assert.ok(!Object.hasOwn(homeBootstrap.posts[0], 'contentHtml'));
         assert.match(
             response.text,
             /<meta name="google-site-verification" content="google-verification-token" \/>/

@@ -25,6 +25,7 @@ import { fetchPostBySlug } from '../api/postApi';
 import { ApiError } from '../api/client';
 import type { Post } from '../types/blog';
 import { TableOfContents } from '../components/TableOfContents';
+import { appBootstrapData } from '../utils/appBootstrap';
 
 const normalizePageProfile = (profile: SiteMeta) => ({
   ...siteMeta,
@@ -43,6 +44,9 @@ const normalizePageProfile = (profile: SiteMeta) => ({
 const PostPage: React.FC = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const initialPost = appBootstrapData?.route === 'post' && appBootstrapData.post.slug === slug
+    ? appBootstrapData.post
+    : null;
   const posts = usePostStore(state => state.posts);
   const loading = usePostStore(state => state.loading);
   const error = usePostStore(state => state.error);
@@ -50,13 +54,18 @@ const PostPage: React.FC = () => {
   const loadedMode = usePostStore(state => state.loadedMode);
   const fetchPosts = usePostStore(state => state.fetchPosts);
   const recordPostView = usePostStore(state => state.recordPostView);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [profile, setProfile] = useState<SiteMeta>(siteMeta);
-  const [post, setPost] = useState<Post | null>(null);
-  const [detailLoading, setDetailLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>(() => appBootstrapData?.categories ?? []);
+  const [profile, setProfile] = useState<SiteMeta>(() => (
+    appBootstrapData ? normalizePageProfile(appBootstrapData.profile) : siteMeta
+  ));
+  const [post, setPost] = useState<Post | null>(initialPost);
+  const [detailLoading, setDetailLoading] = useState(initialPost === null);
   const [detailError, setDetailError] = useState('');
   const recordedViewSlugRef = useRef<string | null>(null);
   const loadRequestIdRef = useRef(0);
+  const bootstrappedSlugRef = useRef(initialPost?.slug ?? null);
+  const currentPostSlugRef = useRef(post?.slug ?? null);
+  currentPostSlugRef.current = post?.slug ?? null;
 
   const loadPost = useCallback(async () => {
     const requestId = loadRequestIdRef.current + 1;
@@ -92,17 +101,27 @@ const PostPage: React.FC = () => {
   }, [slug]);
 
   useEffect(() => {
+    if (
+      bootstrappedSlugRef.current === slug
+      && currentPostSlugRef.current === slug
+    ) {
+      return;
+    }
+
     void loadPost();
     return () => {
       loadRequestIdRef.current += 1;
     };
-  }, [loadPost]);
+  }, [loadPost, slug]);
 
   useEffect(() => {
+    if (appBootstrapData) return;
     fetchCategories().then(setCategories).catch(console.error);
   }, []);
 
   useEffect(() => {
+    if (appBootstrapData) return;
+
     let isActive = true;
 
     fetchProfile()

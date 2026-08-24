@@ -297,16 +297,19 @@ const sortPostsNewestFirst = (posts) => [...posts].sort((left, right) => (
 
 export const buildHomePrerenderContent = (profile, posts, description) => {
   const siteName = normalizeText(profile?.title) || 'Hamlog';
-  const recentPosts = sortPostsNewestFirst(posts).slice(0, 20);
+  const tagline = normalizeText(profile?.tagline) || siteName;
+  const visibleDescription = normalizeText(profile?.description) || description;
+  const postCount = Array.isArray(posts) ? posts.length : 0;
+  const recentPosts = sortPostsNewestFirst(posts).slice(0, 12);
   const postItems = recentPosts.map((post) => {
     const publishedAt = toDateTime(post.publishedAt);
     const time = publishedAt
       ? `<time datetime="${escapeHtml(publishedAt)}">${escapeHtml(String(post.publishedAt).slice(0, 10))}</time>`
       : '';
-    return `<li><article><h2><a href="${escapeHtml(toPostHref(post.slug))}">${escapeHtml(post.title)}</a></h2><p>${escapeHtml(post.summary || '')}</p>${time}</article></li>`;
+    return `<li class="prerender-post-item"><article><p class="prerender-post-meta">${time}</p><h3><a href="${escapeHtml(toPostHref(post.slug))}">${escapeHtml(post.title)}</a></h3><p>${escapeHtml(post.summary || '')}</p></article></li>`;
   }).join('');
 
-  return `<main data-prerendered="home"><header><a href="/">${escapeHtml(siteName)}</a><h1>${escapeHtml(siteName)}</h1><p>${escapeHtml(description)}</p></header><section aria-labelledby="recent-posts-heading"><h2 id="recent-posts-heading">최근 글</h2>${postItems ? `<ul>${postItems}</ul>` : '<p>아직 공개된 글이 없습니다.</p>'}</section></main>`;
+  return `<main class="public-site prerender-shell" data-prerendered="home"><header class="prerender-topbar"><div class="prerender-container"><a class="prerender-brand" href="/">${escapeHtml(siteName)}</a></div></header><div class="prerender-container"><section class="prerender-hero"><h1>${escapeHtml(tagline)}</h1><p>${escapeHtml(visibleDescription)}</p><dl><div><dt>글</dt><dd>${postCount}</dd></div></dl></section><section class="prerender-section" aria-labelledby="recent-posts-heading"><div class="prerender-section-heading"><h2 id="recent-posts-heading">최근 글</h2><span>${postCount}편</span></div>${postItems ? `<ul class="prerender-post-grid">${postItems}</ul>` : '<p class="prerender-empty">아직 공개된 글이 없습니다.</p>'}</section></div></main>`;
 };
 
 export const buildPostPrerenderContent = (post, profile, publicPosts, description, baseUrl) => {
@@ -331,9 +334,9 @@ export const buildPostPrerenderContent = (post, profile, publicPosts, descriptio
     ? `<meta itemprop="dateModified" content="${escapeHtml(modifiedAt)}" />`
     : '';
 
-  return `<main data-prerendered="post"><nav aria-label="사이트"><a href="/">${escapeHtml(siteName)}</a></nav><article><header>${post.category ? `<p>${escapeHtml(post.category)}</p>` : ''}<h1>${escapeHtml(post.title)}</h1><p>${escapeHtml(post.summary || description)}</p>${dateMarkup}${modifiedMarkup}</header><section aria-label="본문">${safeArticle || `<p>${escapeHtml(description)}</p>`}</section></article>${relatedLinks ? `<nav aria-label="다른 글"><h2>다른 글</h2><ul>${relatedLinks}</ul></nav>` : ''}</main>`;
+  return `<main class="public-site prerender-shell" data-prerendered="post"><nav class="prerender-topbar" aria-label="사이트"><div class="prerender-container"><a class="prerender-brand" href="/">${escapeHtml(siteName)}</a></div></nav><div class="prerender-container prerender-post-layout"><a class="prerender-back-link" href="/">메인화면으로 돌아가기</a><article><header class="prerender-article-header">${post.category ? `<p class="prerender-category">${escapeHtml(post.category)}</p>` : ''}<h1>${escapeHtml(post.title)}</h1><p>${escapeHtml(post.summary || description)}</p><div class="prerender-post-meta">${dateMarkup}${modifiedMarkup}</div></header><section class="prerender-article-body post-content rich-content" aria-label="본문">${safeArticle || `<p>${escapeHtml(description)}</p>`}</section></article>${relatedLinks ? `<nav class="prerender-related" aria-label="다른 글"><h2>다른 글</h2><ul>${relatedLinks}</ul></nav>` : ''}</div></main>`;
 };
 
 export const buildNotFoundPrerenderContent = () => (
-  '<main data-prerendered="not-found"><h1>페이지를 찾을 수 없습니다.</h1><p>요청한 페이지가 없거나 이동되었습니다.</p><a href="/">글 목록으로 돌아가기</a></main>'
+  '<main class="public-site prerender-shell" data-prerendered="not-found"><section class="prerender-not-found"><p>404 · Not Found</p><h1>페이지를 찾을 수 없습니다.</h1><p>요청한 페이지가 없거나 이동되었습니다.</p><a href="/">글 목록으로 돌아가기</a></section></main>'
 );

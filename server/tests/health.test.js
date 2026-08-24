@@ -46,7 +46,10 @@ test('unknown navigation routes return a real noindex HTML 404', async () => {
     assert.match(response.headers['content-type'], /text\/html/);
     assert.equal(response.headers['x-robots-tag'], 'noindex, nofollow');
     assert.match(response.text, /<meta name="robots" content="noindex, nofollow" \/>/);
-    assert.match(response.text, /<main data-prerendered="not-found">/);
+    assert.match(
+        response.text,
+        /<main class="public-site prerender-shell" data-prerendered="not-found">/
+    );
     assert.match(response.text, /<h1>페이지를 찾을 수 없습니다\.<\/h1>/);
 });
 

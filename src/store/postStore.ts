@@ -7,6 +7,7 @@ import {
   deletePost as deletePostRequest,
   recordPostView as recordPostViewRequest
 } from '../api/postApi';
+import { appBootstrapData } from '../utils/appBootstrap';
 
 interface PostState {
   posts: Post[];
@@ -26,12 +27,15 @@ const normalizeError = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const initialPosts = appBootstrapData?.posts ?? [];
+const hasBootstrapPosts = appBootstrapData !== null;
+
 export const usePostStore = create<PostState>((set, get) => ({
-  posts: [],
+  posts: initialPosts,
   loading: false,
   error: null,
-  hasLoaded: false,
-  loadedMode: 'none',
+  hasLoaded: hasBootstrapPosts,
+  loadedMode: hasBootstrapPosts ? 'summary' : 'none',
 
   fetchPosts: async (mode = 'full') => {
     if (get().loading) return;

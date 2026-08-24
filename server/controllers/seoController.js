@@ -1,6 +1,8 @@
 import { readPosts } from '../models/postModel.js';
 import { readProfile } from '../models/profileModel.js';
+import { readCategories } from '../models/categoryModel.js';
 import { filterPublicPosts, findPublicPostBySlug } from '../utils/postVisibility.js';
+import { toPostSummaries } from '../utils/postSummaries.js';
 import { readSpaIndexHtml, resolveSpaIndexPath } from '../utils/spaIndex.js';
 import { buildRobotsTxt, injectSearchVerificationMeta } from '../utils/searchVerification.js';
 import {
@@ -15,6 +17,7 @@ import {
   escapeHtml,
   escapeXml,
   injectAppRootContent,
+  injectJsonData,
   normalizeBaseUrl,
   removeHeadTag,
   replaceHeadTag,
@@ -55,6 +58,21 @@ const getArticleDate = (value = '') => {
 const resolveCanonicalUrl = (post, baseUrl) => {
   const postUrl = `${baseUrl}/posts/${post.slug}`;
   return toAbsoluteUrl(baseUrl, post.seo?.canonicalUrl || postUrl);
+};
+
+const toPostBootstrap = (post, baseUrl) => {
+  const postWithoutEditorState = { ...post };
+  delete postWithoutEditorState.contentJson;
+  delete postWithoutEditorState.sections;
+
+  return {
+    ...postWithoutEditorState,
+    contentHtml: sanitizePostContentHtml(post.contentHtml || '', {
+      postTitle: post.title,
+      baseUrl,
+      demoteH1: false
+    })
+  };
 };
 
 const buildArticleSchema = (post, canonicalUrl, image, baseUrl, profile, description) => {
@@ -107,9 +125,14 @@ const buildArticleSchema = (post, canonicalUrl, image, baseUrl, profile, descrip
 export const injectPostMeta = async (req, res) => {
   try {
     const { slug } = req.params;
-    const [posts, profile] = await Promise.all([readPosts(), readProfile()]);
+    const [posts, profile, categories] = await Promise.all([
+      readPosts(),
+      readProfile(),
+      readCategories()
+    ]);
     const baseUrl = resolveBaseUrl(profile);
     const post = findPublicPostBySlug(posts, slug);
+    const publicPosts = filterPublicPosts(posts);
 
     let html = await readSpaIndexHtml();
 
@@ -259,11 +282,18 @@ export const injectPostMeta = async (req, res) => {
       buildPostPrerenderContent(
         post,
         profile,
-        filterPublicPosts(posts),
+        publicPosts,
         description,
         baseUrl
       )
     );
+    html = injectJsonData(html, 'hamlog-bootstrap', {
+      route: 'post',
+      profile,
+      posts: toPostSummaries(publicPosts),
+      categories,
+      post: toPostBootstrap(post, baseUrl)
+    });
 
     res.send(injectSearchVerificationMeta(html));
   } catch (error) {
