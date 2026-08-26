@@ -121,6 +121,13 @@ const normalizeHttpOrLocalUrl = (value = '') => {
   }
 };
 
+const getSafeImageDisplayWidth = (value = '') => {
+  const match = String(value).trim().match(/^(\d+(?:\.\d+)?)%$/);
+  if (!match) return '';
+  const percentage = Math.round(Number(match[1]));
+  return percentage >= 25 && percentage <= 100 ? `${percentage}%` : '';
+};
+
 interface SyntaxHighlighterProps {
   language: string;
   children: string;
@@ -277,6 +284,10 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
       }
 
       if (domNode.name === 'img') {
+        const displayWidth = getSafeImageDisplayWidth(domNode.attribs['data-width']);
+        if (displayWidth) {
+          domNode.attribs.style = `width: ${displayWidth}; height: auto; margin: 0 auto`;
+        }
         const originalSrc = domNode.attribs.src;
         const responsiveSrcSet = buildImageVariantSrcSet(originalSrc, [
           { width: 480, descriptor: '480w' },
@@ -292,6 +303,13 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
         domNode.attribs.loading = 'lazy';
         domNode.attribs.decoding = 'async';
         domNode.attribs.fetchpriority = 'low';
+      }
+
+      if (domNode.name === 'figure') {
+        const displayWidth = getSafeImageDisplayWidth(domNode.attribs['data-width']);
+        if (displayWidth) {
+          domNode.attribs.style = `width: ${displayWidth}; height: auto; margin: 0 auto`;
+        }
       }
 
       if (domNode.name === 'link-card') {

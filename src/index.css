@@ -953,7 +953,12 @@ body::before {
   max-width: 820px;
 }
 
-.image-gallery,
+.image-gallery {
+  width: 100% !important;
+  display: grid !important;
+  gap: 1rem;
+}
+
 /* Ensure NodeView wrappers in gallery behave as grid items */
 .image-gallery>div {
   width: 100% !important;
@@ -965,9 +970,89 @@ body::before {
   width: 100%;
 }
 
+.image-gallery .image-resize-frame {
+  width: 100% !important;
+}
+
+.image-gallery .image-resize-handle,
+.image-gallery .image-width-controls {
+  display: none;
+}
+
+.tiptap-editor [data-type='column'] .image-resize-frame {
+  width: 100% !important;
+}
+
+.tiptap-editor [data-type='column'] .image-resize-handle,
+.tiptap-editor [data-type='column'] .image-width-controls {
+  display: none;
+}
+
+.tiptap-editor [data-type='column'] .image-metadata-fields {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.rich-content [data-type='column']>img,
+.rich-content [data-type='column']>figure {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.rich-content [data-type='columns'] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+
+.rich-content [data-type='column'] {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+@media (min-width: 640px) {
+  .rich-content [data-type='columns'] {
+    flex-direction: row;
+  }
+}
+
+.image-layout-drag-source {
+  opacity: 0.72;
+}
+
+.image-layout-drop-target .image-resize-frame::after {
+  position: absolute;
+  inset-block: 0;
+  z-index: 25;
+  display: flex;
+  width: 50%;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent-strong);
+  content: '';
+  pointer-events: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  backdrop-filter: blur(2px);
+}
+
+.image-layout-drop-target[data-image-drop-side='left'] .image-resize-frame::after {
+  inset-inline-start: 0;
+  border-radius: 0.5rem 0 0 0.5rem;
+  content: '앞에 배치';
+}
+
+.image-layout-drop-target[data-image-drop-side='right'] .image-resize-frame::after {
+  inset-inline-end: 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  content: '뒤에 배치';
+}
+
 .image-gallery figure {
   margin: 0 !important;
-  width: 100%;
+  width: 100% !important;
   display: flex;
   flex-direction: column;
 }

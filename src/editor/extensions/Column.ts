@@ -1,4 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { closeHistory } from '@tiptap/pm/history';
+import { Selection } from '@tiptap/pm/state';
 
 declare module '@tiptap/core' {
     interface Commands<ReturnType> {
@@ -6,6 +9,7 @@ declare module '@tiptap/core' {
             setColumnsLayout: (layout: 'two-column' | 'three-column') => ReturnType;
             moveColumnLeft: () => ReturnType;
             moveColumnRight: () => ReturnType;
+            unsetColumns: () => ReturnType;
         };
     }
 }
@@ -74,18 +78,21 @@ export const Columns = Node.create({
                             tr.insert(columnsPos + columns.nodeSize - 1, nodes);
                         }
                     } else if (layout === 'two-column' && childCount > 2) {
-                        // Remove extra columns
-                        // We need to calculate position of 3rd column.
-                        let pos = columnsPos + 1;
-                        for (let i = 0; i < 2; i++) {
-                            pos += columns.child(i).nodeSize;
+                        const firstColumn = columns.child(0);
+                        const secondColumn = columns.child(1);
+                        let mergedContent = secondColumn.content;
+                        for (let index = 2; index < childCount; index += 1) {
+                            mergedContent = mergedContent.append(columns.child(index).content);
                         }
-                        // Now pos is at start of 3rd column
-                        // We want to delete from here to end.
-                        tr.delete(pos, columnsPos + columns.nodeSize - 1);
+                        const mergedSecondColumn = secondColumn.copy(mergedContent);
+                        const replacement = columns.type.create(
+                            { ...columns.attrs, layout: 'two-column' },
+                            [firstColumn, mergedSecondColumn]
+                        );
+                        tr.replaceWith(columnsPos, columnsPos + columns.nodeSize, replacement);
                     }
 
-                    dispatch(tr);
+                    dispatch(closeHistory(tr));
                 }
                 return true;
             },
@@ -115,24 +122,25 @@ export const Columns = Node.create({
                 if (columnIndex <= 0 || !columnsNode) return false;
 
                 if (dispatch) {
-                    const tr = state.tr;
-                    const columnNode = columnsNode.child(columnIndex);
-                    const prevColumnNode = columnsNode.child(columnIndex - 1);
-
-                    const currentSize = columnNode.nodeSize;
-                    const prevSize = prevColumnNode.nodeSize;
-
-                    // Calculate positions
-                    let prevPos = columnsPos + 1;
-                    for (let i = 0; i < columnIndex - 1; i++) {
-                        prevPos += columnsNode.child(i).nodeSize;
+                    const columns = Array.from(
+                        { length: columnsNode.childCount },
+                        (_, index) => columnsNode.child(index)
+                    );
+                    const [columnNode] = columns.splice(columnIndex, 1);
+                    const nextIndex = columnIndex - 1;
+                    columns.splice(nextIndex, 0, columnNode);
+                    const replacement = columnsNode.type.create(columnsNode.attrs, columns);
+                    const tr = state.tr.replaceWith(
+                        columnsPos,
+                        columnsPos + columnsNode.nodeSize,
+                        replacement
+                    );
+                    let nextColumnPos = columnsPos + 1;
+                    for (let index = 0; index < nextIndex; index += 1) {
+                        nextColumnPos += columns[index].nodeSize;
                     }
-                    const currentPos = prevPos + prevSize;
-
-                    tr.delete(currentPos, currentPos + currentSize);
-                    tr.insert(prevPos, columnNode);
-
-                    dispatch(tr);
+                    tr.setSelection(Selection.near(tr.doc.resolve(nextColumnPos + 1), 1));
+                    dispatch(closeHistory(tr));
                 }
                 return true;
             },
@@ -161,22 +169,56 @@ export const Columns = Node.create({
                 if (!columnsNode || columnIndex === -1 || columnIndex >= columnsNode.childCount - 1) return false;
 
                 if (dispatch) {
-                    const tr = state.tr;
-                    const columnNode = columnsNode.child(columnIndex);
-                    const nextColumnNode = columnsNode.child(columnIndex + 1);
-
-                    const currentSize = columnNode.nodeSize;
-                    const nextSize = nextColumnNode.nodeSize;
-
-                    let currentPos = columnsPos + 1;
-                    for (let i = 0; i < columnIndex; i++) {
-                        currentPos += columnsNode.child(i).nodeSize;
+                    const columns = Array.from(
+                        { length: columnsNode.childCount },
+                        (_, index) => columnsNode.child(index)
+                    );
+                    const [columnNode] = columns.splice(columnIndex, 1);
+                    const nextIndex = columnIndex + 1;
+                    columns.splice(nextIndex, 0, columnNode);
+                    const replacement = columnsNode.type.create(columnsNode.attrs, columns);
+                    const tr = state.tr.replaceWith(
+                        columnsPos,
+                        columnsPos + columnsNode.nodeSize,
+                        replacement
+                    );
+                    let nextColumnPos = columnsPos + 1;
+                    for (let index = 0; index < nextIndex; index += 1) {
+                        nextColumnPos += columns[index].nodeSize;
                     }
+                    tr.setSelection(Selection.near(tr.doc.resolve(nextColumnPos + 1), 1));
+                    dispatch(closeHistory(tr));
+                }
+                return true;
+            },
+            unsetColumns: () => ({ state, dispatch }) => {
+                const { $from } = state.selection;
+                let columnsPos = -1;
+                let columnsNode = null;
 
-                    tr.delete(currentPos, currentPos + currentSize);
-                    tr.insert(currentPos + nextSize, columnNode);
+                for (let depth = $from.depth; depth > 0; depth -= 1) {
+                    const node = $from.node(depth);
+                    if (node.type.name !== 'columns') continue;
+                    columnsNode = node;
+                    columnsPos = $from.before(depth);
+                    break;
+                }
 
-                    dispatch(tr);
+                if (!columnsNode || columnsPos < 0) return false;
+                if (dispatch) {
+                    const blocks: ProseMirrorNode[] = [];
+                    columnsNode.forEach(column => {
+                        column.forEach(block => blocks.push(block));
+                    });
+                    if (blocks.length === 0) return false;
+                    const tr = state.tr.replaceWith(
+                        columnsPos,
+                        columnsPos + columnsNode.nodeSize,
+                        blocks
+                    );
+                    const selectionPos = Math.min(columnsPos + 1, tr.doc.content.size);
+                    tr.setSelection(Selection.near(tr.doc.resolve(selectionPos), 1));
+                    dispatch(closeHistory(tr));
                 }
                 return true;
             }

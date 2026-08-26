@@ -70,3 +70,35 @@ test('RSS-safe content converts upload paths to absolute URLs', () => {
 
   assert.match(html, /src="https:\/\/tech\.hamwoo\.co\.kr\/uploads\/example\.png"/);
 });
+
+test('prerender sanitizer preserves only safe responsive image widths', () => {
+  const html = sanitizePostContentHtml(`
+    <img src="/uploads/plain.png" alt="일반 이미지" data-width="47%" />
+    <figure data-width="63%">
+      <img src="/uploads/captioned.png" alt="캡션 이미지" />
+      <figcaption>설명</figcaption>
+    </figure>
+    <img src="/uploads/unsafe.png" alt="잘못된 너비" data-width="100%; color: red" />
+  `);
+
+  assert.match(html, /data-width="47%" style="width: 47%; height: auto; margin: 0 auto"/);
+  assert.match(html, /<figure data-width="63%" style="width: 63%; height: auto; margin: 0 auto">/);
+  assert.match(html, /captioned\.png" alt="캡션 이미지" style="width: 100%; height: auto"/);
+  assert.doesNotMatch(html, /color: red|data-width="100%;/);
+});
+
+test('prerender sanitizer preserves only safe column layout attributes', () => {
+  const html = sanitizePostContentHtml(`
+    <div data-type="columns" data-layout="three-column" class="unsafe" onclick="alert(1)">
+      <div data-type="column"><p>첫 번째</p></div>
+      <div data-type="column"><p>두 번째</p></div>
+      <div data-type="column"><p>세 번째</p></div>
+    </div>
+    <div data-type="columns" data-layout="unknown"><div data-type="column">기본값</div></div>
+  `);
+
+  assert.match(html, /<div data-type="columns" data-layout="three-column">/);
+  assert.equal((html.match(/data-type="column"/g) || []).length, 4);
+  assert.match(html, /<div data-type="columns" data-layout="two-column">/);
+  assert.doesNotMatch(html, /class=|onclick|unknown/);
+});

@@ -18,6 +18,41 @@ import Typography from '@tiptap/extension-typography';
 import Image from '@tiptap/extension-image';
 import { createLowlight, common } from 'lowlight';
 
+const getElementTagName = (element) => String(element?.tagName || element?.nodeName || '').toLowerCase();
+
+const getImageElement = (element) => (
+    getElementTagName(element) === 'figure'
+        ? element?.querySelector?.('img[src]')
+        : element
+);
+
+const getOwningFigure = (element) => {
+    if (getElementTagName(element) === 'figure') return element;
+    const parent = element?.parentElement || element?.parentNode;
+    return getElementTagName(parent) === 'figure' ? parent : null;
+};
+
+const getImageDisplayWidth = (attributes = {}) => {
+    const candidate = String(attributes.dataWidth || attributes['data-width'] || attributes.width || '').trim();
+    const match = candidate.match(/^(\d+(?:\.\d+)?)%$/);
+    if (!match) return '';
+    const percentage = Math.round(Number(match[1]));
+    if (percentage < 25 || percentage > 100) return '';
+    return `${percentage}%`;
+};
+
+const withImageDisplayWidth = (attributes = {}) => {
+    const displayWidth = getImageDisplayWidth(attributes);
+    if (!displayWidth) return attributes;
+
+    const imageAttributes = { ...attributes };
+    delete imageAttributes.width;
+    imageAttributes['data-size'] = 'custom';
+    imageAttributes['data-width'] = displayWidth;
+    imageAttributes.style = `width: ${displayWidth}; height: auto`;
+    return imageAttributes;
+};
+
 const FontSize = Extension.create({
     name: 'fontSize',
     addGlobalAttributes() {
@@ -43,29 +78,33 @@ const CustomImage = Image.extend({
             ...this.parent?.(),
             size: {
                 default: 'full',
-                parseHTML: element => element.getAttribute('data-size') || 'full',
+                parseHTML: element => getImageElement(element)?.getAttribute?.('data-size') || 'full',
                 renderHTML: attributes => ({ 'data-size': attributes.size })
             },
             dataWidth: {
                 default: null,
-                parseHTML: element => element.getAttribute('data-width'),
+                parseHTML: element => (
+                    getImageElement(element)?.getAttribute?.('data-width')
+                    || getOwningFigure(element)?.getAttribute?.('data-width')
+                ),
                 renderHTML: attributes =>
                     attributes.dataWidth ? { 'data-width': attributes.dataWidth } : {}
             },
             width: {
                 default: null,
-                parseHTML: element => element.getAttribute('width'),
+                parseHTML: element => getImageElement(element)?.getAttribute?.('width'),
                 renderHTML: attributes => (attributes.width ? { width: attributes.width } : {})
             },
             style: {
                 default: null,
-                parseHTML: element => element.getAttribute('style'),
+                parseHTML: element => getImageElement(element)?.getAttribute?.('style'),
                 renderHTML: attributes => (attributes.style ? { style: attributes.style } : {})
             },
             caption: {
                 default: null,
                 parseHTML: element =>
-                    element.querySelector('figcaption')?.innerText || element.getAttribute('data-caption'),
+                    getOwningFigure(element)?.querySelector?.('figcaption')?.textContent
+                    || getImageElement(element)?.getAttribute?.('data-caption'),
                 renderHTML: attributes => {
                     if (!attributes.caption) return {};
                     return { 'data-caption': attributes.caption };
@@ -73,17 +112,46 @@ const CustomImage = Image.extend({
             }
         };
     },
+    parseHTML() {
+        const imageSelector = this.options.allowBase64
+            ? 'img[src]'
+            : 'img[src]:not([src^="data:"])';
+        return [
+            {
+                tag: 'figure',
+                getAttrs: element => {
+                    const image = element?.querySelector?.('img[src]');
+                    const source = image?.getAttribute?.('src') || '';
+                    if (!image || (!this.options.allowBase64 && source.startsWith('data:'))) return false;
+                    return {
+                        src: source,
+                        alt: image.getAttribute?.('alt'),
+                        title: image.getAttribute?.('title')
+                    };
+                }
+            },
+            { tag: imageSelector }
+        ];
+    },
     renderHTML({ node, HTMLAttributes }) {
         const { caption } = node.attrs;
+        const imageAttributes = withImageDisplayWidth(HTMLAttributes);
+        const displayWidth = getImageDisplayWidth(imageAttributes);
         if (caption) {
+            const captionImageAttributes = { ...imageAttributes };
+            delete captionImageAttributes['data-width'];
+            delete captionImageAttributes.style;
             return [
                 'figure',
-                { class: 'post-image local-image' },
-                ['img', HTMLAttributes],
+                {
+                    class: 'post-image local-image',
+                    ...(displayWidth ? { 'data-width': displayWidth } : {})
+                },
+                ['img', captionImageAttributes],
                 ['figcaption', {}, caption]
             ];
         }
-        return ['img', HTMLAttributes];
+        return ['img', imageAttributes];
     }
 });
 

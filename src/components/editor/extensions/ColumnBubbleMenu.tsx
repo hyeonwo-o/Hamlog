@@ -1,8 +1,9 @@
 import React from 'react';
 import { BubbleMenu } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
+import { NodeSelection } from '@tiptap/pm/state';
 import {
-    Columns, Trash2, LayoutTemplate, ArrowLeft, ArrowRight
+    Columns, Ungroup, LayoutTemplate, ArrowLeft, ArrowRight
 } from 'lucide-react';
 
 interface ColumnBubbleMenuProps {
@@ -52,7 +53,12 @@ export const ColumnBubbleMenu: React.FC<ColumnBubbleMenuProps> = ({ editor, enab
         <BubbleMenu
             editor={editor}
             tippyOptions={{ duration: 100, maxWidth: 400, placement: 'top' }}
-            shouldShow={({ editor }) => enabled && editor.isActive('columns')}
+            shouldShow={({ editor, state }) => enabled
+                && editor.isActive('columns')
+                && !(
+                    state.selection instanceof NodeSelection
+                    && state.selection.node.type.name === 'image'
+                )}
             className="flex flex-wrap items-center gap-1 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-1.5 animate-in fade-in zoom-in-95 duration-200"
         >
             <div className="flex items-center gap-0.5">
@@ -87,10 +93,9 @@ export const ColumnBubbleMenu: React.FC<ColumnBubbleMenuProps> = ({ editor, enab
                 <div className="mx-1 h-4 w-px bg-[var(--border)]" />
 
                 <MenuButton
-                    onClick={() => editor.chain().focus().deleteNode('columns').run()}
-                    icon={<Trash2 size={16} />}
-                    label="레이아웃 삭제"
-                    danger
+                    onClick={() => editor.chain().focus().unsetColumns().run()}
+                    icon={<Ungroup size={16} />}
+                    label="레이아웃 해제"
                 />
             </div>
         </BubbleMenu>

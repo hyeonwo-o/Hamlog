@@ -1,5 +1,21 @@
 
+import type { EditorView } from '@tiptap/pm/view';
+
 export type DropSide = 'left' | 'right' | null;
+
+export const getImagePositionFromElement = (view: EditorView, element: Element | null) => {
+    const wrapper = element?.closest<HTMLElement>('.image-component');
+    if (!wrapper) return null;
+    try {
+        const domPosition = view.posAtDOM(wrapper, 0);
+        const candidates = [domPosition, domPosition - 1, domPosition + 1];
+        return candidates.find(position => (
+            position >= 0 && view.state.doc.nodeAt(position)?.type.name === 'image'
+        )) ?? null;
+    } catch {
+        return null;
+    }
+};
 
 interface ImageDetectionResult {
     targetImage: Element | null;
@@ -8,10 +24,46 @@ interface ImageDetectionResult {
     parentColumns?: Element | null;
 }
 
+interface ImageDropDetectionOptions {
+    exclude?: Element | null;
+}
+
+interface ImageRect {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    width: number;
+}
+
+interface HorizontalDropCandidate {
+    side: Exclude<DropSide, null>;
+    distance: number;
+}
+
+export const getHorizontalImageDropCandidate = (
+    rect: ImageRect,
+    clientX: number,
+    clientY: number,
+    scanDistance = 100
+): HorizontalDropCandidate | null => {
+    if (clientY < rect.top || clientY > rect.bottom || rect.width <= 0) return null;
+    if (clientX < rect.left - scanDistance || clientX > rect.right + scanDistance) return null;
+
+    if (clientX <= rect.left + (rect.width * 0.3)) {
+        return { side: 'left', distance: Math.abs(clientX - rect.left) };
+    }
+    if (clientX >= rect.right - (rect.width * 0.3)) {
+        return { side: 'right', distance: Math.abs(clientX - rect.right) };
+    }
+    return null;
+};
+
 export const detectImageDropZone = (
     editorDom: HTMLElement,
     clientX: number,
-    clientY: number
+    clientY: number,
+    options: ImageDropDetectionOptions = {}
 ): ImageDetectionResult => {
     // Improved selector to catch images inside NodeViews (ImageComponent) and standard images
     const images = Array.from(editorDom.querySelectorAll('.image-component img, img.post-image, img[data-type="custom-image"]'));
@@ -20,37 +72,18 @@ export const detectImageDropZone = (
     let dropSide: DropSide = null;
     let parentColumn: Element | null = null;
     let parentColumns: Element | null = null;
-
-    const SCAN_DISTANCE = 100; // Pixel distance to consider "near"
+    let closestDistance = Number.POSITIVE_INFINITY;
 
     // Find the closest image vertically that we are horizontally within range of
     for (const img of images) {
+        const imageComponent = img.closest('.image-component');
+        if (img === options.exclude || imageComponent === options.exclude) continue;
         const rect = img.getBoundingClientRect();
-        // Check if Y is within reasonable range (e.g. same line)
-        if (clientY >= rect.top && clientY <= rect.bottom) {
-            // We are inside the vertical strip of this image.
-            // Now check X.
-            // We accept drops slightly outside the image too (gaps).
-            if (clientX >= rect.left - SCAN_DISTANCE && clientX <= rect.right + SCAN_DISTANCE) {
-                // Potential target
-                const width = rect.width;
-                const offsetX = clientX - rect.left;
-
-                // Define trigger zones
-                // 0% - 30%: Left
-                // 70% - 100%: Right
-
-                if (offsetX < width * 0.3) {
-                    targetImage = img;
-                    dropSide = 'left';
-                    break;
-                } else if (offsetX > width * 0.7) {
-                    targetImage = img;
-                    dropSide = 'right';
-                    break;
-                }
-            }
-        }
+        const candidate = getHorizontalImageDropCandidate(rect, clientX, clientY);
+        if (!candidate || candidate.distance >= closestDistance) continue;
+        targetImage = img;
+        dropSide = candidate.side;
+        closestDistance = candidate.distance;
     }
 
     if (targetImage) {

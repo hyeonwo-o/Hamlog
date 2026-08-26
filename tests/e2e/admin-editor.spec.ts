@@ -141,7 +141,7 @@ test('admin editor toolbar is grouped and accessible', async ({ page }) => {
   await expect(textColorMenu).toBeVisible();
   await page.keyboard.press('Alt+Shift+P');
   await expect(textColorMenu).toBeHidden();
-  const editToggle = page.getByRole('button', { name: '편집' });
+  const editToggle = page.getByRole('button', { name: '편집', exact: true });
   await expect(editToggle).toBeFocused();
   const toolbarRegion = page.getByTestId('editor-toolbar-region');
   await expect(toolbarRegion)
@@ -261,6 +261,482 @@ test('admin editor keeps the mobile workspace focused without page overflow', as
   await returnToEditor.click();
   await expect(titleInput).toBeVisible();
   await expect(listToggle).toBeFocused();
+});
+
+test('admin editor resizes an image from its border and keeps the saved width', async ({ page }) => {
+  const uniqueId = Date.now();
+  const title = `E2E image resize ${uniqueId}`;
+  const slug = `e2e-image-resize-${uniqueId}`;
+  let postId: string | null = null;
+
+  await page.setViewportSize({ width: 960, height: 900 });
+  await openAdminEditor(page);
+
+  try {
+    const created = await page.evaluate(async (payload) => {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json() as Promise<{ id: string }>;
+    }, {
+      slug,
+      title,
+      summary: '이미지 테두리 크기 조절을 검증하는 테스트 글입니다.',
+      category: '미분류',
+      contentJson: {
+        type: 'doc',
+        content: [
+          {
+            type: 'image',
+            attrs: {
+              src: '/avatar.jpg',
+              alt: '크기 조절 테스트 이미지',
+              title: null,
+              size: 'custom',
+              dataWidth: '50%',
+              width: null,
+              style: null,
+              caption: '테두리를 드래그해 크기를 조절합니다.'
+            }
+          }
+        ]
+      },
+      publishedAt: '2026-08-26',
+      tags: ['e2e'],
+      status: 'draft',
+      sections: []
+    });
+    postId = created.id;
+
+    await page.goto(`/admin?section=posts&post=${postId}`);
+    const image = page.locator('.image-component img').first();
+    await expect(image).toBeVisible();
+    await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).naturalWidth))
+      .toBeGreaterThan(0);
+    await image.click();
+
+    const resizeHandle = page.getByRole('slider', { name: '이미지 너비 조절' });
+    await expect(resizeHandle).toHaveAttribute('aria-valuenow', '50');
+    const handleBox = await resizeHandle.boundingBox();
+    if (!handleBox) throw new Error('이미지 크기 조절점을 찾을 수 없습니다.');
+
+    await page.mouse.move(handleBox.x + (handleBox.width / 2), handleBox.y + (handleBox.height / 2));
+    await page.mouse.down();
+    await page.mouse.move(handleBox.x + (handleBox.width / 2) - 70, handleBox.y + (handleBox.height / 2));
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+    await expect(resizeHandle).toHaveAttribute('aria-valuenow', '50');
+    const restoredPointerStyles = await page.evaluate(() => ({
+      cursor: document.body.style.cursor,
+      userSelect: document.body.style.userSelect
+    }));
+    expect(restoredPointerStyles).toEqual({ cursor: '', userSelect: '' });
+
+    await page.mouse.move(handleBox.x + (handleBox.width / 2), handleBox.y + (handleBox.height / 2));
+    await page.mouse.down();
+    await page.mouse.move(handleBox.x + (handleBox.width / 2) + 70, handleBox.y + (handleBox.height / 2));
+    await page.mouse.up();
+
+    const resizedPercent = Number(await resizeHandle.getAttribute('aria-valuenow'));
+    expect(resizedPercent).toBeGreaterThan(50);
+    expect(resizedPercent).toBeLessThanOrEqual(100);
+    await page.mouse.move(handleBox.x + (handleBox.width / 2) + 140, handleBox.y + (handleBox.height / 2));
+    await expect(resizeHandle).toHaveAttribute('aria-valuenow', String(resizedPercent));
+
+    const updateResponsePromise = page.waitForResponse(response => (
+      response.url().endsWith(`/api/posts/${postId}`)
+      && response.request().method() === 'PUT'
+    ));
+    await page.getByRole('button', { name: '초안 저장', exact: true }).click();
+    const updateResponse = await updateResponsePromise;
+    expect(updateResponse.ok()).toBe(true);
+    const savedPost = await updateResponse.json();
+    const savedImage = savedPost.contentJson?.content?.find(
+      (item: { type?: string }) => item.type === 'image'
+    );
+    expect(savedImage?.attrs?.dataWidth).toBe(`${resizedPercent}%`);
+    expect(savedImage?.attrs?.size).toBe('custom');
+
+    await page.reload();
+    const reopenedImage = page.locator('.image-component img').first();
+    await expect(reopenedImage).toBeVisible();
+    await reopenedImage.click();
+    const reopenedHandle = page.getByRole('slider', { name: '이미지 너비 조절' });
+    await expect(reopenedHandle).toHaveAttribute('aria-valuenow', String(resizedPercent));
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await reopenedHandle.focus();
+    await page.keyboard.press('Home');
+    await expect(reopenedHandle).toHaveAttribute('aria-valuenow', '25');
+    await expect(reopenedHandle).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(reopenedHandle).toHaveAttribute('aria-valuenow', '100');
+    await page.keyboard.press('Shift+ArrowLeft');
+    await expect(reopenedHandle).toHaveAttribute('aria-valuenow', '90');
+
+    const mobileLayout = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth
+    }));
+    expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.clientWidth);
+  } finally {
+    if (postId) await deletePostFromAdmin(page, postId);
+  }
+});
+
+test('admin editor drags existing images into an undoable side-by-side layout', async ({ page }) => {
+  const uniqueId = Date.now();
+  const title = `E2E image layout drag ${uniqueId}`;
+  const slug = `e2e-image-layout-drag-${uniqueId}`;
+  let postId: string | null = null;
+
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await openAdminEditor(page);
+
+  try {
+    const created = await page.evaluate(async (payload) => {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json() as Promise<{ id: string }>;
+    }, {
+      slug,
+      title,
+      summary: '기존 이미지 드래그 레이아웃을 검증하는 테스트 글입니다.',
+      category: '미분류',
+      contentJson: {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: '레이아웃 앞 문단' }] },
+          {
+            type: 'image',
+            attrs: {
+              src: '/avatar.jpg?layout=a',
+              alt: '레이아웃 이미지 A',
+              size: 'custom',
+              dataWidth: '75%',
+              caption: 'A 캡션'
+            }
+          },
+          {
+            type: 'image',
+            attrs: {
+              src: '/avatar.jpg?layout=b',
+              alt: '레이아웃 이미지 B',
+              size: 'full',
+              caption: 'B 캡션'
+            }
+          },
+          { type: 'paragraph', content: [{ type: 'text', text: '레이아웃 뒤 문단' }] }
+        ]
+      },
+      publishedAt: '2026-08-26',
+      tags: ['e2e'],
+      status: 'draft',
+      sections: []
+    });
+    postId = created.id;
+    await page.goto(`/admin?section=posts&post=${postId}`);
+
+    const imageA = page.locator('img[alt="레이아웃 이미지 A"]');
+    const imageB = page.locator('img[alt="레이아웃 이미지 B"]');
+    await expect(imageA).toBeVisible();
+    await expect(imageB).toBeVisible();
+    const sourceBox = await imageA.boundingBox();
+    const targetBox = await imageB.boundingBox();
+    if (!sourceBox || !targetBox) throw new Error('이미지 드래그 좌표를 찾을 수 없습니다.');
+
+    await page.mouse.move(sourceBox.x + (sourceBox.width / 2), sourceBox.y + (sourceBox.height / 2));
+    await page.mouse.down();
+    await page.mouse.move(sourceBox.x + (sourceBox.width / 2) + 8, sourceBox.y + (sourceBox.height / 2), { steps: 3 });
+    await page.mouse.move(targetBox.x + targetBox.width - 8, targetBox.y + (targetBox.height / 2), { steps: 12 });
+
+    const targetDecoration = page.locator('.image-layout-drop-target').filter({ has: imageB });
+    await expect(targetDecoration).toHaveAttribute('data-image-drop-side', 'right');
+    await page.mouse.up();
+
+    const columns = page.locator('.ProseMirror [data-type="columns"]');
+    await expect(columns).toHaveCount(1);
+    await expect(columns.locator(':scope > [data-type="column"]')).toHaveCount(2);
+    await expect.poll(() => columns.locator('img').evaluateAll(images => (
+      images.map(image => image.getAttribute('alt'))
+    ))).toEqual(['레이아웃 이미지 B', '레이아웃 이미지 A']);
+    await expect(page.getByText('레이아웃 앞 문단')).toBeVisible();
+    await expect(page.getByText('레이아웃 뒤 문단')).toBeVisible();
+
+    await page.keyboard.press('Control+z');
+    await expect(columns).toHaveCount(0);
+    await expect.poll(() => page.locator('.ProseMirror .image-component img').evaluateAll(images => (
+      images.map(image => image.getAttribute('alt'))
+    ))).toEqual(['레이아웃 이미지 A', '레이아웃 이미지 B']);
+    await page.keyboard.press('Control+Shift+z');
+    await expect(columns).toHaveCount(1);
+
+    const updateResponsePromise = page.waitForResponse(response => (
+      response.url().endsWith(`/api/posts/${postId}`)
+      && response.request().method() === 'PUT'
+    ));
+    await page.getByRole('button', { name: '초안 저장', exact: true }).click();
+    const updateResponse = await updateResponsePromise;
+    expect(updateResponse.ok()).toBe(true);
+    const savedPost = await updateResponse.json();
+    const savedLayout = savedPost.contentJson?.content?.find(
+      (item: { type?: string }) => item.type === 'columns'
+    );
+    expect(savedLayout?.content).toHaveLength(2);
+    expect(savedLayout?.content?.[0]?.content?.[0]?.attrs?.alt).toBe('레이아웃 이미지 B');
+    expect(savedLayout?.content?.[1]?.content?.[0]?.attrs?.dataWidth).toBe('75%');
+
+    await page.reload();
+    await expect(page.locator('.ProseMirror [data-type="columns"]')).toHaveCount(1);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const reopenedImageA = page.locator('img[alt="레이아웃 이미지 A"]');
+    await reopenedImageA.click();
+    const layoutControls = page.getByRole('group', { name: '이미지 배치' });
+    await expect(layoutControls).toBeVisible();
+    await expect(page.getByRole('button', { name: '레이아웃 해제' })).toHaveCount(1);
+    const moveLeft = layoutControls.getByRole('button', { name: '이미지 열을 앞으로 이동 (왼쪽 또는 위)' });
+    const moveRight = layoutControls.getByRole('button', { name: '이미지 열을 뒤로 이동 (오른쪽 또는 아래)' });
+    await expect(moveLeft).toBeEnabled();
+    await expect(moveRight).toBeDisabled();
+    await moveLeft.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => columns.locator('img').evaluateAll(images => (
+      images.map(image => image.getAttribute('alt'))
+    ))).toEqual(['레이아웃 이미지 A', '레이아웃 이미지 B']);
+    await expect(layoutControls).toBeVisible();
+    await expect(page.locator('.ProseMirror')).toBeFocused();
+
+    const mobileLayout = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth
+    }));
+    expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.clientWidth);
+
+    await layoutControls.getByRole('button', { name: '레이아웃 해제' }).click();
+    await expect(columns).toHaveCount(0);
+    await expect.poll(() => page.locator('.ProseMirror .image-component img').evaluateAll(images => (
+      images.map(image => image.getAttribute('alt'))
+    ))).toEqual(['레이아웃 이미지 A', '레이아웃 이미지 B']);
+    await expect(page.getByText('레이아웃 앞 문단')).toBeVisible();
+    await expect(page.getByText('레이아웃 뒤 문단')).toBeVisible();
+
+    const ungroupSavePromise = page.waitForResponse(response => (
+      response.url().endsWith(`/api/posts/${postId}`)
+      && response.request().method() === 'PUT'
+    ));
+    await page.getByRole('button', { name: '초안 저장', exact: true }).click();
+    const ungroupSaveResponse = await ungroupSavePromise;
+    expect(ungroupSaveResponse.ok()).toBe(true);
+    const ungroupedPost = await ungroupSaveResponse.json();
+    expect(ungroupedPost.contentJson?.content?.some(
+      (item: { type?: string }) => item.type === 'columns'
+    )).toBe(false);
+
+    await page.reload();
+    await expect(page.locator('.ProseMirror [data-type="columns"]')).toHaveCount(0);
+  } finally {
+    if (postId) await deletePostFromAdmin(page, postId);
+  }
+});
+
+test('image upload never inserts into a different post after navigation', async ({ page }) => {
+  const uniqueId = Date.now();
+  const firstTitle = `E2E upload race source ${uniqueId}`;
+  const secondTitle = `E2E upload race target ${uniqueId}`;
+  const postIds: string[] = [];
+  let releaseUpload: (() => void) | null = null;
+  const cleanedUploads: string[] = [];
+
+  await openAdminEditor(page);
+  try {
+    const createdPosts = await page.evaluate(async ({ firstTitle, secondTitle, uniqueId }) => {
+      const createPost = async (title: string, suffix: string) => {
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            slug: `e2e-upload-race-${uniqueId}-${suffix}`,
+            summary: '업로드 중 글 전환 경합을 검증하는 테스트 글입니다.',
+            category: '미분류',
+            contentJson: {
+              type: 'doc',
+              content: [{
+                type: 'paragraph',
+                content: [{ type: 'text', text: `${title} 본문` }]
+              }]
+            },
+            status: 'draft',
+            tags: [],
+            sections: []
+          })
+        });
+        if (!response.ok) throw new Error(await response.text());
+        return response.json() as Promise<{ id: string }>;
+      };
+      return Promise.all([
+        createPost(firstTitle, 'source'),
+        createPost(secondTitle, 'target')
+      ]);
+    }, { firstTitle, secondTitle, uniqueId });
+    postIds.push(...createdPosts.map(post => post.id));
+
+    await page.goto(`/admin?section=posts&post=${postIds[0]}`);
+    await expect(page.getByPlaceholder('제목을 입력하세요')).toHaveValue(firstTitle);
+
+    let signalUploadStarted: (() => void) | null = null;
+    const uploadStarted = new Promise<void>(resolve => { signalUploadStarted = resolve; });
+    const uploadGate = new Promise<void>(resolve => { releaseUpload = resolve; });
+    await page.route('**/api/uploads', async route => {
+      signalUploadStarted?.();
+      await uploadGate;
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ filename: 'race.png', url: '/uploads/race.png' })
+      });
+    });
+    await page.route('**/api/uploads/unused', async route => {
+      if (route.request().method() !== 'DELETE') {
+        await route.fallback();
+        return;
+      }
+      const payload = route.request().postDataJSON() as { filenames?: string[] };
+      cleanedUploads.push(...(payload.filenames ?? []));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ deleted: [], deletedBytes: 0, remainingUnused: [] })
+      });
+    });
+
+    await page.getByTestId('editor-image-input').setInputFiles({
+      name: 'race.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADUlEQVQImWP4////fwAJ+wP9CNHoHgAAAABJRU5ErkJggg==', 'base64')
+    });
+    await uploadStarted;
+
+    await page.evaluate((postId) => {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set('post', postId);
+      window.history.pushState({}, '', nextUrl);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, postIds[1]);
+    await expect(page.getByPlaceholder('제목을 입력하세요')).toHaveValue(secondTitle);
+
+    releaseUpload();
+    releaseUpload = null;
+    await expect(page.getByText('업로드 중 편집 중인 글이 바뀌어 이미지를 삽입하지 않았습니다. 다시 시도해 주세요.')).toBeVisible();
+    await expect.poll(() => cleanedUploads).toEqual(['race.png']);
+    await expect(page.locator('.ProseMirror img[src="/uploads/race.png"]')).toHaveCount(0);
+    await expect(page.getByText(`${secondTitle} 본문`)).toBeVisible();
+  } finally {
+    releaseUpload?.();
+    await page.unroute('**/api/uploads');
+    await page.unroute('**/api/uploads/unused');
+    for (const postId of postIds) await deletePostFromAdmin(page, postId);
+  }
+});
+
+test('column layout conversion and ungrouping preserve every block and undo once', async ({ page }) => {
+  const uniqueId = Date.now();
+  const title = `E2E lossless columns ${uniqueId}`;
+  let postId: string | null = null;
+
+  await openAdminEditor(page);
+  try {
+    const created = await page.evaluate(async ({ title, uniqueId }) => {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          slug: `e2e-lossless-columns-${uniqueId}`,
+          summary: '열 변환과 해제 시 모든 블록 보존을 검증하는 테스트 글입니다.',
+          category: '미분류',
+          contentJson: {
+            type: 'doc',
+            content: [{
+              type: 'columns',
+              attrs: { layout: 'three-column' },
+              content: [
+                {
+                  type: 'column',
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: '첫 번째 열' }] }]
+                },
+                {
+                  type: 'column',
+                  content: [
+                    { type: 'paragraph', content: [{ type: 'text', text: '두 번째 열 A' }] },
+                    { type: 'paragraph', content: [{ type: 'text', text: '두 번째 열 B' }] }
+                  ]
+                },
+                {
+                  type: 'column',
+                  content: [
+                    { type: 'paragraph', content: [{ type: 'text', text: '세 번째 열 A' }] },
+                    { type: 'paragraph', content: [{ type: 'text', text: '세 번째 열 B' }] }
+                  ]
+                }
+              ]
+            }]
+          },
+          status: 'draft',
+          tags: [],
+          sections: []
+        })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json() as Promise<{ id: string }>;
+    }, { title, uniqueId });
+    postId = created.id;
+    await page.goto(`/admin?section=posts&post=${postId}`);
+
+    const columns = page.locator('.ProseMirror [data-type="columns"]');
+    const directColumns = columns.locator(':scope > [data-type="column"]');
+    await expect(directColumns).toHaveCount(3);
+    await page.getByRole('button', { name: '2단 레이아웃' }).click();
+    await expect(directColumns).toHaveCount(2);
+    await expect(directColumns.nth(1)).toContainText('두 번째 열 A');
+    await expect(directColumns.nth(1)).toContainText('두 번째 열 B');
+    await expect(directColumns.nth(1)).toContainText('세 번째 열 A');
+    await expect(directColumns.nth(1)).toContainText('세 번째 열 B');
+
+    await page.keyboard.press('Control+z');
+    await expect(directColumns).toHaveCount(3);
+    await expect(directColumns.nth(2)).toContainText('세 번째 열 A');
+    await expect(directColumns.nth(2)).toContainText('세 번째 열 B');
+
+    await page.getByRole('button', { name: '레이아웃 해제' }).click();
+    await expect(columns).toHaveCount(0);
+    await expect.poll(() => page.locator('.ProseMirror > p').evaluateAll(paragraphs => (
+      paragraphs.map(paragraph => paragraph.textContent)
+    ))).toEqual([
+      '첫 번째 열',
+      '두 번째 열 A',
+      '두 번째 열 B',
+      '세 번째 열 A',
+      '세 번째 열 B'
+    ]);
+
+    await page.keyboard.press('Control+z');
+    await expect(directColumns).toHaveCount(3);
+  } finally {
+    if (postId) await deletePostFromAdmin(page, postId);
+  }
 });
 
 test('admin editor inserts, renders, and reopens Mermaid diagrams', async ({ page }) => {

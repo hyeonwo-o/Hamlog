@@ -144,3 +144,98 @@ test('server renderer handles rich editor custom nodes used by the frontend', ()
   const mermaidNode = parsed.content?.find(node => node.type === 'mermaid');
   assert.equal(mermaidNode?.attrs?.source, 'flowchart TD\n    A[Start] --> B{Done?}');
 });
+
+test('image width and caption survive editor JSON and HTML round trips', () => {
+  const contentJson = {
+    type: 'doc',
+    content: [
+      {
+        type: 'image',
+        attrs: {
+          src: '/uploads/resizable.png',
+          alt: '크기 조절 이미지',
+          title: null,
+          size: 'custom',
+          dataWidth: '63%',
+          width: null,
+          style: null,
+          caption: '크기 조절 캡션'
+        }
+      },
+      {
+        type: 'image',
+        attrs: {
+          src: '/uploads/resizable-without-caption.png',
+          alt: '캡션 없는 크기 조절 이미지',
+          title: null,
+          size: 'custom',
+          dataWidth: '47%',
+          width: null,
+          style: null,
+          caption: null
+        }
+      },
+      {
+        type: 'columns',
+        attrs: { layout: 'two-column' },
+        content: [
+          {
+            type: 'column',
+            content: [{
+              type: 'image',
+              attrs: {
+                src: '/uploads/column-a.png',
+                alt: '열 이미지 A',
+                size: 'custom',
+                dataWidth: '63%',
+                caption: '열 캡션 A'
+              }
+            }]
+          },
+          {
+            type: 'column',
+            content: [{
+              type: 'image',
+              attrs: {
+                src: '/uploads/column-b.png',
+                alt: '열 이미지 B',
+                size: 'full',
+                dataWidth: null,
+                caption: '열 캡션 B'
+              }
+            }]
+          }
+        ]
+      }
+    ]
+  };
+
+  const html = renderContentJsonToHtml(contentJson);
+  assert.match(html, /<figure class="post-image local-image" data-width="63%">/);
+  assert.match(html, /<img[^>]+data-size="custom"/);
+  assert.doesNotMatch(html, /<img[^>]+data-width="63%"/);
+  assert.match(html, /<img src="\/uploads\/resizable-without-caption\.png"[^>]+data-width="47%"/);
+
+  const parsed = parseHtmlToContentJson(html);
+  const imageNodes = parsed.content?.filter(node => node.type === 'image') ?? [];
+  const imageNode = imageNodes.find(node => node.attrs?.src === '/uploads/resizable.png');
+  assert.equal(imageNode?.attrs?.src, '/uploads/resizable.png');
+  assert.equal(imageNode?.attrs?.alt, '크기 조절 이미지');
+  assert.equal(imageNode?.attrs?.dataWidth, '63%');
+  assert.equal(imageNode?.attrs?.caption, '크기 조절 캡션');
+  const imageWithoutCaption = imageNodes.find(
+    node => node.attrs?.src === '/uploads/resizable-without-caption.png'
+  );
+  assert.equal(imageWithoutCaption?.attrs?.dataWidth, '47%');
+  assert.equal(imageWithoutCaption?.attrs?.caption, null);
+  assert.deepEqual(parsed.content?.map(node => node.type), ['image', 'image', 'columns']);
+  const parsedColumns = parsed.content?.find(node => node.type === 'columns');
+  assert.deepEqual(
+    parsedColumns?.content?.map(columnNode => columnNode.content?.map(node => node.type)),
+    [['image'], ['image']]
+  );
+  assert.deepEqual(
+    parsedColumns?.content?.map(columnNode => columnNode.content?.[0]?.attrs?.caption),
+    ['열 캡션 A', '열 캡션 B']
+  );
+});

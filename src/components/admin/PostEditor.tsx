@@ -174,6 +174,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
         handleInsertImageUrl
     } = useEditorImageControls({
         editorRef,
+        documentKey: activeId || 'new-post',
         maxUploadMb: MAX_UPLOAD_MB,
         uploadLocalImage
     });

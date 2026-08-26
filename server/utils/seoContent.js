@@ -111,6 +111,13 @@ const safeNumericAttribute = (value) => {
   return parsed > 0 ? String(parsed) : '';
 };
 
+const safeResponsiveImageWidth = (value) => {
+  const match = String(value ?? '').trim().match(/^(\d+(?:\.\d+)?)%$/);
+  if (!match) return '';
+  const percentage = Math.round(Number(match[1]));
+  return percentage >= 25 && percentage <= 100 ? `${percentage}%` : '';
+};
+
 const buildLinkAttributes = (url) => {
   if (!/^https?:\/\//i.test(url)) return '';
   return ' rel="noopener noreferrer"';
@@ -197,14 +204,31 @@ export const sanitizePostContentHtml = (
       if (!source) return '';
 
       const alt = resolveImageAlt($, node, postTitle);
-      const width = safeNumericAttribute($(node).attr('width') || $(node).attr('data-width'));
+      const rawWidth = $(node).attr('data-width') || $(node).attr('width');
+      const displayWidth = safeResponsiveImageWidth(rawWidth);
+      const parentDisplayWidth = safeResponsiveImageWidth($(node).parent('figure').attr('data-width'));
+      const width = displayWidth ? '' : safeNumericAttribute(rawWidth);
       const height = safeNumericAttribute($(node).attr('height'));
       const dimensions = [
         width ? ` width="${width}"` : '',
         height ? ` height="${height}"` : ''
       ].join('');
+      const displayStyle = displayWidth
+        ? ` data-width="${displayWidth}" style="width: ${displayWidth}; height: auto; margin: 0 auto"`
+        : parentDisplayWidth
+          ? ' style="width: 100%; height: auto"'
+          : '';
 
-      return `<img src="${escapeHtml(source)}" alt="${escapeHtml(alt)}"${dimensions} loading="lazy" decoding="async" />`;
+      return `<img src="${escapeHtml(source)}" alt="${escapeHtml(alt)}"${dimensions}${displayStyle} loading="lazy" decoding="async" />`;
+    }
+
+    if (tagName === 'figure') {
+      const rawDisplayWidth = $(node).attr('data-width');
+      const displayWidth = safeResponsiveImageWidth(rawDisplayWidth);
+      const displayStyle = displayWidth
+        ? ` data-width="${displayWidth}" style="width: ${displayWidth}; height: auto; margin: 0 auto"`
+        : '';
+      return `<figure${displayStyle}>${renderChildren(node)}</figure>`;
     }
 
     if (tagName === 'br' || tagName === 'hr') return `<${tagName} />`;
@@ -212,6 +236,17 @@ export const sanitizePostContentHtml = (
 
     const outputTag = demoteH1 && tagName === 'h1' ? 'h2' : tagName;
     let attributes = '';
+    if (outputTag === 'div') {
+      const dataType = normalizeText($(node).attr('data-type'));
+      if (dataType === 'columns') {
+        const layout = $(node).attr('data-layout') === 'three-column'
+          ? 'three-column'
+          : 'two-column';
+        attributes = ` data-type="columns" data-layout="${layout}"`;
+      } else if (dataType === 'column') {
+        attributes = ' data-type="column"';
+      }
+    }
     if (outputTag === 'time') {
       const dateTime = normalizeText($(node).attr('datetime'));
       if (dateTime) attributes = ` datetime="${escapeHtml(dateTime)}"`;
