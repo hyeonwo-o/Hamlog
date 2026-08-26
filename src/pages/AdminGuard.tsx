@@ -134,7 +134,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
               aria-label="관리자 비밀번호"
             />
           </label>
-          {error && <p className="text-sm text-[var(--accent-strong)]">{error}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={isSubmitting}

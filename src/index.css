@@ -11,9 +11,9 @@
   --surface-strong: rgba(255, 255, 255, 0.92);
   --text: #111111;
   --text-muted: #666666;
-  --accent: #f97316;
-  --accent-strong: #c2410c;
-  --accent-soft: rgba(249, 115, 22, 0.14);
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.14);
   --border: rgba(17, 17, 17, 0.12);
   --border-strong: rgba(17, 17, 17, 0.24);
   --shadow: none;
@@ -383,7 +383,11 @@ body::before {
     border-radius: 4px !important;
     box-shadow: inset 0 0 0 1px var(--border-strong);
     background-image:
-      linear-gradient(135deg, rgba(249, 115, 22, 0.08), transparent 34%),
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--accent) 8%, transparent),
+        transparent 34%
+      ),
       linear-gradient(180deg, var(--surface), var(--surface-muted));
   }
 
@@ -726,7 +730,7 @@ body::before {
 }
 
 .tiptap-editor .selectedCell {
-  background: rgba(249, 115, 22, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .rich-content pre,

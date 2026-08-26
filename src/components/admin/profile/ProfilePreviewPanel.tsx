@@ -17,7 +17,7 @@ const ProfilePreviewPanel = ({
 }: ProfilePreviewPanelProps) => (
   <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
     <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--surface)]">
-      <div className="border-b border-[color:var(--border)] bg-[radial-gradient(circle_at_top_left,rgba(19,144,116,0.18),transparent_48%),linear-gradient(180deg,var(--surface-muted),var(--surface))] px-6 py-6">
+      <div className="border-b border-[color:var(--border)] bg-[radial-gradient(circle_at_top_left,var(--accent-soft),transparent_48%),linear-gradient(180deg,var(--surface-muted),var(--surface))] px-6 py-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
           라이브 미리보기
         </p>

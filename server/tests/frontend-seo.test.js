@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { access, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import {
   buildImageVariantSrcSet,
   buildImageVariantUrl,
@@ -63,10 +63,11 @@ test('image alt defaults remove extensions and reject generic generated names', 
 });
 
 test('static SEO assets expose RSS discovery without false OG dimensions', async () => {
-  const [indexHtml, manifest, stylesheet] = await Promise.all([
+  const [indexHtml, manifest, stylesheet, favicon] = await Promise.all([
     readProjectFile('index.html'),
     readProjectFile('public/manifest.json'),
-    readProjectFile('src/index.css')
+    readProjectFile('src/index.css'),
+    readProjectFile('public/favicon.svg')
   ]);
 
   assert.match(indexHtml, /rel="alternate" type="application\/rss\+xml"/);
@@ -79,9 +80,12 @@ test('static SEO assets expose RSS discovery without false OG dimensions', async
   assert.match(stylesheet, /\.public-site\s*\{[^}]*--font-body:\s*var\(--font-public\)/s);
   assert.match(stylesheet, /\.prerender-shell\s*\{[^}]*font-family:\s*var\(--font-public\)/s);
   assert.match(stylesheet, /\.prerender-post-grid\s*\{[^}]*display:\s*grid/s);
+  assert.match(stylesheet, /--accent:\s*#2563eb/);
+  assert.match(indexHtml, /name="theme-color" content="#2563eb"/);
   assert.match(manifest, /클라우드 엔지니어링/);
+  assert.match(manifest, /"theme_color": "#2563eb"/);
   assert.match(manifest, /"src": "\/favicon\.svg"/);
-  await access(new URL('../../public/favicon.svg', import.meta.url));
+  assert.match(favicon, /fill="#2563eb"/);
 });
 
 test('editor insertion UI reserves H1 for the page title and exposes alt editing', async () => {
