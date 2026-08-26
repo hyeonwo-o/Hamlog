@@ -8,6 +8,9 @@ interface ToolbarButtonProps {
   icon?: ReactNode;
   children?: ReactNode;
   className?: string;
+  ariaControls?: string;
+  ariaExpanded?: boolean;
+  ariaHasPopup?: 'menu' | 'listbox' | 'dialog';
 }
 
 export function ToolbarButton({
@@ -17,7 +20,10 @@ export function ToolbarButton({
   disabled,
   icon,
   children,
-  className
+  className,
+  ariaControls,
+  ariaExpanded,
+  ariaHasPopup
 }: ToolbarButtonProps) {
   return (
     <button
@@ -27,6 +33,9 @@ export function ToolbarButton({
       title={label}
       aria-label={label}
       aria-pressed={active === undefined ? undefined : active}
+      aria-controls={ariaControls}
+      aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHasPopup}
       className={`relative inline-flex h-7 w-7 shrink-0 items-center justify-center border p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         active
           ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'

@@ -1,6 +1,9 @@
 import type { KeyboardEvent } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
+import { useFloatingToolbarMenu } from '../../../hooks/useFloatingToolbarMenu';
+import { EDITOR_CLOSE_OVERLAYS_EVENT } from '../../../utils/editorOverlays';
 
 interface ToolbarDropdownOption {
   value: string;
@@ -27,11 +30,19 @@ export function ToolbarDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const menuId = useId();
+  const menuPosition = useFloatingToolbarMenu(isOpen, triggerRef, menuRef);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current
+        && !containerRef.current.contains(target)
+        && !menuRef.current?.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -39,6 +50,16 @@ export function ToolbarDropdown({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeMenu = () => {
+      setIsOpen(false);
+      triggerRef.current?.focus();
+    };
+    window.addEventListener(EDITOR_CLOSE_OVERLAYS_EVENT, closeMenu);
+    return () => window.removeEventListener(EDITOR_CLOSE_OVERLAYS_EVENT, closeMenu);
+  }, [isOpen]);
 
   const currentLabel = options.find(option => option.value === value)?.label || label;
   useEffect(() => {
@@ -51,7 +72,7 @@ export function ToolbarDropdown({
     if (event.key === 'Escape') {
       event.preventDefault();
       setIsOpen(false);
-      triggerRef.current?.focus();
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
       return;
     }
 
@@ -78,7 +99,7 @@ export function ToolbarDropdown({
   const closeAndSelect = (nextValue: string) => {
     onSelect(nextValue);
     setIsOpen(false);
-    triggerRef.current?.focus();
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
   useEffect(() => {
@@ -97,17 +118,26 @@ export function ToolbarDropdown({
         aria-label={`${label}: ${currentLabel}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
         className={`flex h-7 items-center justify-between gap-1.5 border border-transparent bg-white px-1.5 text-[11px] font-medium text-[var(--text)] transition-colors hover:border-[color:var(--border)] disabled:opacity-50 ${width}`}
       >
         <span className="truncate">{currentLabel}</span>
         <ChevronDown size={14} className="opacity-50" />
       </button>
 
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="absolute left-0 top-full z-40 mt-1 max-h-60 w-full min-w-[140px] overflow-y-auto border border-[color:var(--border)] bg-white p-1 ring-1 ring-black/5"
+          ref={menuRef}
+          id={menuId}
+          className="fixed z-[70] max-h-60 overflow-y-auto border border-[color:var(--border)] bg-white p-1 shadow-lg ring-1 ring-black/5"
           role="listbox"
           aria-label={label}
+          style={{
+            left: menuPosition?.left ?? -9999,
+            top: menuPosition?.top ?? -9999,
+            minWidth: Math.max(140, menuPosition?.triggerWidth ?? 0),
+            visibility: menuPosition ? 'visible' : 'hidden'
+          }}
         >
           {options.map((option, index) => (
             <button
@@ -129,7 +159,8 @@ export function ToolbarDropdown({
               {value === option.value && <Check size={12} />}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

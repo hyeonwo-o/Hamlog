@@ -1,6 +1,6 @@
 import { EditorContent } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import PostContent from '../../PostContent';
 import { EditorActionContext } from '../../../contexts/EditorActionContext';
 import { ColumnBubbleMenu } from '../../editor/extensions/ColumnBubbleMenu';
@@ -41,12 +41,21 @@ export default function PostEditorCanvas({
   children
 }: PostEditorCanvasProps) {
   const toolbarStateClass = previewMode ? 'pointer-events-none opacity-60' : '';
+  const toolbarRegionRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (toolbarRegionRef.current) {
+      toolbarRegionRef.current.inert = previewMode;
+    }
+  }, [previewMode]);
 
   return (
     <>
       <div
+        ref={toolbarRegionRef}
         className={`relative z-20 sm:sticky sm:top-[calc(var(--admin-header-offset)+var(--admin-post-command-offset))] ${toolbarStateClass}`}
         aria-hidden={previewMode}
+        data-testid="editor-toolbar-region"
       >
         <EditorToolbar
           editor={editor}

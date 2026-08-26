@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Highlighter, Palette } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Highlighter, Palette } from 'lucide-react';
 import {
   CODE_LANGUAGES,
   HEADING_OPTIONS,
@@ -81,7 +81,7 @@ export function EditorToolbar({
   uploadingImage
 }: EditorToolbarProps) {
   const toolbarScrollRef = useRef<HTMLDivElement>(null);
-  const [scrollHint, setScrollHint] = useState({ left: false, right: false });
+  const [scrollHint, setScrollHint] = useState({ overflow: false, left: false, right: false });
   const headingValue = getHeadingValue(editor);
   const fontSizeValue = getFontSizeValue(editor);
   const activeColor = getActiveTextColor(editor);
@@ -108,6 +108,7 @@ export function EditorToolbar({
     const updateScrollHint = () => {
       const maxScrollLeft = scrollElement.scrollWidth - scrollElement.clientWidth;
       setScrollHint({
+        overflow: maxScrollLeft > 2,
         left: scrollElement.scrollLeft > 2,
         right: maxScrollLeft - scrollElement.scrollLeft > 2
       });
@@ -129,18 +130,36 @@ export function EditorToolbar({
     };
   }, []);
 
+  const scrollToolbar = (direction: -1 | 1) => {
+    const scrollElement = toolbarScrollRef.current;
+    if (!scrollElement) return;
+    scrollElement.scrollBy({
+      left: direction * Math.max(180, scrollElement.clientWidth * 0.7),
+      behavior: 'smooth'
+    });
+  };
+
   return (
     <div className="border-b border-[color:var(--border)] bg-white/95 py-0.5 backdrop-blur" role="toolbar" aria-label="글 편집 도구">
-      <div className="relative">
-        {scrollHint.left && (
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 z-10 w-5 bg-gradient-to-r from-white/95 to-transparent"
-            aria-hidden="true"
-          />
+      <div className="flex min-w-0 items-center gap-0.5">
+        {scrollHint.overflow && (
+          <button
+            type="button"
+            onClick={() => {
+              if (scrollHint.left) scrollToolbar(-1);
+            }}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-white text-[var(--text-muted)] transition hover:text-[var(--text)] ${
+              scrollHint.left ? '' : 'cursor-default opacity-40'
+            }`}
+            aria-label="이전 편집 도구 보기"
+            aria-disabled={!scrollHint.left}
+          >
+            <ChevronLeft size={15} />
+          </button>
         )}
         <div
           ref={toolbarScrollRef}
-          className="overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
+          className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
           data-testid="editor-toolbar-scroll"
         >
           <div className="mx-auto flex min-w-max max-w-[1500px] flex-nowrap items-center gap-1 px-0">
@@ -150,7 +169,7 @@ export function EditorToolbar({
 
             <ToolbarGroup label="문단 설정" className="gap-1">
               <ToolbarDropdown
-                label="본문"
+                label="문단"
                 value={headingValue}
                 width="w-24"
                 options={articleHeadingOptions}
@@ -173,7 +192,7 @@ export function EditorToolbar({
                 disabled={!editor}
               />
               <ToolbarDropdown
-                label="크기"
+                label="글자 크기"
                 value={fontSizeValue}
                 width="w-20"
                 options={FONT_SIZES}
@@ -210,6 +229,7 @@ export function EditorToolbar({
                 disabled={!editor}
                 buttonIcon={<Highlighter size={16} />}
                 buttonClassName={activeHighlight ? 'bg-yellow-100 text-yellow-800' : ''}
+                indicatorColor={activeHighlight || undefined}
                 clearLabel="형광펜 제거"
                 onSelect={color => editor?.chain().focus().toggleHighlight({ color }).run()}
                 onClear={() => editor?.chain().focus().unsetHighlight().run()}
@@ -227,11 +247,20 @@ export function EditorToolbar({
             </ToolbarGroup>
           </div>
         </div>
-        {scrollHint.right && (
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-5 bg-gradient-to-l from-white/95 to-transparent"
-            aria-hidden="true"
-          />
+        {scrollHint.overflow && (
+          <button
+            type="button"
+            onClick={() => {
+              if (scrollHint.right) scrollToolbar(1);
+            }}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-white text-[var(--text-muted)] transition hover:text-[var(--text)] ${
+              scrollHint.right ? '' : 'cursor-default opacity-40'
+            }`}
+            aria-label="다음 편집 도구 보기"
+            aria-disabled={!scrollHint.right}
+          >
+            <ChevronRight size={15} />
+          </button>
         )}
       </div>
 

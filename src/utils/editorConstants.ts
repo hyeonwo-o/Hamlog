@@ -22,7 +22,7 @@ export const CODE_LANGUAGES = [
 ];
 
 export const FONT_SIZES = [
-    { value: 'default', label: '본문' },
+    { value: 'default', label: '기본 크기' },
     { value: '12px', label: '12' },
     { value: '14px', label: '14' },
     { value: '16px', label: '16' },

@@ -8,6 +8,12 @@ import PostInspectorSection from './PostInspectorSection';
 import { TableOfContents } from '../../TableOfContents';
 import type { TocItem } from '../../TableOfContents';
 import {
+  getEffectiveSeoMetadata,
+  SEO_DESCRIPTION_MAX_LENGTH,
+  SEO_DESCRIPTION_MIN_LENGTH,
+  SEO_TITLE_MAX_LENGTH
+} from '../../../utils/postQuality';
+import {
   deleteUnusedUploads,
   fetchUnusedUploads,
   type UploadFileInfo,
@@ -100,10 +106,12 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   const [selectedUploads, setSelectedUploads] = useState<Set<string>>(() => new Set());
   const [uploadCleanupLoading, setUploadCleanupLoading] = useState(false);
   const [uploadCleanupNotice, setUploadCleanupNotice] = useState('');
-  const seoTitleLength = Array.from(draft.seoTitle.trim() || draft.title.trim()).length;
-  const effectiveSeoDescription = draft.seoDescription.trim() || draft.summary.trim();
-  const seoDescriptionLength = Array.from(effectiveSeoDescription).length;
-  const seoDescriptionNeedsWork = seoDescriptionLength < 40;
+  const effectiveSeo = getEffectiveSeoMetadata(draft);
+  const seoTitleLength = effectiveSeo.titleLength;
+  const seoTitleNeedsWork = seoTitleLength > SEO_TITLE_MAX_LENGTH;
+  const seoDescriptionLength = effectiveSeo.descriptionLength;
+  const seoDescriptionNeedsWork = seoDescriptionLength < SEO_DESCRIPTION_MIN_LENGTH
+    || seoDescriptionLength > SEO_DESCRIPTION_MAX_LENGTH;
 
   const loadUnusedUploads = async () => {
     setUploadCleanupLoading(true);
@@ -299,8 +307,15 @@ const PostInspector: React.FC<PostInspectorProps> = ({
               aria-describedby="seo-title-guidance"
               className="w-full rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[color:var(--accent)]"
             />
-            <p id="seo-title-guidance" className="flex justify-between gap-3 text-[11px] text-[var(--text-muted)]">
-              <span>{draft.seoTitle.trim() ? '검색 전용 제목을 사용합니다.' : '비워두면 글 제목을 사용합니다.'}</span>
+            <p
+              id="seo-title-guidance"
+              className={`flex justify-between gap-3 text-[11px] ${seoTitleNeedsWork ? 'text-amber-700' : 'text-[var(--text-muted)]'}`}
+            >
+              <span>{seoTitleNeedsWork
+                ? `${SEO_TITLE_MAX_LENGTH}자 이내를 권장합니다.`
+                : draft.seoTitle.trim()
+                  ? '검색 전용 제목을 사용합니다.'
+                  : '비워두면 글 제목을 사용합니다.'}</span>
               <span>{seoTitleLength}자</span>
             </p>
           </div>
@@ -321,9 +336,11 @@ const PostInspector: React.FC<PostInspectorProps> = ({
               className={`flex justify-between gap-3 text-[11px] ${seoDescriptionNeedsWork ? 'text-amber-700' : 'text-[var(--text-muted)]'}`}
             >
               <span>
-                {draft.seoDescription.trim()
-                  ? (seoDescriptionNeedsWork ? '조금 더 구체적인 설명을 권장합니다.' : '검색 전용 설명을 사용합니다.')
-                  : (seoDescriptionNeedsWork ? '대체할 글 요약도 더 구체적으로 작성해 주세요.' : '비워두면 글 요약을 사용합니다.')}
+                {seoDescriptionLength > SEO_DESCRIPTION_MAX_LENGTH
+                  ? `${SEO_DESCRIPTION_MAX_LENGTH}자 이내를 권장합니다.`
+                  : draft.seoDescription.trim()
+                    ? (seoDescriptionNeedsWork ? '조금 더 구체적인 설명을 권장합니다.' : '검색 전용 설명을 사용합니다.')
+                    : (seoDescriptionNeedsWork ? '대체할 글 요약도 더 구체적으로 작성해 주세요.' : '비워두면 글 요약을 사용합니다.')}
               </span>
               <span>{seoDescriptionLength}자</span>
             </p>
@@ -352,7 +369,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-              키워드
+              키워드 (선택)
             </label>
             <input
               value={draft.seoKeywords}
@@ -360,6 +377,9 @@ const PostInspector: React.FC<PostInspectorProps> = ({
               placeholder="react, vite, cms"
               className="w-full rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[color:var(--accent)]"
             />
+            <p className="text-[11px] text-[var(--text-muted)]">
+              필수 항목이 아니며 글 태그와 중복될 수 있습니다.
+            </p>
           </div>
         </div>
       </PostInspectorSection>

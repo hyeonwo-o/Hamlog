@@ -95,7 +95,62 @@ test('admin editor toolbar is grouped and accessible', async ({ page }) => {
   }
 
   await expect(toolbar.getByRole('button', { name: '굵게' })).toHaveAttribute('aria-pressed', 'false');
-  await expect(toolbar.getByRole('button', { name: /본문:/ })).toHaveAttribute('aria-expanded', 'false');
+  await expect(toolbar.getByRole('button', { name: /문단:/ })).toHaveAttribute('aria-expanded', 'false');
+
+  const textColorButton = toolbar.getByRole('button', { name: '글자색' });
+  await textColorButton.focus();
+  await page.keyboard.press('Enter');
+  const textColorMenu = page.getByRole('menu', { name: '글자색' });
+  await expect(textColorMenu).toBeVisible();
+  const firstTextColor = textColorMenu.getByRole('menuitem', { name: '글자색 #1d1916' });
+  const secondTextColor = textColorMenu.getByRole('menuitem', { name: '글자색 #0f766e' });
+  const sameColumnLastRowColor = textColorMenu.getByRole('menuitem', { name: '글자색 #b91c1c' });
+  await expect(firstTextColor).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(sameColumnLastRowColor).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(firstTextColor).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(secondTextColor).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(firstTextColor).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(textColorMenu).toBeHidden();
+  await expect(textColorButton).toBeFocused();
+  await expect(textColorButton).toHaveAttribute('aria-expanded', 'false');
+
+  const highlightButton = toolbar.getByRole('button', { name: '하이라이트' });
+  await highlightButton.focus();
+  await page.keyboard.press('Enter');
+  const highlightMenu = page.getByRole('menu', { name: '하이라이트' });
+  const firstHighlight = highlightMenu.getByRole('menuitem', { name: '하이라이트 #fef3c7' });
+  const secondHighlight = highlightMenu.getByRole('menuitem', { name: '하이라이트 #d1fae5' });
+  await expect(firstHighlight).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(secondHighlight).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(highlightMenu).toBeHidden();
+  await expect(highlightButton).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(secondHighlight).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(highlightButton).toBeFocused();
+
+  await textColorButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(textColorMenu).toBeVisible();
+  await page.keyboard.press('Alt+Shift+P');
+  await expect(textColorMenu).toBeHidden();
+  const editToggle = page.getByRole('button', { name: '편집' });
+  await expect(editToggle).toBeFocused();
+  const toolbarRegion = page.getByTestId('editor-toolbar-region');
+  await expect(toolbarRegion)
+    .toHaveAttribute('aria-hidden', 'true');
+  await expect(toolbarRegion).toHaveAttribute('inert', '');
+  await page.keyboard.press('Tab');
+  expect(await toolbarRegion.evaluate(element => element.contains(document.activeElement))).toBe(false);
+  await page.keyboard.press('Alt+Shift+P');
+  await expect(page.getByRole('button', { name: '미리보기' })).toBeFocused();
 
   await toolbar.getByRole('button', { name: '고급 삽입 메뉴' }).click();
   await expect(page.getByRole('button', { name: /수식/ })).toBeVisible();
@@ -133,6 +188,61 @@ test('admin editor keeps the mobile workspace focused without page overflow', as
   await expect(titleInput).toBeVisible();
   await expect(page.getByLabel('현재 글 상태: 초안')).toContainText('현재: 초안');
   await expect(page.locator('select[aria-label="글 상태"]')).toHaveCount(0);
+
+  const initialTitleHeight = await titleInput.evaluate(element => element.getBoundingClientRect().height);
+  const longTitle = '모바일에서도 긴 제목이 자연스럽게 여러 줄로 표시되는지 확인하는 에디터 제목 입력 테스트입니다';
+  await titleInput.fill(longTitle);
+  await expect(titleInput).toHaveValue(longTitle);
+  await expect.poll(() => titleInput.evaluate(element => element.getBoundingClientRect().height))
+    .toBeGreaterThan(initialTitleHeight);
+
+  const titleLayout = await titleInput.evaluate(element => {
+    const style = window.getComputedStyle(element);
+    return {
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+      whiteSpace: style.whiteSpace
+    };
+  });
+  expect(titleLayout.scrollWidth).toBeLessThanOrEqual(titleLayout.clientWidth + 1);
+  expect(titleLayout.whiteSpace).not.toBe('nowrap');
+
+  await titleInput.fill('가'.repeat(2000));
+  const cappedTitleLayout = await titleInput.evaluate(element => ({
+    height: element.getBoundingClientRect().height,
+    scrollHeight: element.scrollHeight,
+    clientHeight: element.clientHeight
+  }));
+  expect(cappedTitleLayout.height).toBeLessThanOrEqual(145);
+  expect(cappedTitleLayout.scrollHeight).toBeGreaterThan(cappedTitleLayout.clientHeight);
+  await titleInput.fill(longTitle);
+
+  const toolbar = page.getByRole('toolbar', { name: '글 편집 도구' });
+  const toolbarScroll = toolbar.getByTestId('editor-toolbar-scroll');
+  const paragraphSelect = toolbar.getByRole('button', { name: /문단:/ });
+  await paragraphSelect.click();
+  const paragraphList = page.getByRole('listbox', { name: '문단' });
+  await expect(paragraphList).toBeVisible();
+  const paragraphMenuIsClickable = await paragraphList.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + (rect.width / 2), rect.top + (rect.height / 2));
+    return Boolean(hit && element.contains(hit));
+  });
+  expect(paragraphMenuIsClickable).toBe(true);
+  expect(await toolbarScroll.evaluate(element => element.scrollTop)).toBe(0);
+  await paragraphList.getByRole('option', { name: '제목 2' }).click();
+
+  const nextToolsButton = toolbar.getByRole('button', { name: '다음 편집 도구 보기' });
+  await expect(nextToolsButton).toBeVisible();
+  await nextToolsButton.click();
+  await expect.poll(() => toolbarScroll.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(toolbar.getByRole('button', { name: '이전 편집 도구 보기' })).toBeVisible();
+  await nextToolsButton.focus();
+  await toolbarScroll.evaluate(element => {
+    element.scrollLeft = element.scrollWidth;
+  });
+  await expect(nextToolsButton).toHaveAttribute('aria-disabled', 'true');
+  await expect(nextToolsButton).toBeFocused();
 
   const pageWidth = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -253,13 +363,37 @@ test('publish shortcut opens the confirmation dialog instead of publishing immed
   await openAdminEditor(page);
   await page.getByPlaceholder('제목을 입력하세요').fill('Shortcut publish safety');
 
+  const toolbar = page.getByRole('toolbar', { name: '글 편집 도구' });
+  const paragraphSelect = toolbar.getByRole('button', { name: /문단:/ });
+  await paragraphSelect.click();
+  const paragraphList = page.getByRole('listbox', { name: '문단' });
+  await expect(paragraphList).toBeVisible();
+
   await page.keyboard.press('Control+Enter');
   const dialog = page.getByRole('dialog', { name: '발행 설정' });
   await expect(dialog).toBeVisible();
+  await expect(dialog).toBeFocused();
+  await expect(paragraphList).toBeHidden();
   await expect(dialog.getByRole('button', { name: '비공개 저장' })).toBeVisible();
+  const dialogLayout = await dialog.evaluate(element => {
+    const dialogRect = element.getBoundingClientRect();
+    const qualityRect = element.querySelector('[aria-labelledby="publish-quality-title"]')
+      ?.getBoundingClientRect();
+    return {
+      scrollTop: element.scrollTop,
+      qualityInsideViewport: Boolean(
+        qualityRect
+        && qualityRect.top >= dialogRect.top
+        && qualityRect.top < dialogRect.bottom
+      )
+    };
+  });
+  expect(dialogLayout.scrollTop).toBeLessThanOrEqual(1);
+  expect(dialogLayout.qualityInsideViewport).toBe(true);
 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
+  await expect(paragraphSelect).toBeFocused();
 });
 
 test('failed publish validation keeps the editor in draft status', async ({ page }) => {
@@ -269,11 +403,87 @@ test('failed publish validation keeps the editor in draft status', async ({ page
   await page.getByTestId('post-publish-button').click();
   const dialog = page.getByRole('dialog', { name: '발행 설정' });
   await dialog.locator('input[type="radio"]').first().check();
+  await expect(dialog.locator('[data-quality-id="required-fields"]'))
+    .toContainText('본문이 없습니다');
   await dialog.getByRole('button', { name: '공개 발행' }).click();
 
   await expect(dialog).toBeVisible();
   await expect(page.getByText('본문 내용을 입력하세요.')).toBeVisible();
   await expect(page.getByLabel('현재 글 상태: 초안')).toContainText('현재: 초안');
+});
+
+test('publish dialog reports a duplicate post URL before saving', async ({ page }) => {
+  const uniqueId = Date.now();
+  const existingSlug = `e2e-duplicate-slug-${uniqueId}`;
+  let existingPostId: string | null = null;
+
+  await openAdminEditor(page);
+
+  try {
+    const created = await page.evaluate(async (payload) => {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json() as Promise<{ id: string }>;
+    }, {
+      slug: existingSlug,
+      title: `Existing duplicate URL post ${uniqueId}`,
+      summary: '중복 URL 검증을 위해 미리 생성한 테스트 글입니다.',
+      category: '미분류',
+      contentJson: createParagraphDocument(`Existing post body ${uniqueId}.`),
+      publishedAt: '2026-08-26',
+      tags: [],
+      status: 'draft',
+      sections: []
+    });
+    existingPostId = created.id;
+
+    await page.reload();
+    await expect(page.getByPlaceholder('제목을 입력하세요')).toBeVisible();
+    await page.getByPlaceholder('제목을 입력하세요').fill(`New post ${uniqueId}`);
+    await page.getByTestId('post-publish-button').click();
+
+    const dialog = page.getByRole('dialog', { name: '발행 설정' });
+    await dialog.getByRole('textbox', { name: '글 URL' }).fill(existingSlug);
+
+    const requiredFields = dialog.locator('[data-quality-id="required-fields"]');
+    await expect(requiredFields).toContainText('이미 사용 중인 URL입니다');
+    await expect(dialog.getByText('1개 필수 확인')).toBeVisible();
+  } finally {
+    if (existingPostId) {
+      await page.keyboard.press('Escape').catch(() => undefined);
+      await deletePostFromAdmin(page, existingPostId);
+    }
+  }
+});
+
+test('publish dialog shows non-blocking document quality guidance', async ({ page }) => {
+  await openAdminEditor(page);
+  await page.getByPlaceholder('제목을 입력하세요').fill('발행 품질 점검 테스트');
+
+  const toolbar = page.getByRole('toolbar', { name: '글 편집 도구' });
+  await toolbar.getByRole('button', { name: /문단:/ }).click();
+  await page.getByRole('listbox', { name: '문단' }).getByRole('option', { name: '제목 3' }).click();
+
+  const editor = page.locator('.ProseMirror').first();
+  await editor.click();
+  await page.keyboard.type('상위 제목 없이 작성된 소제목');
+
+  await page.getByTestId('post-publish-button').click();
+  const dialog = page.getByRole('dialog', { name: '발행 설정' });
+  await dialog.locator('input[type="radio"]').first().check();
+
+  const qualityRegion = dialog.getByRole('region', { name: '발행 전 점검' });
+  await expect(qualityRegion).toBeVisible();
+  await expect(qualityRegion.locator('[data-quality-id="heading-structure"]'))
+    .toContainText('제목 2보다 먼저 나온 제목 3');
+  await expect(qualityRegion.locator('[data-quality-id="seo-description"]'))
+    .toContainText('50자 이상');
+  await expect(dialog.getByRole('button', { name: '공개 발행' })).toBeEnabled();
 });
 
 test('admin editor detects autosave drafts with metadata-only changes', async ({ page }) => {
@@ -393,6 +603,8 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
   const publishDialog = page.getByRole('dialog', { name: '발행 설정' });
   await expect(publishDialog).toBeVisible();
   await publishDialog.locator('input[type="radio"]').first().check();
+  await expect(publishDialog.locator('[data-quality-id="seo-description"]'))
+    .toContainText('권장');
 
   await Promise.all([
     page.waitForResponse(response =>

@@ -224,7 +224,6 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
               />
 
               <PostEditorHeader
-                activeId={activeId}
                 title={draft.title}
                 onTitleChange={onTitleChange}
               />

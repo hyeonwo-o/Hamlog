@@ -20,6 +20,8 @@ import {
     normalizeContentJsonForDirtyCheck,
     stripHtml
 } from '../../utils/postContent';
+import { closeEditorOverlays } from '../../utils/editorOverlays';
+import { slugify } from '../../utils/slugify';
 
 const MAX_UPLOAD_MB = 8;
 
@@ -70,6 +72,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
 }) => {
     const activeId = post?.id || null;
     const refreshPosts = usePostStore(state => state.fetchPosts);
+    const posts = usePostStore(state => state.posts);
 
     // 1. Form Logic (extracted)
     const {
@@ -195,6 +198,10 @@ const PostEditor: React.FC<PostEditorProps> = ({
         () => serializeDraftForDirtyCheck(draft),
         [draft]
     );
+    const publishSlugTaken = useMemo(() => {
+        const slug = slugify(draft.slug.trim() || draft.title.trim());
+        return Boolean(slug && posts.some(item => item.slug === slug && item.id !== activeId));
+    }, [activeId, draft.slug, draft.title, posts]);
     const isDirty = currentDraftKey !== baselineDraftKey;
 
     useEffect(() => {
@@ -232,6 +239,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
     }, []);
 
     const togglePreviewMode = useCallback(() => {
+        closeEditorOverlays();
         if (previewToggleTimeoutRef.current !== null) {
             window.clearTimeout(previewToggleTimeoutRef.current);
             previewToggleTimeoutRef.current = null;
@@ -242,11 +250,15 @@ const PostEditor: React.FC<PostEditorProps> = ({
             previewToggleTimeoutRef.current = window.setTimeout(() => {
                 setPreviewMode(true);
                 previewToggleTimeoutRef.current = null;
+                document.querySelector<HTMLButtonElement>('[data-testid="post-preview-toggle"]')?.focus();
             }, 0);
             return;
         }
 
         setPreviewMode(false);
+        window.requestAnimationFrame(() => {
+            document.querySelector<HTMLButtonElement>('[data-testid="post-preview-toggle"]')?.focus();
+        });
     }, [editor, previewMode]);
 
     // Sync editor content when draft changes
@@ -286,9 +298,11 @@ const PostEditor: React.FC<PostEditorProps> = ({
     });
 
     const openPublishDialog = useCallback(() => {
+        closeEditorOverlays();
+        editor?.commands.blur();
         setPublishStatus(draft.status);
         setPublishDialogOpen(true);
-    }, [draft.status]);
+    }, [draft.status, editor]);
 
     const closePublishDialog = useCallback(() => {
         if (!saving) setPublishDialogOpen(false);
@@ -387,6 +401,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
                 draft={draft}
                 categoryTree={categoryTree}
                 status={publishStatus}
+                slugTaken={publishSlugTaken}
                 saving={saving}
                 tagInput={tagInput}
                 onTagInputChange={setTagInput}

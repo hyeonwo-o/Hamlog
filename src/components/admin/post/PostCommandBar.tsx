@@ -135,6 +135,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
         </button>
         <button
           type="button"
+          data-testid="post-preview-toggle"
           onClick={onTogglePreview}
           aria-label={previewMode ? '편집' : '미리보기'}
           title={previewMode ? '편집' : '미리보기'}
