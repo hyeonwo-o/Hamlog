@@ -1345,6 +1345,18 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
             sections: []
         },
         {
+            id: 'post-unicode-sitemap',
+            slug: '한글-사이트맵-경로',
+            title: '한글 사이트맵 경로',
+            summary: '사이트맵 URL 인코딩을 검증하는 공개 글입니다.',
+            category: 'Testing',
+            contentHtml: '<p>사이트맵 경로 본문</p>',
+            publishedAt: '2026-03-07',
+            tags: ['sitemap'],
+            status: 'published',
+            sections: []
+        },
+        {
             id: 'post-custom-canonical',
             slug: 'canonical-local-post',
             title: 'Canonical Local',
@@ -1528,10 +1540,17 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
 
     const sitemapResponse = await request(app).get('/sitemap.xml');
     assert.equal(sitemapResponse.status, 200);
+    assert.match(sitemapResponse.headers['content-type'], /^application\/xml; charset=utf-8$/);
+    assert.match(sitemapResponse.text, /<loc>https:\/\/tech\.hamwoo\.co\.kr\/<\/loc>/);
     assert.doesNotMatch(sitemapResponse.text, /\/graph<\/loc>/);
     assert.match(sitemapResponse.text, /meta-visible-post/);
     assert.match(sitemapResponse.text, /<lastmod>2026-03-08<\/lastmod>/);
     assert.match(sitemapResponse.text, /meta-scheduled-visible/);
+    assert.match(
+        sitemapResponse.text,
+        /\/posts\/%ED%95%9C%EA%B8%80-%EC%82%AC%EC%9D%B4%ED%8A%B8%EB%A7%B5-%EA%B2%BD%EB%A1%9C/
+    );
+    assert.doesNotMatch(sitemapResponse.text, /한글-사이트맵-경로/);
     assert.match(sitemapResponse.text, /https:\/\/tech\.hamwoo\.co\.kr\/guides\/canonical-local/);
     assert.doesNotMatch(sitemapResponse.text, /canonical-local-post/);
     assert.doesNotMatch(sitemapResponse.text, /canonical-external-post/);

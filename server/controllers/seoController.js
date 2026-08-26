@@ -60,6 +60,12 @@ const resolveCanonicalUrl = (post, baseUrl) => {
   return toAbsoluteUrl(baseUrl, post.seo?.canonicalUrl || postUrl);
 };
 
+const normalizeSitemapUrl = (value) => {
+  const url = new URL(value);
+  url.hash = '';
+  return url.href;
+};
+
 const toPostBootstrap = (post) => {
   const postWithoutEditorState = { ...post };
   delete postWithoutEditorState.contentJson;
@@ -369,12 +375,13 @@ export const getSitemap = async (req, res) => {
     const baseUrl = resolveBaseUrl(profile);
     const publishedPosts = filterPublicPosts(posts);
 
-    const baseOrigin = new URL(baseUrl).origin;
+    const baseSitemapUrl = normalizeSitemapUrl(baseUrl);
+    const baseOrigin = new URL(baseSitemapUrl).origin;
     const sitemapPosts = Array.from(new Map(publishedPosts.flatMap(post => {
-      const canonicalUrl = resolveCanonicalUrl(post, baseUrl);
       try {
-        return new URL(canonicalUrl).origin === baseOrigin
-          ? [[canonicalUrl, post]]
+        const sitemapUrl = normalizeSitemapUrl(resolveCanonicalUrl(post, baseUrl));
+        return new URL(sitemapUrl).origin === baseOrigin
+          ? [[sitemapUrl, post]]
           : [];
       } catch {
         return [];
@@ -391,14 +398,14 @@ export const getSitemap = async (req, res) => {
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${escapeXml(baseUrl)}</loc>
+    <loc>${escapeXml(baseSitemapUrl)}</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   ${urls}
 </urlset>`;
 
-    res.set('Content-Type', 'text/xml');
+    res.set('Content-Type', 'application/xml; charset=utf-8');
     res.send(sitemap);
   } catch (error) {
     console.error(error);
