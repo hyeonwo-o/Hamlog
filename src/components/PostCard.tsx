@@ -38,6 +38,21 @@ const TagList: React.FC<{ tags: string[] }> = ({ tags }) => (
   </>
 );
 
+const PostViewCount: React.FC<{ views?: number }> = ({ views }) => {
+  const normalizedViews = Number.isSafeInteger(views) && Number(views) >= 0 ? Number(views) : 0;
+  const formattedViews = normalizedViews.toLocaleString('ko-KR');
+
+  return (
+    <span
+      className="ml-auto shrink-0 whitespace-nowrap text-[10px] tabular-nums text-[var(--text-muted)]"
+      aria-label={`조회 ${formattedViews}회`}
+      data-testid="post-view-count"
+    >
+      조회 {formattedViews}회
+    </span>
+  );
+};
+
 interface PostImageProps {
   post: Post;
   variant: 'featured' | 'compact';
@@ -131,10 +146,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
               <CategoryBadge category={post.category} />
               <TagList tags={post.tags} />
             </div>
-            <span className="group/link mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-strong)]">
-              Read
-              <span aria-hidden="true" className="transition-transform group-hover/link:translate-x-1">&rarr;</span>
-            </span>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="group/link inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-strong)]">
+                Read
+                <span aria-hidden="true" className="transition-transform group-hover/link:translate-x-1">&rarr;</span>
+              </span>
+              <PostViewCount views={post.views} />
+            </div>
           </div>
         </>
       ) : (
@@ -150,9 +168,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
                 </h3>
                 <p className="line-clamp-2 text-xs leading-relaxed text-[var(--text-muted)]">{post.summary}</p>
               </div>
-              <div className="mt-auto flex flex-wrap items-center gap-1.5">
-                <CategoryBadge category={post.category} className="px-2 py-0.5 text-[10px]" />
-                <TagList tags={post.tags} />
+              <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                  <CategoryBadge category={post.category} className="px-2 py-0.5 text-[10px]" />
+                  <TagList tags={post.tags} />
+                </div>
+                <PostViewCount views={post.views} />
               </div>
             </div>
           </div>
