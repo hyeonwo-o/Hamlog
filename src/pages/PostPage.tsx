@@ -361,7 +361,7 @@ const PostPage: React.FC = () => {
                     {post.title}
                   </h1>
 
-                  <p className="mt-3 max-w-[68ch] text-sm leading-7 text-[var(--text-muted)]">
+                  <p className="post-summary mt-3 text-sm leading-7 text-[var(--text-muted)]">
                     {post.summary}
                   </p>
 

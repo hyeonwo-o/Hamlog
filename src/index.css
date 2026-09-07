@@ -297,6 +297,12 @@ body::before {
   line-height: 1.75;
 }
 
+.post-summary,
+.prerender-article-header > p:not(.prerender-category) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .prerender-article-header .prerender-post-meta {
   margin-top: 1rem;
 }
