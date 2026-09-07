@@ -268,14 +268,14 @@ const PostEditor: React.FC<PostEditorProps> = ({
         if (draftContentJsonKey) {
             const editorContentKey = serializeContentJson(editor.getJSON());
             if (editorContentKey !== draftContentJsonKey && draft.contentJson) {
-                editor.commands.setContent(draft.contentJson, false);
+                editor.commands.setContent(draft.contentJson, { emitUpdate: false });
             }
             return;
         }
 
         const safeHtml = draft.contentHtml?.trim() ? draft.contentHtml : '';
         if (editor.getHTML() !== safeHtml) {
-            editor.commands.setContent(safeHtml, false);
+            editor.commands.setContent(safeHtml, { emitUpdate: false });
         }
     }, [editor, activeId, draft.contentHtml, draft.contentJson, draftContentJsonKey]);
 

@@ -83,6 +83,47 @@ test('backend exposes robots and baseline security headers', async ({ request })
   expect(robots).toContain('Sitemap: https://tech.hamwoo.co.kr/sitemap.xml');
 });
 
+test('upgraded editor updates formatting controls and keeps table menus undoable', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.text().includes('Duplicate extension names')) errors.push(message.text());
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openAdminEditor(page);
+  const editor = page.locator('.ProseMirror');
+  const toolbar = page.getByRole('toolbar', { name: '글 편집 도구' });
+  await editor.fill('서식과 표 호환성');
+  await editor.press('Control+a');
+  const bold = toolbar.getByRole('button', { name: '굵게', exact: true });
+  const underline = toolbar.getByRole('button', { name: '밑줄', exact: true });
+  await bold.click();
+  await expect(bold).toHaveAttribute('aria-pressed', 'true');
+  await underline.click();
+  await expect(underline).toHaveAttribute('aria-pressed', 'true');
+  await expect(editor.locator('strong u, u strong')).toHaveText('서식과 표 호환성');
+
+  await editor.press('Control+End');
+  await editor.press('Enter');
+  await toolbar.getByRole('button', { name: '표', exact: true }).click();
+  const table = editor.locator('table');
+  await expect(table.locator('tr')).toHaveCount(3);
+  await table.locator('td').first().click();
+  await page.keyboard.insertText('표 셀');
+  await expect(page.getByRole('button', { name: '아래에 행 추가', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '아래에 행 추가', exact: true }).click();
+  await expect(table.locator('tr')).toHaveCount(4);
+  await toolbar.getByRole('button', { name: '실행 취소', exact: true }).click();
+  await expect(table.locator('tr')).toHaveCount(3);
+  await toolbar.getByRole('button', { name: '다시 실행', exact: true }).click();
+  await expect(table.locator('tr')).toHaveCount(4);
+  await table.locator('td').first().click();
+  await page.getByRole('button', { name: '표 삭제', exact: true }).click();
+  await expect(table).toHaveCount(0);
+  await expect(editor.locator('strong u, u strong')).toHaveText('서식과 표 호환성');
+  expect(errors).toEqual([]);
+});
+
 test('admin editor toolbar is grouped and accessible', async ({ page }) => {
   await page.setViewportSize({ width: 760, height: 900 });
   await openAdminEditor(page);

@@ -72,7 +72,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             현재: {statusLabel}
           </span>
           {isDirty && (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700">
+            <span className="rounded-full bg-amber-50 dark:bg-amber-400/10 px-2 py-0.5 font-medium text-amber-700 dark:text-amber-300">
               저장되지 않은 변경
             </span>
           )}
@@ -98,7 +98,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
               <button
                 type="button"
                 onClick={() => onDiscardAutosave?.()}
-                className="border-b border-transparent transition hover:border-red-300 hover:text-red-500"
+                className="border-b border-transparent transition hover:border-red-300 hover:text-red-500 dark:hover:text-red-300"
               >
                 삭제
               </button>
@@ -115,7 +115,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             onClick={onOpenPostList}
             aria-controls="admin-post-list-panel"
             aria-expanded={Boolean(postListOpen)}
-            className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-white px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] 2xl:hidden"
+            className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] 2xl:hidden"
           >
             <List size={15} />
             목록
@@ -128,7 +128,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
           aria-controls="post-inspector-panel"
           aria-label={inspectorOpen ? '글 설정 닫기' : '글 설정 열기'}
           title={inspectorOpen ? '글 설정 닫기' : '글 설정 열기'}
-          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-white px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] lg:hidden"
+          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] lg:hidden"
         >
           <SlidersHorizontal size={15} />
           <span className="hidden sm:inline">{inspectorOpen ? '설정 닫기' : '글 설정'}</span>
@@ -139,7 +139,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
           onClick={onTogglePreview}
           aria-label={previewMode ? '편집' : '미리보기'}
           title={previewMode ? '편집' : '미리보기'}
-          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-white px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
+          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
         >
           {previewMode ? <EyeOff size={14} /> : <Eye size={14} />}
           <span className="hidden sm:inline">{previewMode ? '편집' : '미리보기'}</span>
@@ -149,7 +149,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
           onClick={onSave}
           disabled={saving}
           title={saveLabel}
-          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-white px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50"
+          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50"
         >
           <Save size={14} />
           {saving ? '저장 중' : saveLabel}
@@ -160,7 +160,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
           onClick={onPublish}
           disabled={saving}
           title="발행 설정"
-          className="inline-flex min-h-9 items-center gap-1.5 bg-[var(--text)] px-3 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          className="inline-flex min-h-9 items-center gap-1.5 bg-[var(--text)] px-3 text-xs font-semibold text-[var(--bg)] transition hover:opacity-90 disabled:opacity-50"
         >
           <Send size={14} />
           발행 설정
@@ -171,7 +171,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             onClick={onDelete}
             aria-label="글 삭제"
             title="삭제"
-            className="inline-flex min-h-9 items-center gap-1.5 border border-red-200 bg-white px-2.5 text-xs text-red-500 transition hover:bg-red-50"
+            className="inline-flex min-h-9 items-center gap-1.5 border border-red-200 dark:border-red-400/30 bg-[var(--surface)] px-2.5 text-xs text-red-500 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-400/10"
           >
             <Trash2 size={14} />
             <span className="hidden sm:inline">삭제</span>

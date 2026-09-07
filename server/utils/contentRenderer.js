@@ -1,5 +1,5 @@
 import { Extension, Node, mergeAttributes } from '@tiptap/core';
-import { generateHTML, generateJSON } from '@tiptap/html';
+import { generateHTML, generateJSON } from '@tiptap/html/server';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Color from '@tiptap/extension-color';
@@ -8,11 +8,8 @@ import Highlight from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import LinkExtension from '@tiptap/extension-link';
 import Youtube from '@tiptap/extension-youtube';
-import Table from '@tiptap/extension-table';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import TableRow from '@tiptap/extension-table-row';
-import TextStyle from '@tiptap/extension-text-style';
+import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
+import { TextStyle } from '@tiptap/extension-text-style';
 import TextAlign from '@tiptap/extension-text-align';
 import Typography from '@tiptap/extension-typography';
 import Image from '@tiptap/extension-image';
@@ -332,7 +329,10 @@ const lowlight = createLowlight(common);
 const htmlRendererExtensions = [
     StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        codeBlock: false
+        codeBlock: false,
+        link: false,
+        underline: false,
+        trailingNode: false
     }),
     CodeBlockLowlight.configure({ lowlight }),
     TextStyle,

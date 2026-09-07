@@ -1,5 +1,5 @@
-import React from 'react';
-import { BubbleMenu } from '@tiptap/react';
+import React, { useCallback } from 'react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
 import {
     ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
@@ -10,6 +10,8 @@ interface TableBubbleMenuProps {
     editor: Editor | null;
     enabled?: boolean;
 }
+
+const menuOptions = { placement: 'top' as const, offset: 8 };
 
 const MenuButton = ({
     onClick,
@@ -34,7 +36,7 @@ const MenuButton = ({
         className={`inline-flex items-center justify-center rounded-lg border p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${active
                 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
                 : danger
-                    ? 'border-transparent text-red-500 hover:bg-red-50 hover:text-red-600'
+                    ? 'border-transparent text-red-500 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-400/10 hover:text-red-600 dark:hover:text-red-300'
                     : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
             }`}
     >
@@ -43,13 +45,19 @@ const MenuButton = ({
 );
 
 export const TableBubbleMenu: React.FC<TableBubbleMenuProps> = ({ editor, enabled = true }) => {
+    const shouldShow = useCallback<NonNullable<React.ComponentProps<typeof BubbleMenu>['shouldShow']>>(
+        ({ editor }) => enabled && editor.isActive('table'),
+        [enabled]
+    );
     if (!editor) return null;
 
     return (
         <BubbleMenu
             editor={editor}
-            tippyOptions={{ duration: 100, maxWidth: 600, placement: 'top' }}
-            shouldShow={({ editor }) => enabled && editor.isActive('table')}
+            pluginKey="tableBubbleMenu"
+            options={menuOptions}
+            style={{ maxWidth: 600, zIndex: 50 }}
+            shouldShow={shouldShow}
             className="flex flex-wrap items-center gap-1 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-1.5 animate-in fade-in zoom-in-95 duration-200"
         >
             {/* Row Operations */}

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { SiteMeta } from '../types/blog';
 import PublicVisitorStatus from './analytics/PublicVisitorStatus';
+import ThemeSelect from './ThemeSelect';
 
 interface PublicNavigationProps {
   profile: SiteMeta;
@@ -20,8 +21,9 @@ const PublicNavigation = ({ profile }: PublicNavigationProps) => (
         {profile.title}
       </Link>
 
-      <div className="ml-auto shrink-0">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <PublicVisitorStatus />
+        <ThemeSelect />
       </div>
     </div>
   </nav>

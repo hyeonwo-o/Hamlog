@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import AdminNav from './AdminNav';
+import ThemeSelect from '../ThemeSelect';
 import type { AdminSection } from '../../types/admin';
 
 interface AdminHeaderProps {
@@ -34,6 +35,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
         onChange={onSectionChange}
       />
       <div className="flex items-center gap-2">
+        <ThemeSelect />
         <button
           onClick={onLogout}
           disabled={isLoggingOut}

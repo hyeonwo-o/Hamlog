@@ -611,7 +611,7 @@ export const ImageComponent = ({ node, updateAttributes, selected, editor, getPo
                                         event.stopPropagation();
                                         focusLayoutOptions();
                                     }}
-                                    className="image-layout-drag-handle absolute left-2 top-2 z-30 grid h-11 w-11 touch-none cursor-grab place-items-center rounded-full border-2 border-white bg-[var(--accent)] text-white shadow-md outline-none transition-transform hover:scale-105 active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+                                    className="image-layout-drag-handle absolute left-2 top-2 z-30 grid h-11 w-11 touch-none cursor-grab place-items-center rounded-full border-2 border-white bg-[var(--accent)] text-[var(--on-accent)] shadow-md outline-none transition-transform hover:scale-105 active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
                                     contentEditable={false}
                                 >
                                     <span className="grid grid-cols-2 gap-1" aria-hidden="true">

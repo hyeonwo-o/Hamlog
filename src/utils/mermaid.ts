@@ -35,41 +35,17 @@ type MermaidApi = (typeof import('mermaid'))['default'];
 
 let mermaidPromise: Promise<MermaidApi> | null = null;
 let renderSequence = 0;
+let renderQueue: Promise<void> = Promise.resolve();
 
 const loadMermaid = () => {
   if (!mermaidPromise) {
-    mermaidPromise = import('mermaid').then(({ default: mermaid }) => {
-      mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: 'strict',
-        htmlLabels: false,
-        secure: [
-          'secure',
-          'securityLevel',
-          'startOnLoad',
-          'htmlLabels',
-          'maxTextSize',
-          'suppressErrorRendering'
-        ],
-        maxTextSize: MAX_MERMAID_SOURCE_LENGTH,
-        suppressErrorRendering: true,
-        theme: 'neutral',
-        flowchart: {
-          useMaxWidth: true
-        },
-        sequence: {
-          useMaxWidth: true,
-          wrap: true
-        }
-      });
-      return mermaid;
-    });
+    mermaidPromise = import('mermaid').then(({ default: mermaid }) => mermaid);
   }
 
   return mermaidPromise;
 };
 
-export const renderMermaidToSvg = async (source: string) => {
+export const renderMermaidToSvg = async (source: string, theme?: 'light' | 'dark') => {
   const normalizedSource = normalizeMermaidSource(source);
   if (!normalizedSource) {
     throw new Error('Mermaid 소스가 비어 있습니다.');
@@ -78,11 +54,40 @@ export const renderMermaidToSvg = async (source: string) => {
     throw new Error(`Mermaid 소스는 ${MAX_MERMAID_SOURCE_LENGTH.toLocaleString()}자 이하만 지원합니다.`);
   }
 
-  const mermaid = await loadMermaid();
-  const id = `hamlog-mermaid-${Date.now()}-${++renderSequence}`;
-  const { svg } = await mermaid.render(id, normalizedSource);
-
-  return String(DOMPurify.sanitize(svg, {
-    USE_PROFILES: { svg: true, svgFilters: true }
-  }));
+  // Mermaid's configuration is global. Keep theme configuration and rendering
+  // together so concurrent diagrams cannot overwrite one another's theme.
+  const result = renderQueue.then(async () => {
+    const mermaid = await loadMermaid();
+    const resolvedTheme = theme ?? (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      htmlLabels: false,
+      secure: [
+        'secure',
+        'securityLevel',
+        'startOnLoad',
+        'htmlLabels',
+        'maxTextSize',
+        'suppressErrorRendering'
+      ],
+      maxTextSize: MAX_MERMAID_SOURCE_LENGTH,
+      suppressErrorRendering: true,
+      theme: resolvedTheme === 'dark' ? 'dark' : 'neutral',
+      flowchart: {
+        useMaxWidth: true
+      },
+      sequence: {
+        useMaxWidth: true,
+        wrap: true
+      }
+    });
+    const id = `hamlog-mermaid-${Date.now()}-${++renderSequence}`;
+    const { svg } = await mermaid.render(id, normalizedSource);
+    return String(DOMPurify.sanitize(svg, {
+      USE_PROFILES: { svg: true, svgFilters: true }
+    }));
+  });
+  renderQueue = result.then(() => {}, () => {});
+  return result;
 };

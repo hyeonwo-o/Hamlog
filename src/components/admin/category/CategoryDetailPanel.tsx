@@ -106,7 +106,7 @@ const CategoryDetailPanel: React.FC<CategoryDetailPanelProps> = ({
                     관리 대상
                   </span>
                 ) : (
-                  <span className="rounded-md bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600">
+                  <span className="rounded-md bg-red-100 dark:bg-red-400/10 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-300">
                     자동 감지
                   </span>
                 )}
@@ -185,7 +185,7 @@ const CategoryDetailPanel: React.FC<CategoryDetailPanelProps> = ({
                     type="button"
                     onClick={() => onDeleteCategory(activeCategory)}
                     disabled={categorySaving}
-                    className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-500 transition hover:bg-red-50 disabled:opacity-40"
+                    className="rounded-lg border border-red-200 dark:border-red-400/30 px-3 py-2 text-sm font-semibold text-red-500 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-400/10 disabled:opacity-40"
                   >
                     삭제
                   </button>
@@ -221,7 +221,7 @@ const CategoryDetailPanel: React.FC<CategoryDetailPanelProps> = ({
                     type="button"
                     onClick={() => void addChildFromPanel()}
                     disabled={!detailChildDraft.trim() || categorySaving}
-                    className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50"
+                    className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)] transition disabled:opacity-50"
                   >
                     추가
                   </button>

@@ -119,7 +119,7 @@ export function ToolbarDropdown({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? menuId : undefined}
-        className={`flex h-7 items-center justify-between gap-1.5 border border-transparent bg-white px-1.5 text-[11px] font-medium text-[var(--text)] transition-colors hover:border-[color:var(--border)] disabled:opacity-50 ${width}`}
+        className={`flex h-7 items-center justify-between gap-1.5 border border-transparent bg-[var(--surface)] px-1.5 text-[11px] font-medium text-[var(--text)] transition-colors hover:border-[color:var(--border)] disabled:opacity-50 ${width}`}
       >
         <span className="truncate">{currentLabel}</span>
         <ChevronDown size={14} className="opacity-50" />
@@ -129,7 +129,7 @@ export function ToolbarDropdown({
         <div
           ref={menuRef}
           id={menuId}
-          className="fixed z-[70] max-h-60 overflow-y-auto border border-[color:var(--border)] bg-white p-1 shadow-lg ring-1 ring-black/5"
+          className="fixed z-[70] max-h-60 overflow-y-auto border border-[color:var(--border)] bg-[var(--surface)] p-1 shadow-lg ring-1 ring-black/5"
           role="listbox"
           aria-label={label}
           style={{

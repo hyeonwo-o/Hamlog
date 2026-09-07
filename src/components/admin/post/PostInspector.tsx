@@ -270,7 +270,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
               type="button"
               onClick={() => void handleDeleteUnusedUploads()}
               disabled={uploadCleanupLoading || selectedUploads.size === 0}
-              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50 disabled:opacity-50"
+              className="rounded-lg border border-red-200 dark:border-red-400/30 px-3 py-1.5 text-xs font-semibold text-red-500 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-400/10 disabled:opacity-50"
             >
               선택 삭제
             </button>
@@ -309,7 +309,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
             />
             <p
               id="seo-title-guidance"
-              className={`flex justify-between gap-3 text-[11px] ${seoTitleNeedsWork ? 'text-amber-700' : 'text-[var(--text-muted)]'}`}
+              className={`flex justify-between gap-3 text-[11px] ${seoTitleNeedsWork ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-muted)]'}`}
             >
               <span>{seoTitleNeedsWork
                 ? `${SEO_TITLE_MAX_LENGTH}자 이내를 권장합니다.`
@@ -333,7 +333,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
             />
             <p
               id="seo-description-guidance"
-              className={`flex justify-between gap-3 text-[11px] ${seoDescriptionNeedsWork ? 'text-amber-700' : 'text-[var(--text-muted)]'}`}
+              className={`flex justify-between gap-3 text-[11px] ${seoDescriptionNeedsWork ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-muted)]'}`}
             >
               <span>
                 {seoDescriptionLength > SEO_DESCRIPTION_MAX_LENGTH
@@ -404,7 +404,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
               <button
                 type="button"
                 onClick={() => onRemoveTag(tag)}
-                className="text-[10px] transition hover:text-red-500"
+                className="text-[10px] transition hover:text-red-500 dark:hover:text-red-300"
                 aria-label="태그 삭제"
               >
                 ×

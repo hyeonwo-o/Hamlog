@@ -69,7 +69,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                         <span className="flex min-w-0 items-center gap-2">
                             <span className="truncate">{node.name}</span>
                             {node.hasNew && (
-                                <span className="angular-chip inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-white">
+                                <span className="angular-chip inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-[var(--on-accent)]">
                                     N
                                 </span>
                             )}
@@ -109,7 +109,7 @@ export const CategorySidebar: React.FC<CategorySidebarProps> = ({
                         <span className="flex items-center gap-2">
                             <span>분류 전체보기</span>
                             {categoryTree.hasNew && (
-                                <span className="angular-chip inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-white">
+                                <span className="angular-chip inline-flex h-4 w-4 items-center justify-center rounded-md bg-[var(--accent)] text-[10px] font-semibold text-[var(--on-accent)]">
                                     N
                                 </span>
                             )}

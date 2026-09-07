@@ -146,7 +146,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
         aria-modal="true"
         aria-labelledby="publish-dialog-title"
         tabIndex={-1}
-        className="max-h-[calc(100vh-3rem)] w-full max-w-[820px] overflow-y-auto border border-[color:var(--border)] bg-white"
+        className="max-h-[calc(100vh-3rem)] w-full max-w-[820px] overflow-y-auto border border-[color:var(--border)] bg-[var(--surface)]"
       >
         <div className="flex items-center justify-between border-b border-black px-6 py-4">
           <h2 id="publish-dialog-title" className="text-sm font-semibold text-[var(--text)]">발행 설정</h2>
@@ -169,10 +169,10 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
             <span
               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                 qualityAudit.requiredCount > 0
-                  ? 'bg-red-100 text-red-700'
+                  ? 'bg-red-100 dark:bg-red-400/10 text-red-700 dark:text-red-300'
                   : qualityAudit.warningCount > 0
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-amber-100 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300'
+                    : 'bg-emerald-100 dark:bg-emerald-400/10 text-emerald-800 dark:text-emerald-300'
               }`}
               aria-live="polite"
             >
@@ -197,10 +197,10 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
                   <span
                     className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
                       required
-                        ? 'bg-red-100 text-red-700'
+                        ? 'bg-red-100 dark:bg-red-400/10 text-red-700 dark:text-red-300'
                         : warning
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-emerald-100 text-emerald-700'
+                          ? 'bg-amber-100 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300'
+                          : 'bg-emerald-100 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300'
                     }`}
                     aria-hidden="true"
                   >
@@ -264,8 +264,8 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
                 onChange={(category) => onUpdateDraft({ category })}
                 defaultOptionLabel={DEFAULT_CATEGORY}
                 recentStorageKey="hamlog:admin:editor-categories"
-                triggerClassName="flex h-9 w-full items-center justify-between border border-[color:var(--border)] bg-white px-3 text-sm text-[var(--text)] transition hover:border-[color:var(--accent)]"
-                panelClassName="absolute left-0 top-full z-[60] mt-2 w-full min-w-[280px] border border-[color:var(--border)] bg-white p-4"
+                triggerClassName="flex h-9 w-full items-center justify-between border border-[color:var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] transition hover:border-[color:var(--accent)]"
+                panelClassName="absolute left-0 top-full z-[60] mt-2 w-full min-w-[280px] border border-[color:var(--border)] bg-[var(--surface)] p-4"
               />
             </div>
 
@@ -317,7 +317,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
               />
               <p
                 id="publish-summary-guidance"
-                className={`col-start-2 flex justify-between gap-3 pb-1 text-[11px] ${summaryNeedsWork ? 'text-amber-700' : 'text-[var(--text-muted)]'}`}
+                className={`col-start-2 flex justify-between gap-3 pb-1 text-[11px] ${summaryNeedsWork ? 'text-amber-700 dark:text-amber-300' : 'text-[var(--text-muted)]'}`}
               >
                 <span>{summaryNeedsWork
                   ? summaryGuidance
@@ -336,7 +336,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
                     key={tag}
                     type="button"
                     onClick={() => onRemoveTag(tag)}
-                    className="text-xs text-[var(--text-muted)] transition hover:text-red-500"
+                    className="text-xs text-[var(--text-muted)] transition hover:text-red-500 dark:hover:text-red-300"
                     title="태그 삭제"
                   >
                     #{tag}
@@ -372,7 +372,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
             <button
               type="button"
               onClick={() => coverInputRef.current?.click()}
-              className="flex aspect-square w-full flex-col items-center justify-center gap-3 border border-[color:var(--border)] bg-[#fafafa] text-sm text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
+              className="flex aspect-square w-full flex-col items-center justify-center gap-3 border border-[color:var(--border)] bg-[var(--surface-muted)] text-sm text-[var(--text-muted)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
             >
               {draft.cover ? (
                 <img src={draft.cover} alt="대표 이미지" className="h-full w-full object-cover" />
@@ -411,7 +411,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
             type="button"
             onClick={() => void onConfirm()}
             disabled={saving}
-            className="h-11 min-w-36 rounded-full bg-black px-7 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            className="h-11 min-w-36 rounded-full bg-[var(--text)] px-7 text-sm font-semibold text-[var(--bg)] transition hover:opacity-90 disabled:opacity-50"
           >
             {confirmLabel}
           </button>

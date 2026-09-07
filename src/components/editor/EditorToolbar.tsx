@@ -34,7 +34,7 @@ interface EditorToolbarProps {
   uploadingImage: boolean;
 }
 
-const toolbarGroupClass = 'flex shrink-0 items-center gap-0.5 border border-[color:var(--border)] bg-white/80 px-1 py-0.5';
+const toolbarGroupClass = 'flex shrink-0 items-center gap-0.5 border border-[color:var(--border)] bg-[var(--surface-strong)] px-1 py-0.5';
 const articleHeadingOptions = HEADING_OPTIONS.filter(option => option.value !== 'h1');
 
 function ToolbarGroup({
@@ -140,7 +140,7 @@ export function EditorToolbar({
   };
 
   return (
-    <div className="border-b border-[color:var(--border)] bg-white/95 py-0.5 backdrop-blur" role="toolbar" aria-label="글 편집 도구">
+    <div className="border-b border-[color:var(--border)] bg-[var(--surface-overlay)] py-0.5 backdrop-blur" role="toolbar" aria-label="글 편집 도구">
       <div className="flex min-w-0 items-center gap-0.5">
         {scrollHint.overflow && (
           <button
@@ -148,7 +148,7 @@ export function EditorToolbar({
             onClick={() => {
               if (scrollHint.left) scrollToolbar(-1);
             }}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-white text-[var(--text-muted)] transition hover:text-[var(--text)] ${
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition hover:text-[var(--text)] ${
               scrollHint.left ? '' : 'cursor-default opacity-40'
             }`}
             aria-label="이전 편집 도구 보기"
@@ -228,7 +228,7 @@ export function EditorToolbar({
                 active={Boolean(activeHighlight)}
                 disabled={!editor}
                 buttonIcon={<Highlighter size={16} />}
-                buttonClassName={activeHighlight ? 'bg-yellow-100 text-yellow-800' : ''}
+                buttonClassName={activeHighlight ? 'bg-yellow-100 dark:bg-yellow-400/15 text-yellow-800 dark:text-yellow-200' : ''}
                 indicatorColor={activeHighlight || undefined}
                 clearLabel="형광펜 제거"
                 onSelect={color => editor?.chain().focus().toggleHighlight({ color }).run()}
@@ -253,7 +253,7 @@ export function EditorToolbar({
             onClick={() => {
               if (scrollHint.right) scrollToolbar(1);
             }}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-white text-[var(--text-muted)] transition hover:text-[var(--text)] ${
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[color:var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition hover:text-[var(--text)] ${
               scrollHint.right ? '' : 'cursor-default opacity-40'
             }`}
             aria-label="다음 편집 도구 보기"

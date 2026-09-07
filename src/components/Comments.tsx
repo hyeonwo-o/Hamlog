@@ -181,7 +181,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-h-4">
                         {submitError ? (
-                            <p id="comment-form-help" className="text-xs text-red-500">{submitError}</p>
+                            <p id="comment-form-help" className="text-xs text-red-500 dark:text-red-300">{submitError}</p>
                         ) : (
                             <p id="comment-form-help" className="text-xs text-[var(--text-muted)]">
                                 {content.length}/{COMMENT_LIMITS.content}
@@ -212,7 +212,7 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
                             className="w-full bg-[var(--surface-muted)] border border-[var(--border)] rounded px-3 py-2 text-sm mb-2 focus:outline-none"
                             autoFocus
                         />
-                        {deleteError && <p className="text-xs text-red-500 mb-2">{deleteError}</p>}
+                        {deleteError && <p className="text-xs text-red-500 dark:text-red-300 mb-2">{deleteError}</p>}
                         <div className="flex justify-end gap-2 mt-4">
                             <button
                                 onClick={() => setDeleteTargetId(null)}

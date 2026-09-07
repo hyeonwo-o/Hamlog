@@ -14,6 +14,9 @@
   --accent: #2563eb;
   --accent-strong: #1d4ed8;
   --accent-soft: rgba(37, 99, 235, 0.14);
+  --on-accent: #ffffff;
+  --danger: #b91c1c;
+  --danger-soft: #fff1f2;
   --border: rgba(17, 17, 17, 0.12);
   --border-strong: rgba(17, 17, 17, 0.24);
   --shadow: none;
@@ -24,6 +27,25 @@
   --font-ui: 'Nanum Gothic', 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'Menlo', monospace;
   --bg-overlay: none;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #10151e;
+  --surface: #171e2a;
+  --surface-muted: #202938;
+  --surface-overlay: rgba(23, 30, 42, 0.95);
+  --surface-strong: rgba(23, 30, 42, 0.98);
+  --text: #e5eaf3;
+  --text-muted: #a2aec0;
+  --accent: #60a5fa;
+  --accent-strong: #93c5fd;
+  --accent-soft: rgba(96, 165, 250, 0.16);
+  --on-accent: #10151e;
+  --danger: #fca5a5;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --border: rgba(229, 234, 243, 0.14);
+  --border-strong: rgba(229, 234, 243, 0.28);
 }
 
 body {
@@ -733,6 +755,60 @@ body::before {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
+/* Keep the editor's saved palette readable without rewriting authored content. */
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#1d1916"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(29, 25, 22)"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#000000"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(0, 0, 0)"] {
+  color: var(--text) !important;
+}
+
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#0f766e"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(15, 118, 110)"] {
+  color: #5eead4 !important;
+}
+
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#2563eb"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(37, 99, 235)"] {
+  color: #93c5fd !important;
+}
+
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#6b21a8"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(107, 33, 168)"] {
+  color: #d8b4fe !important;
+}
+
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#b45309"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(180, 83, 9)"] {
+  color: #fcd34d !important;
+}
+
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#b91c1c"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(185, 28, 28)"] {
+  color: #fca5a5 !important;
+}
+
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="#4b5563"],
+:root[data-theme='dark'] :is(.rich-content, .tiptap-editor) span:not(mark *)[style*="color: rgb(75, 85, 99)"] {
+  color: #cbd5e1 !important;
+}
+
+/* The server retains data-color even when it removes an inline style. */
+mark[data-color='#fef3c7'] { --highlight-background: #fef3c7; }
+mark[data-color='#d1fae5'] { --highlight-background: #d1fae5; }
+mark[data-color='#dbeafe'] { --highlight-background: #dbeafe; }
+mark[data-color='#fee2e2'] { --highlight-background: #fee2e2; }
+mark[data-color='#ede9fe'] { --highlight-background: #ede9fe; }
+mark[data-color='#fce7f3'] { --highlight-background: #fce7f3; }
+
+:is(.rich-content, .tiptap-editor) mark:is(
+  [data-color='#fef3c7'], [data-color='#d1fae5'], [data-color='#dbeafe'],
+  [data-color='#fee2e2'], [data-color='#ede9fe'], [data-color='#fce7f3']
+) {
+  background: var(--highlight-background);
+  color: #111111 !important;
+}
+
 .rich-content pre,
 .tiptap-editor pre {
   border-radius: 4px;
@@ -836,7 +912,7 @@ body::before {
 
 .mermaid-render--error,
 .mermaid-error {
-  color: #b91c1c;
+  color: var(--danger);
 }
 
 .mermaid-status {
@@ -1204,16 +1280,16 @@ body::before {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.05);
+  background: var(--surface-muted);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(15, 23, 42, 0.2);
+  background: var(--border-strong);
   border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 23, 42, 0.35);
+  background: var(--text-muted);
 }
 
 :focus-visible {

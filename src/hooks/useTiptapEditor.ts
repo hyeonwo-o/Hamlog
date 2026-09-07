@@ -21,6 +21,8 @@ export const useTiptapEditor = ({
     handleDrop
 }: UseTiptapEditorProps) => {
     const editor = useEditor({
+        // Preserve toolbar/selection updates from the v2 editor.
+        shouldRerenderOnTransaction: true,
         extensions: getEditorExtensions(),
         content: contentJson ?? contentHtml ?? '',
         onCreate: ({ editor }) => {

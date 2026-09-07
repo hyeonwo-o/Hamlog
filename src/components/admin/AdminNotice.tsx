@@ -16,7 +16,7 @@ const AdminNotice: React.FC<AdminNoticeProps> = ({ message, tone, onClose }) => 
       className="fixed right-4 top-[calc(var(--admin-header-offset)+0.75rem)] z-40 max-w-sm rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-4 py-3 text-sm shadow-lg"
     >
       <div className="flex items-start justify-between gap-3">
-        <p className={tone === 'error' ? 'text-red-600' : 'text-[var(--text)]'}>
+        <p className={tone === 'error' ? 'text-red-600 dark:text-red-300' : 'text-[var(--text)]'}>
           {message}
         </p>
         <button

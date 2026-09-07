@@ -77,7 +77,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
       {categoriesLoading && (
         <p className="mt-4 text-xs text-[var(--text-muted)]">카테고리 불러오는 중...</p>
       )}
-      {categoriesError && <p className="mt-4 text-xs text-red-500">{categoriesError}</p>}
+      {categoriesError && <p className="mt-4 text-xs text-red-500 dark:text-red-300">{categoriesError}</p>}
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.45fr)_340px]">
         <CategoryTreePanel

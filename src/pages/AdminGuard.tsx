@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import * as authApi from '../api/authApi';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ThemeSelect from '../components/ThemeSelect';
 import { ApiError } from '../api/client';
 
 interface AdminGuardProps {
@@ -108,9 +109,12 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   return (
     <div className="flex min-h-screen items-center justify-center px-4 text-[var(--text)]">
       <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
-          관리자 접근
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
+            관리자 접근
+          </p>
+          <ThemeSelect />
+        </div>
         <h1 className="mt-2 font-display text-xl font-semibold">비밀번호 입력</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           서버에 설정된 관리자 비밀번호를 입력해주세요.
@@ -134,11 +138,11 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
               aria-label="관리자 비밀번호"
             />
           </label>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-300">{error}</p>}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white"
+            className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--on-accent)]"
           >
             {isSubmitting ? '로그인 중...' : '로그인'}
           </button>

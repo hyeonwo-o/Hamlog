@@ -168,7 +168,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
     <div ref={sectionRef} className="mx-auto min-w-0 max-w-none">
       <div
         ref={commandBarRef}
-        className="sticky top-[var(--admin-header-offset)] z-30 border-b border-[color:var(--border)] bg-white/95 backdrop-blur"
+        className="sticky top-[var(--admin-header-offset)] z-30 border-b border-[color:var(--border)] bg-[var(--surface-overlay)] backdrop-blur"
       >
         <div className="mx-auto flex max-w-[1500px] flex-col gap-1.5 px-3 py-1.5 lg:flex-row lg:items-center lg:justify-between">
           <PostCommandBar
@@ -219,8 +219,8 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
                 onChange={(category) => updateDraft({ category })}
                 defaultOptionLabel={DEFAULT_CATEGORY}
                 recentStorageKey="hamlog:admin:editor-categories"
-                triggerClassName="flex h-8 w-full max-w-[260px] items-center justify-between border border-[color:var(--border)] bg-white px-2.5 text-xs text-[var(--text-muted)] transition hover:border-[color:var(--accent)]"
-                panelClassName="absolute left-0 top-full z-40 mt-2 w-[min(320px,calc(100vw-2rem))] rounded-lg border border-[color:var(--border)] bg-white p-3 shadow-lg"
+                triggerClassName="flex h-8 w-full max-w-[260px] items-center justify-between border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text-muted)] transition hover:border-[color:var(--accent)]"
+                panelClassName="absolute left-0 top-full z-40 mt-2 w-[min(320px,calc(100vw-2rem))] rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-3 shadow-lg"
               />
 
               <PostEditorHeader
@@ -237,7 +237,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
                   key={tag}
                   type="button"
                   onClick={() => onRemove(tag)}
-                  className="text-xs text-[var(--text-muted)] transition hover:text-red-500"
+                  className="text-xs text-[var(--text-muted)] transition hover:text-red-500 dark:hover:text-red-300"
                   title="태그 삭제"
                 >
                   #{tag}

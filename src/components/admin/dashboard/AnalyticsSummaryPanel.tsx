@@ -57,7 +57,7 @@ const AnalyticsSummaryPanel = ({
       label: '현재 접속자',
       value: summary.realtimeVisitors,
       description: '최근 90초 기준',
-      icon: <Activity size={15} className="text-emerald-600" />
+      icon: <Activity size={15} className="text-emerald-600 dark:text-emerald-300" />
     },
     {
       label: '오늘 방문자',
@@ -115,9 +115,9 @@ const AnalyticsSummaryPanel = ({
       </div>
 
       {error && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2" role="alert">
-          <p className="text-xs text-red-700">{error}</p>
-          <button type="button" onClick={onRefresh} className="text-xs font-semibold text-red-700 underline">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 dark:border-red-400/30 bg-red-50 dark:bg-red-400/10 px-3 py-2" role="alert">
+          <p className="text-xs text-red-700 dark:text-red-300">{error}</p>
+          <button type="button" onClick={onRefresh} className="text-xs font-semibold text-red-700 dark:text-red-300 underline">
             다시 시도
           </button>
         </div>

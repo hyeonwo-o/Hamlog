@@ -127,6 +127,8 @@ export const MermaidExtension = Node.create({
       editButton.addEventListener('mousedown', handleEditMouseDown);
       editButton.addEventListener('click', handleEditClick);
       dom.addEventListener('dblclick', handleDoubleClick);
+      const themeObserver = new MutationObserver(() => void renderDiagram());
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
       void renderDiagram();
 
       return {
@@ -144,6 +146,7 @@ export const MermaidExtension = Node.create({
         destroy: () => {
           destroyed = true;
           renderVersion += 1;
+          themeObserver.disconnect();
           editButton.removeEventListener('mousedown', handleEditMouseDown);
           editButton.removeEventListener('click', handleEditClick);
           dom.removeEventListener('dblclick', handleDoubleClick);

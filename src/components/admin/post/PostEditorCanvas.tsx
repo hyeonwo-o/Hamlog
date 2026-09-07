@@ -67,7 +67,7 @@ export default function PostEditorCanvas({
       </div>
 
       {uploadError && (
-        <p role="alert" className="text-xs text-red-500">{uploadError}</p>
+        <p role="alert" className="text-xs text-red-500 dark:text-red-300">{uploadError}</p>
       )}
 
       <input
@@ -86,7 +86,7 @@ export default function PostEditorCanvas({
       />
 
       {previewMode && (
-        <div className="mx-auto min-h-[560px] w-full max-w-[920px] bg-white px-0 py-6 sm:px-3 lg:px-6">
+        <div className="mx-auto min-h-[560px] w-full max-w-[920px] bg-[var(--surface)] px-0 py-6 sm:px-3 lg:px-6">
           {contentHtml.trim() ? (
             <PostContent contentHtml={contentHtml} />
           ) : (
@@ -98,7 +98,7 @@ export default function PostEditorCanvas({
       )}
 
       <div
-        className={`min-h-[560px] bg-white ${previewMode ? 'hidden' : ''}`}
+        className={`min-h-[560px] bg-[var(--surface)] ${previewMode ? 'hidden' : ''}`}
         aria-hidden={previewMode}
       >
         {children}
@@ -111,7 +111,7 @@ export default function PostEditorCanvas({
         >
           <EditorContent
             editor={editor}
-            className="mx-auto w-full max-w-[920px] border-none px-0 shadow-none outline-none ring-0 sm:px-3 lg:px-6 [&_.ProseMirror]:min-h-[420px] [&_.ProseMirror]:bg-white [&_.ProseMirror]:px-0 [&_.ProseMirror]:py-5 [&_.ProseMirror]:shadow-none"
+            className="mx-auto w-full max-w-[920px] border-none px-0 shadow-none outline-none ring-0 sm:px-3 lg:px-6 [&_.ProseMirror]:min-h-[420px] [&_.ProseMirror]:bg-[var(--surface)] [&_.ProseMirror]:px-0 [&_.ProseMirror]:py-5 [&_.ProseMirror]:shadow-none"
           />
           <TableBubbleMenu editor={editor} enabled={!previewMode} />
           <ColumnBubbleMenu editor={editor} enabled={!previewMode} />

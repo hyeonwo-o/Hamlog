@@ -28,7 +28,7 @@ export const getPostStatusLabel = (status: PostStatus) => {
     case 'scheduled':
       return {
         label: '예약',
-        className: 'bg-yellow-100 text-yellow-800'
+        className: 'bg-yellow-100 dark:bg-yellow-400/15 text-yellow-800 dark:text-yellow-200'
       };
     case 'published':
     default:

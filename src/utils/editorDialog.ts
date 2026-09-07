@@ -45,12 +45,12 @@ export const showEditorToast = (
     minWidth: '220px',
     maxWidth: '360px',
     borderRadius: '10px',
-    border: '1px solid rgba(0,0,0,0.08)',
+    border: '1px solid var(--border)',
     padding: '10px 12px',
     fontSize: '13px',
     lineHeight: '1.4',
-    background: tone === 'error' ? '#fff1f2' : '#ffffff',
-    color: tone === 'error' ? '#9f1239' : '#1f2937',
+    background: tone === 'error' ? 'var(--danger-soft)' : 'var(--surface)',
+    color: tone === 'error' ? 'var(--danger)' : 'var(--text)',
     boxShadow: '0 10px 24px rgba(0, 0, 0, 0.12)'
   });
 
@@ -99,8 +99,8 @@ export const promptForText = ({
     applyStyles(panel, {
       width: multiline ? 'min(720px, 100%)' : 'min(520px, 100%)',
       borderRadius: '14px',
-      border: '1px solid rgba(148, 163, 184, 0.4)',
-      background: '#ffffff',
+      border: '1px solid var(--border-strong)',
+      background: 'var(--surface)',
       boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
       padding: '16px'
     });
@@ -112,7 +112,7 @@ export const promptForText = ({
       margin: '0',
       fontSize: '16px',
       fontWeight: '700',
-      color: '#0f172a'
+      color: 'var(--text)'
     });
 
     panel.appendChild(heading);
@@ -123,7 +123,7 @@ export const promptForText = ({
       applyStyles(desc, {
         margin: '8px 0 0',
         fontSize: '13px',
-        color: '#475569'
+        color: 'var(--text-muted)'
       });
       panel.appendChild(desc);
     }
@@ -144,9 +144,9 @@ export const promptForText = ({
       width: '100%',
       marginTop: '12px',
       borderRadius: '10px',
-      border: '1px solid #cbd5e1',
-      background: '#ffffff',
-      color: '#0f172a',
+      border: '1px solid var(--border-strong)',
+      background: 'var(--surface-muted)',
+      color: 'var(--text)',
       fontSize: '14px',
       padding: '10px 12px',
       boxSizing: 'border-box'
@@ -177,9 +177,9 @@ export const promptForText = ({
     cancelButton.textContent = cancelText;
     applyStyles(cancelButton, {
       borderRadius: '9999px',
-      border: '1px solid #cbd5e1',
-      background: '#ffffff',
-      color: '#334155',
+      border: '1px solid var(--border-strong)',
+      background: 'var(--surface)',
+      color: 'var(--text)',
       padding: '7px 14px',
       fontSize: '13px',
       cursor: 'pointer'
@@ -191,8 +191,8 @@ export const promptForText = ({
     applyStyles(confirmButton, {
       borderRadius: '9999px',
       border: '1px solid transparent',
-      background: '#0f172a',
-      color: '#ffffff',
+      background: 'var(--text)',
+      color: 'var(--bg)',
       padding: '7px 14px',
       fontSize: '13px',
       cursor: 'pointer'

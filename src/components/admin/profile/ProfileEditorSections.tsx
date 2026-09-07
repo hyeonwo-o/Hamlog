@@ -268,7 +268,7 @@ const ProfileEditorSections = ({
               <button
                 type="button"
                 onClick={() => onRemoveStackTag(tag)}
-                className="rounded-md p-0.5 text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-red-500"
+                className="rounded-md p-0.5 text-[var(--text-muted)] transition hover:bg-[var(--surface-muted)] hover:text-red-500 dark:hover:text-red-300"
               >
                 <X size={12} />
               </button>

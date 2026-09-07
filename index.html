@@ -2,13 +2,20 @@
 <html lang="ko">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="theme-color" content="#2563eb" />
   <script>
     (function() {
-      localStorage.removeItem('hamlog:theme');
-      document.documentElement.removeAttribute('data-theme');
+      var preference;
+      try { preference = localStorage.getItem('hamlog:theme'); } catch (_) {}
+      var theme = preference === 'light' || preference === 'dark'
+        ? preference
+        : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.style.colorScheme = theme;
+      document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#10151e' : '#2563eb';
     })();
   </script>
-  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Ham_Tech_Log | 클라우드 엔지니어링과 개발 기록</title>
@@ -36,7 +43,6 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="alternate" type="application/rss+xml" title="Hamlog RSS" href="/rss.xml" />
 
-  <meta name="theme-color" content="#2563eb" />
   <meta name="msapplication-TileColor" content="#2563eb" />
 
   <link rel="canonical" href="https://tech.hamwoo.co.kr" />

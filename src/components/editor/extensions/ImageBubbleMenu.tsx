@@ -56,7 +56,7 @@ export const ImageBubbleMenu: React.FC<ImageBubbleMenuProps> = ({
                         aria-label={`이미지 너비 ${w}`}
                         aria-pressed={width === w || (!width && w === '100%')}
                         className={`rounded-full px-3 py-1 text-[10px] font-bold transition-colors ${(width === w || (!width && w === '100%'))
-                            ? 'bg-[var(--accent)] text-white'
+                            ? 'bg-[var(--accent)] text-[var(--on-accent)]'
                             : 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
                             }`}
                     >
@@ -134,7 +134,7 @@ export const ImageBubbleMenu: React.FC<ImageBubbleMenuProps> = ({
                         if (src && onSetCover) onSetCover(src);
                     }}
                     className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${isCover
-                        ? 'bg-[var(--accent)] text-white cursor-default'
+                        ? 'bg-[var(--accent)] text-[var(--on-accent)] cursor-default'
                         : 'bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)] border border-[color:var(--border)]'
                         }`}
                     disabled={isCover}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { renderMermaidToSvg } from '../utils/mermaid';
+import { useTheme } from '../hooks/useTheme';
 
 interface MermaidContentProps {
   source: string;
@@ -12,6 +13,7 @@ type MermaidRenderState = {
 };
 
 const MermaidContent = ({ source }: MermaidContentProps) => {
+  const { theme } = useTheme();
   const [state, setState] = useState<MermaidRenderState>({
     svg: '',
     error: '',
@@ -22,7 +24,7 @@ const MermaidContent = ({ source }: MermaidContentProps) => {
     let cancelled = false;
     setState({ svg: '', error: '', loading: true });
 
-    void renderMermaidToSvg(source)
+    void renderMermaidToSvg(source, theme)
       .then((svg) => {
         if (!cancelled) setState({ svg, error: '', loading: false });
       })
@@ -35,7 +37,7 @@ const MermaidContent = ({ source }: MermaidContentProps) => {
     return () => {
       cancelled = true;
     };
-  }, [source]);
+  }, [source, theme]);
 
   return (
     <figure className="mermaid-block" aria-label="Mermaid 다이어그램">

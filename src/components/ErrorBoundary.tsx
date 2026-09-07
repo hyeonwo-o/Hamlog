@@ -38,7 +38,7 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex min-h-screen items-center justify-center px-4 text-[var(--text)]">
           <div className="w-full max-w-md rounded-3xl border border-[color:var(--border)] bg-[var(--surface)] p-8 text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-400/10 text-red-600 dark:text-red-300">
               <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -71,7 +71,7 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => window.location.reload()}
-                className="flex-1 rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white"
+                className="flex-1 rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--on-accent)]"
               >
                 페이지 새로고침
               </button>

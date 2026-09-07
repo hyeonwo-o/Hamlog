@@ -6,11 +6,8 @@ import Underline from '@tiptap/extension-underline';
 import LinkExtension from '@tiptap/extension-link';
 import Youtube from '@tiptap/extension-youtube';
 import Placeholder from '@tiptap/extension-placeholder';
-import Table from '@tiptap/extension-table';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import TableRow from '@tiptap/extension-table-row';
-import TextStyle from '@tiptap/extension-text-style';
+import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
+import { TextStyle } from '@tiptap/extension-text-style';
 import TextAlign from '@tiptap/extension-text-align';
 import Typography from '@tiptap/extension-typography';
 import { createLowlight, common } from 'lowlight';
@@ -33,7 +30,10 @@ export const getEditorExtensions = () => [
         heading: {
             levels: [...EDITOR_HEADING_LEVELS]
         },
-        codeBlock: false
+        codeBlock: false,
+        link: false,
+        underline: false,
+        trailingNode: false
     }),
     CodeBlockLowlight.configure({ lowlight }),
     TextStyle,

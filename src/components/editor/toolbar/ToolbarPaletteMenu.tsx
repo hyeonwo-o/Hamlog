@@ -199,7 +199,7 @@ export function ToolbarPaletteMenu({
                 onClear();
                 closeAndRestoreFocus();
               }}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--border)] bg-gray-100 text-gray-500 hover:bg-gray-200"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--border)] bg-[var(--surface-muted)] text-[var(--text-muted)] hover:bg-[var(--surface)]"
               title={clearLabel}
               aria-label={clearLabel}
             >

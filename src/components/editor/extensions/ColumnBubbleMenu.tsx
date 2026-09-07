@@ -1,5 +1,5 @@
-import React from 'react';
-import { BubbleMenu } from '@tiptap/react';
+import React, { useCallback } from 'react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import {
@@ -10,6 +10,8 @@ interface ColumnBubbleMenuProps {
     editor: Editor | null;
     enabled?: boolean;
 }
+
+const menuOptions = { placement: 'top' as const, offset: 8 };
 
 const MenuButton = ({
     onClick,
@@ -34,7 +36,7 @@ const MenuButton = ({
         className={`inline-flex items-center justify-center rounded-lg border p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${active
             ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
             : danger
-                ? 'border-transparent text-red-500 hover:bg-red-50 hover:text-red-600'
+                ? 'border-transparent text-red-500 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-400/10 hover:text-red-600 dark:hover:text-red-300'
                 : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
             }`}
     >
@@ -43,6 +45,14 @@ const MenuButton = ({
 );
 
 export const ColumnBubbleMenu: React.FC<ColumnBubbleMenuProps> = ({ editor, enabled = true }) => {
+    // v3 dispatches a transaction when menu options change; keep props stable
+    // so transaction-driven React renders do not trigger an update loop.
+    const shouldShow = useCallback<NonNullable<React.ComponentProps<typeof BubbleMenu>['shouldShow']>>(
+        ({ editor, state }) => enabled
+            && editor.isActive('columns')
+            && !(state.selection instanceof NodeSelection && state.selection.node.type.name === 'image'),
+        [enabled]
+    );
     if (!editor) return null;
 
     // Check current layout to highlight active button
@@ -52,13 +62,10 @@ export const ColumnBubbleMenu: React.FC<ColumnBubbleMenuProps> = ({ editor, enab
     return (
         <BubbleMenu
             editor={editor}
-            tippyOptions={{ duration: 100, maxWidth: 400, placement: 'top' }}
-            shouldShow={({ editor, state }) => enabled
-                && editor.isActive('columns')
-                && !(
-                    state.selection instanceof NodeSelection
-                    && state.selection.node.type.name === 'image'
-                )}
+            pluginKey="columnBubbleMenu"
+            options={menuOptions}
+            style={{ maxWidth: 400, zIndex: 50 }}
+            shouldShow={shouldShow}
             className="flex flex-wrap items-center gap-1 rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-1.5 animate-in fade-in zoom-in-95 duration-200"
         >
             <div className="flex items-center gap-0.5">

@@ -82,6 +82,13 @@ npm run test
 npm run verify:data
 ```
 
+## Dependency Security
+
+- Tiptap 패키지는 보안 수정이 포함된 `3.31.3`으로 버전을 통일합니다. 업그레이드할 때는 에디터와 서버 HTML 렌더러를 함께 검증해야 합니다.
+- Express 4와 body-parser가 사용하는 `qs`는 `overrides`로 `6.16.0`을 사용합니다. 상위 패키지에서 수정 버전을 지원하기 전까지 이 설정을 유지합니다.
+- Tiptap 3의 표·다단 메뉴는 Floating UI를 사용합니다. `tippy.js`는 자체 슬래시 명령 메뉴에서 여전히 필요합니다.
+- 의존성 변경 후 `npm ci`, `npm audit`, `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e`를 실행합니다. 보안 회귀 테스트는 `server/tests/dependency-security.test.js`에 포함되어 있습니다.
+
 ## Environment Variables
 ### Backend (`server`)
 - `PORT` (default: `4000`)
