@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import * as authApi from '../api/authApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ThemeSelect from '../components/ThemeSelect';
-import { ApiError } from '../api/client';
+import { ApiError, type AuthMode } from '../api/client';
 
 interface AdminGuardProps {
   children: React.ReactNode;
@@ -20,6 +20,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
 
   const authReason = searchParams.get('auth');
 
@@ -44,7 +45,16 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
 
   const checkAuth = useCallback(async () => {
     try {
-      await confirmSession();
+      const config = await authApi.getAuthConfig();
+      setAuthMode(config.mode);
+      const confirmed = await confirmSession();
+      if (!confirmed && config.mode === 'cloudflare-access') {
+        setError('Cloudflare Access 인증을 확인하지 못했습니다. 다시 인증해주세요. 문제가 계속되면 관리자 경로 보호 설정을 확인해주세요.');
+      }
+    } catch {
+      setIsAuthed(false);
+      setAuthMode(null);
+      setError('관리자 인증 설정을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +71,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (authMode !== 'password') return;
     setIsSubmitting(true);
     setError('');
 
@@ -105,6 +116,25 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   }
 
   if (isAuthed) return <>{children}</>;
+
+  if (authMode !== 'password') {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 text-[var(--text)]">
+        <section className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="font-display text-xl font-semibold">{authMode ? 'Cloudflare Access 인증' : '인증 설정 확인'}</h1>
+            <ThemeSelect />
+          </div>
+          <p role="alert" className="mt-4 text-sm leading-relaxed text-[var(--text-muted)]">{error}</p>
+          <button type="button" onClick={() => window.location.reload()}
+            className="mt-6 w-full rounded-lg bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--on-accent)]">
+            {authMode ? 'Cloudflare Access로 다시 인증' : '다시 시도'}
+          </button>
+          <a href="/" className="mt-4 block text-center text-sm text-[var(--text-muted)]">블로그로 돌아가기</a>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 text-[var(--text)]">

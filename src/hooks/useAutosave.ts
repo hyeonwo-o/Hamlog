@@ -151,6 +151,9 @@ export const useAutosave = ({
 
     // Save to LocalStorage (Debounced)
     useEffect(() => {
+        // Preserve the existing recovery copy until the user restores or discards it.
+        // Authentication/loading delays must not let the empty editor overwrite it.
+        if (hasRestorableDraft) return;
         const timer = setTimeout(() => {
             if (draft.contentHtml || draft.contentJson || draft.title) {
                 const payload: AutosavePayload = {
@@ -165,7 +168,7 @@ export const useAutosave = ({
             }
         }, 1000);
         return () => clearTimeout(timer);
-    }, [draft, autosaveKey, setNotice]);
+    }, [draft, autosaveKey, setNotice, hasRestorableDraft]);
 
     const clearAutosave = useCallback(() => {
         removeAutosave(autosaveKey);

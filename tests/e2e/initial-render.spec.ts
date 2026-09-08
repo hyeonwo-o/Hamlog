@@ -21,6 +21,8 @@ test('production home keeps a styled shell until bootstrap hydration completes',
     const shell = page.locator('[data-prerendered="home"]');
     await expect(shell).toBeVisible();
     await expect(shell).toHaveClass(/public-site/);
+    // The HTML can be visible before the stylesheet finishes loading while JS is gated.
+    await expect(shell).toHaveCSS('font-family', /Noto Serif KR/);
     await expect(page.locator('.prerender-section')).toBeVisible();
     await expect(page.getByText('블로그 정보 불러오는 중...', { exact: true })).toHaveCount(0);
 
@@ -38,9 +40,9 @@ test('production home keeps a styled shell until bootstrap hydration completes',
     expect(shellMetrics.containerWidth).toBeLessThan(1280);
   } finally {
     releaseClientBundle();
+    await navigation;
   }
 
-  await navigation;
   await expect(page.locator('[data-prerendered]')).toHaveCount(0);
   await expect(page.getByText('블로그 정보 불러오는 중...', { exact: true })).toHaveCount(0);
   await expect(page.locator('.public-site h1').first()).toBeVisible();

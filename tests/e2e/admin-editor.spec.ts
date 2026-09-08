@@ -1094,6 +1094,10 @@ test('admin editor restores legacy partial autosave data safely', async ({ page 
   await page.reload();
 
   await expect(page.getByText('임시 저장본이 있습니다. 복구 또는 삭제를 선택하세요.')).toBeVisible();
+  // Deliberately cross the autosave debounce: an unresolved recovery copy must survive.
+  await page.waitForTimeout(1250);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hamlog_draft_new') || '{}').title))
+    .toBe('Legacy autosave title');
   await page.getByRole('button', { name: '복구', exact: true }).click();
   await expect(page.getByPlaceholder('제목을 입력하세요')).toHaveValue('Legacy autosave title');
   await expect(page.locator('.ProseMirror').first()).toContainText('Legacy autosave body');

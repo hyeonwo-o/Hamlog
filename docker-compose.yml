@@ -44,7 +44,10 @@ services:
       NODE_ENV: production
       APP_VERSION: ${APP_VERSION:-local}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      AUTH_MODE: ${AUTH_MODE:-password}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-}
+      CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
     cap_drop:
       - ALL
     security_opt:

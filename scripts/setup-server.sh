@@ -58,11 +58,22 @@ echo "$CR_PAT" | docker login ghcr.io -u "$GH_USER" --password-stdin
 
 # 4. Environment Variables
 echo "⚙️  Configuring Environment..."
-read -sp "Enter Admin Password for the Blog: " ADMIN_PWD
-echo ""
+AUTH_MODE="${AUTH_MODE:-password}"
+ADMIN_PWD=""
+case "$AUTH_MODE" in
+    password)
+        read -sp "Enter Admin Password for the Blog: " ADMIN_PWD
+        echo ""
+        ;;
+    cloudflare-access)
+        : "${CLOUDFLARE_ACCESS_TEAM_DOMAIN:?Cloudflare Access team domain is required}"
+        : "${CLOUDFLARE_ACCESS_AUD:?Cloudflare Access application AUD is required}"
+        ;;
+    *) echo "Unsupported AUTH_MODE" >&2; exit 1 ;;
+esac
 read -sp "Enter JWT Secret (random string recommended): " JWT_SEC
 echo ""
-if [ -z "$ADMIN_PWD" ] || [ -z "$JWT_SEC" ]; then
+if [ -z "$JWT_SEC" ] || { [ "$AUTH_MODE" = password ] && [ -z "$ADMIN_PWD" ]; }; then
     echo "❌ Admin password and JWT secret are required."
     exit 1
 fi
@@ -275,6 +286,9 @@ if ! prepare_data_for_image "$IMAGE_NAME" "$NEW_RUNTIME_USER" \
     -e PORT=4000 \
     -e JWT_SECRET="$JWT_SEC" \
     -e ADMIN_PASSWORD="$ADMIN_PWD" \
+    -e AUTH_MODE="$AUTH_MODE" \
+    -e CLOUDFLARE_ACCESS_TEAM_DOMAIN="${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-}" \
+    -e CLOUDFLARE_ACCESS_AUD="${CLOUDFLARE_ACCESS_AUD:-}" \
     -e CORS_ORIGINS="$CORS_ORIGINS" \
     -e COOKIE_SAME_SITE="$COOKIE_SAME_SITE" \
     -e COOKIE_SECURE="$COOKIE_SECURE" \

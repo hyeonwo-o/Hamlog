@@ -9,10 +9,13 @@ fi
 
 export NODE_ENV=production
 
-if [ -z "${JWT_SECRET:-}" ] || [ -z "${ADMIN_PASSWORD:-}" ]; then
-  echo "❌ JWT_SECRET and ADMIN_PASSWORD are required for production deployment."
+if [ -z "${JWT_SECRET:-}" ]; then
+  echo "❌ JWT_SECRET is required for production deployment."
   exit 1
 fi
+
+# Validate the selected mode before restarting a working server.
+node --input-type=module -e "import './server/config/auth.js'" || exit 1
 
 echo "🚀 Starting Deployment..."
 

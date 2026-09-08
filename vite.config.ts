@@ -56,6 +56,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: devHost,
       proxy: {
+        '/admin/api': apiProxyTarget,
         '/api': apiProxyTarget,
         '/uploads': apiProxyTarget
       }

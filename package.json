@@ -54,6 +54,7 @@
     "helmet": "^8.1.0",
     "html-react-parser": "^5.2.11",
     "jsonwebtoken": "^9.0.3",
+    "jose": "6.2.12",
     "katex": "^0.16.27",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.562.0",

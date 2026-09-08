@@ -1,10 +1,13 @@
 import jwt from 'jsonwebtoken';
-import { ADMIN_PASSWORD, JWT_SECRET } from '../config/auth.js';
+import { ADMIN_PASSWORD, AUTH_MODE, JWT_SECRET } from '../config/auth.js';
 import { buildClearCookieOptions, buildCookieOptions } from '../config/cookies.js';
 
 const AUTH_COOKIE_MAX_AGE = 24 * 60 * 60 * 1000;
 
 export const login = (req, res) => {
+    if (AUTH_MODE === 'cloudflare-access') {
+        return res.status(403).json({ message: '비밀번호 로그인은 비활성화되어 있습니다. Cloudflare Access를 이용해주세요.' });
+    }
     const { password } = req.body ?? {};
 
     if (password !== ADMIN_PASSWORD) {
@@ -23,7 +26,14 @@ export const login = (req, res) => {
 
 export const logout = (req, res) => {
     res.clearCookie('token', buildClearCookieOptions(req));
-    res.json({ message: '로그아웃 성공' });
+    res.json({
+        message: '로그아웃 성공',
+        ...(AUTH_MODE === 'cloudflare-access' ? { redirectTo: '/cdn-cgi/access/logout' } : {})
+    });
+};
+
+export const getAuthConfig = (_req, res) => {
+    res.json({ mode: AUTH_MODE });
 };
 
 export const me = (req, res) => {

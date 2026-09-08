@@ -189,8 +189,8 @@ const AdminPage: React.FC = () => {
     setLogoutError('');
 
     try {
-      await authApi.logout();
-      window.location.assign('/admin');
+      const result = await authApi.logout();
+      window.location.assign(result.redirectTo === '/cdn-cgi/access/logout' ? result.redirectTo : '/admin');
     } catch (logoutActionError) {
       const message = logoutActionError instanceof Error
         ? logoutActionError.message

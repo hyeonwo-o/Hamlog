@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 
 // Config
 import { uploadDir } from './config/paths.js';
+import { AUTH_MODE } from './config/auth.js';
+import { authenticateToken } from './middleware/auth.js';
 import { resolveCorsOptions, resolveTrustProxy } from './config/security.js';
 import { readProfile } from './models/profileModel.js';
 import { readCategories } from './models/categoryModel.js';
@@ -308,6 +310,9 @@ app.use(cors((req, callback) => {
 }));
 app.use(cookieParser());
 
+// Protect the origin too: an Access login at the edge alone is not sufficient.
+if (AUTH_MODE === 'cloudflare-access') app.use('/admin', authenticateToken);
+
 app.get('/', injectHomeAppShell);
 app.get('/robots.txt', getRobots);
 
@@ -315,21 +320,25 @@ app.get('/robots.txt', getRobots);
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// API Routes
-app.use('/api', healthRouter);
-app.use('/api/posts', postRouter);
-app.use('/api/categories', categoryRouter);
-app.use('/api/profile', profileRouter);
-app.use('/api/uploads', uploadRouter);
-app.use('/api/comments', commentRouter);
-app.use('/api/auth', authRouter);
-app.use('/api/analytics', analyticsRouter);
-app.use('/api/images', publicImageRouter);
-app.use('/api', previewRouter);
-app.get('/api/search', searchRateLimiter, searchPosts);
-app.use('/api', (_req, res) => {
+// Access covers /admin and /admin/*, including every admin API request.
+// Public readers continue to use /api without an Access login challenge.
+const apiRouter = express.Router();
+apiRouter.use('/', healthRouter);
+apiRouter.use('/posts', postRouter);
+apiRouter.use('/categories', categoryRouter);
+apiRouter.use('/profile', profileRouter);
+apiRouter.use('/uploads', uploadRouter);
+apiRouter.use('/comments', commentRouter);
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/analytics', analyticsRouter);
+apiRouter.use('/images', publicImageRouter);
+apiRouter.use('/', previewRouter);
+apiRouter.get('/search', searchRateLimiter, searchPosts);
+apiRouter.use((_req, res) => {
     res.status(404).json({ message: 'API 경로를 찾을 수 없습니다.' });
 });
+app.use('/admin/api', authenticateToken, apiRouter);
+app.use('/api', apiRouter);
 app.use(handleBodyParserError);
 app.get(/^\/admin(?:\/.*)?$/, injectNoindexAppShell);
 app.get(['/posts/:slug', '/p/:slug'], injectPostMeta);

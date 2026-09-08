@@ -90,6 +90,10 @@ npm run verify:data
 - 의존성 변경 후 `npm ci`, `npm audit`, `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e`를 실행합니다. 보안 회귀 테스트는 `server/tests/dependency-security.test.js`에 포함되어 있습니다.
 
 ## Environment Variables
+
+Cloudflare Access 로그인 통합은 [설정 가이드](docs/cloudflare-access.md)를 참고하세요.
+기본 인증 방식은 비밀번호이며, 운영 전환은 Access 경로·정책 확인 후 명시적으로 활성화합니다.
+
 ### Backend (`server`)
 - `PORT` (default: `4000`)
 - `HOST` (optional)

@@ -1,3 +1,8 @@
+import { resolveAuthMode, resolveAccessConfig } from './access.js';
+
+export const AUTH_MODE = resolveAuthMode();
+export const ACCESS_CONFIG = resolveAccessConfig();
+
 const DEFAULT_DEV_JWT_SECRET = 'dev-only-secret-do-not-use-in-production';
 const DEFAULT_DEV_ADMIN_PASSWORD = 'admin1234';
 const isProduction = process.env.NODE_ENV === 'production';
@@ -14,7 +19,7 @@ if (!jwtSecret) {
     }
 }
 
-if (!adminPassword) {
+if (AUTH_MODE === 'password' && !adminPassword) {
     if (isProduction) {
         console.error('CRITICAL: ADMIN_PASSWORD environment variable is not defined!');
         process.exit(1);
@@ -24,4 +29,4 @@ if (!adminPassword) {
 }
 
 export const JWT_SECRET = jwtSecret || DEFAULT_DEV_JWT_SECRET;
-export const ADMIN_PASSWORD = adminPassword || DEFAULT_DEV_ADMIN_PASSWORD;
+export const ADMIN_PASSWORD = AUTH_MODE === 'password' ? adminPassword || DEFAULT_DEV_ADMIN_PASSWORD : '';
