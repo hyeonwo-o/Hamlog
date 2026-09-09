@@ -23,7 +23,7 @@ export const PostMetadata: React.FC<PostMetadataProps> = ({
     const isInspector = variant === 'inspector';
 
     return (
-        <div className={`${isInspector ? 'grid gap-4' : 'mt-6 grid gap-4 border-t border-[color:var(--border)] pt-6 md:grid-cols-12 bg-transparent'}`}>
+        <div className={`${isInspector ? 'grid min-w-0 grid-cols-1 gap-4' : 'mt-6 grid gap-4 border-t border-[color:var(--border)] pt-6 md:grid-cols-12 bg-transparent'}`}>
             {/* Category - Col 6 */}
             <div className={`${isInspector ? 'relative' : 'md:col-span-6 relative group'}`}>
                 <label className="mb-1 block text-[10px] text-[var(--text-muted)]">카테고리</label>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import AdminNav from './AdminNav';
@@ -23,41 +23,64 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
   onSectionChange,
   onLogout,
   onBeforeNavigateHome
-}) => (
-  <header className="sticky top-0 z-10 border-b border-[color:var(--border)] bg-[var(--surface-overlay)] backdrop-blur-md">
-    <div className="mx-auto flex max-w-[1700px] flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between">
-      {logoutError && (
-        <p className="sr-only" role="alert">{logoutError}</p>
-      )}
-      <AdminNav
-        activeSection={activeSection}
-        sections={sections}
-        onChange={onSectionChange}
-      />
-      <div className="flex items-center gap-2">
-        <ThemeSelect />
-        <button
-          onClick={onLogout}
-          disabled={isLoggingOut}
-          className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <LogOut size={16} />
-          {isLoggingOut ? '로그아웃 중...' : '로그아웃'}
-        </button>
-        <Link
-          to="/"
-          onClick={(event) => {
-            if (!onBeforeNavigateHome()) {
-              event.preventDefault();
-            }
-          }}
-          className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--accent)]"
-        >
-          사이트로 돌아가기
-        </Link>
+}) => {
+  const headerRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const admin = header?.closest<HTMLElement>('.admin-compact');
+    if (!header || !admin) return;
+
+    const syncHeight = () => {
+      admin.style.setProperty('--admin-header-offset', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+    };
+    syncHeight();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncHeight) : null;
+    observer?.observe(header);
+    window.addEventListener('resize', syncHeight);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', syncHeight);
+      admin.style.removeProperty('--admin-header-offset');
+    };
+  }, []);
+
+  return (
+    <header ref={headerRef} className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[var(--surface-overlay)] backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1700px] flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between">
+        {logoutError && (
+          <p className="sr-only" role="alert">{logoutError}</p>
+        )}
+        <AdminNav
+          activeSection={activeSection}
+          sections={sections}
+          onChange={onSectionChange}
+        />
+        <div className="flex items-center gap-2">
+          <ThemeSelect />
+          <button
+            onClick={onLogout}
+            disabled={isLoggingOut}
+            className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LogOut size={16} />
+            {isLoggingOut ? '로그아웃 중...' : '로그아웃'}
+          </button>
+          <Link
+            to="/"
+            onClick={(event) => {
+              if (!onBeforeNavigateHome()) {
+                event.preventDefault();
+              }
+            }}
+            className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--accent)]"
+          >
+            사이트로 돌아가기
+          </Link>
+        </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 export default AdminHeader;

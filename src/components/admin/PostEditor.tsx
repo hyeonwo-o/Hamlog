@@ -57,7 +57,8 @@ interface PostEditorProps {
     onLoadCategories: () => void | Promise<void>;
     onDirtyChange?: (dirty: boolean) => void;
     postListOpen?: boolean;
-    onOpenPostList?: () => void;
+    onTogglePostList?: () => void;
+    onNewPost?: () => void;
 }
 
 const PostEditor: React.FC<PostEditorProps> = ({
@@ -68,7 +69,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
     onLoadCategories,
     onDirtyChange,
     postListOpen,
-    onOpenPostList
+    onTogglePostList,
+    onNewPost
 }) => {
     const activeId = post?.id || null;
     const refreshPosts = usePostStore(state => state.fetchPosts);
@@ -395,7 +397,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
             <PostEditorSection
                 {...groupedProps}
                 postListOpen={postListOpen}
-                onOpenPostList={onOpenPostList}
+                onTogglePostList={onTogglePostList}
+                onNewPost={onNewPost}
             />
             <PublishDialog
                 open={publishDialogOpen}

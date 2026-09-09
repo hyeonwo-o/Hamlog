@@ -6,6 +6,35 @@ import { mergeAttributes } from '@tiptap/core';
 const require = createRequire(import.meta.url);
 const expressRequire = createRequire(require.resolve('express'));
 const bodyParserRequire = createRequire(expressRequire.resolve('body-parser'));
+const sharpRequire = createRequire(require.resolve('sharp'));
+const sharp = require('sharp');
+const { gte } = sharpRequire('semver');
+
+test('sharp uses a patched HEIF decoder for uploaded and public images', () => {
+  // GHSA-rgj7-g3m4-5g8c: check the loaded native library, not just package.json.
+  assert.ok(gte(sharp.versions.sharp, '0.35.4'), `Unpatched sharp: ${sharp.versions.sharp}`);
+  assert.ok(gte(sharp.versions.heif, '1.23.2'), `Unpatched libheif: ${sharp.versions.heif}`);
+});
+
+test('patched HEIF decoder still converts valid AVIF images to WebP', async () => {
+  const avif = await sharp({
+    create: {
+      width: 32,
+      height: 24,
+      channels: 4,
+      background: { r: 20, g: 100, b: 180, alpha: 1 }
+    }
+  }).avif().toBuffer();
+  const { data, info } = await sharp(avif, { animated: true })
+    .resize({ width: 16, withoutEnlargement: true })
+    .webp({ quality: 80, animated: true })
+    .toBuffer({ resolveWithObject: true });
+
+  assert.equal(info.format, 'webp');
+  assert.equal(info.width, 16);
+  assert.equal(info.height, 12);
+  assert.equal((await sharp(data).metadata()).format, 'webp');
+});
 
 // GHSA-cp6q-959q-f8rh: cover the ESM and CommonJS entry points used by
 // frontend code and server-side HTML extensions respectively.

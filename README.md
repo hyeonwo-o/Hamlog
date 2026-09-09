@@ -84,6 +84,8 @@ npm run verify:data
 
 ## Dependency Security
 
+- `sharp`는 `0.35.4` 이상과 보안 수정된 `libheif 1.23.2` 이상을 사용합니다. AVIF 디코딩·WebP 변환과 실제 Docker 런타임의 디코더 버전을 회귀 테스트로 확인합니다.
+- ESLint의 개발 의존성인 `js-yaml`은 잠금 파일에서 빈 매핑 병합의 자원 제한이 수정된 `4.3.2`를 사용합니다.
 - Tiptap 패키지는 보안 수정이 포함된 `3.31.3`으로 버전을 통일합니다. 업그레이드할 때는 에디터와 서버 HTML 렌더러를 함께 검증해야 합니다.
 - Express 4와 body-parser가 사용하는 `qs`는 `overrides`로 `6.16.0`을 사용합니다. 상위 패키지에서 수정 버전을 지원하기 전까지 이 설정을 유지합니다.
 - Tiptap 3의 표·다단 메뉴는 Floating UI를 사용합니다. `tippy.js`는 자체 슬래시 명령 메뉴에서 여전히 필요합니다.

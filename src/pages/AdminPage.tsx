@@ -22,6 +22,7 @@ import { DEFAULT_CATEGORY } from '../utils/category';
 import { ADMIN_SECTIONS } from '../utils/adminSections';
 import * as authApi from '../api/authApi';
 import { useAnalyticsSummary } from '../hooks/useAnalyticsSummary';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 const AdminPage: React.FC = () => {
   const posts = usePostStore(state => state.posts);
@@ -35,6 +36,9 @@ const AdminPage: React.FC = () => {
   const [logoutError, setLogoutError] = useState('');
   const [editorDirty, setEditorDirty] = useState(false);
   const [postListOpen, setPostListOpen] = useState(false);
+  const [desktopPostListOpen, setDesktopPostListOpen] = useState(true);
+  const isWideWorkspace = useMediaQuery('(min-width: 1536px)');
+  const postListVisible = isWideWorkspace ? desktopPostListOpen : postListOpen;
   const postListFocusTargetRef = useRef<'list' | 'editor' | null>(null);
   const { activeId, activeSection, updateAdminLocation } = useAdminRouteState();
   const {
@@ -265,10 +269,10 @@ const AdminPage: React.FC = () => {
           )}
 
           {activeSection === 'posts' && (
-            <div className="grid min-w-0 gap-4 2xl:grid-cols-[340px_minmax(0,1fr)]">
+            <div className={`grid min-w-0 gap-4 ${desktopPostListOpen ? '2xl:grid-cols-[340px_minmax(0,1fr)]' : ''}`}>
               <div
                 id="admin-post-list-panel"
-                className={`${postListOpen ? 'block' : 'hidden'} mx-auto min-w-0 w-full max-w-[640px] 2xl:mx-0 2xl:block 2xl:max-w-none`}
+                className={`${postListVisible ? 'block' : 'hidden'} mx-auto min-w-0 w-full max-w-[640px] 2xl:mx-0 2xl:max-w-none`}
               >
                 <div className="mb-3 flex justify-end 2xl:hidden">
                   <button
@@ -320,8 +324,15 @@ const AdminPage: React.FC = () => {
                   categoryTree={categoryTree}
                   onLoadCategories={loadCategories}
                   onDirtyChange={setEditorDirty}
-                  postListOpen={postListOpen}
-                  onOpenPostList={() => setPostListVisibility(true)}
+                  postListOpen={postListVisible}
+                  onTogglePostList={() => {
+                    if (isWideWorkspace) {
+                      setDesktopPostListOpen(open => !open);
+                    } else {
+                      setPostListVisibility(true);
+                    }
+                  }}
+                  onNewPost={handleNew}
                 />
               </div>
             </div>

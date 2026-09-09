@@ -10,6 +10,7 @@ import { DEFAULT_CATEGORY } from '../../../utils/category';
 import CategoryPicker from '../category/CategoryPicker';
 import PostInspector from '../post/PostInspector';
 import { useEditorToc } from '../../../hooks/useEditorToc';
+import { useMediaQuery } from '../../../hooks/useMediaQuery';
 
 export interface EditorHandlers {
   onTitleChange: (value: string) => void;
@@ -73,7 +74,8 @@ interface PostEditorSectionProps {
   uiState: UIState;
   data: EditorData;
   postListOpen?: boolean;
-  onOpenPostList?: () => void;
+  onTogglePostList?: () => void;
+  onNewPost?: () => void;
 }
 
 const PostEditorSection: React.FC<PostEditorSectionProps> = ({
@@ -83,9 +85,13 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
   uiState,
   data,
   postListOpen,
-  onOpenPostList
+  onTogglePostList,
+  onNewPost
 }) => {
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const [desktopInspectorOpen, setDesktopInspectorOpen] = useState(true);
+  const isDesktopWorkspace = useMediaQuery('(min-width: 1024px)');
+  const inspectorOpen = isDesktopWorkspace ? desktopInspectorOpen : mobileInspectorOpen;
   const sectionRef = useRef<HTMLDivElement>(null);
   const commandBarRef = useRef<HTMLDivElement>(null);
   const { draft, categoryTree, revisions, contentStats, currentCoverUrl, editor } = data;
@@ -184,9 +190,16 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
             onRestoreAutosave={onRestoreAutosave}
             onDiscardAutosave={onDiscardAutosave}
             inspectorOpen={inspectorOpen}
-            onToggleInspector={() => setInspectorOpen(current => !current)}
+            onToggleInspector={() => {
+              if (isDesktopWorkspace) {
+                setDesktopInspectorOpen(current => !current);
+              } else {
+                setMobileInspectorOpen(current => !current);
+              }
+            }}
             postListOpen={postListOpen}
-            onOpenPostList={onOpenPostList}
+            onTogglePostList={onTogglePostList}
+            onNewPost={onNewPost}
             onTogglePreview={onTogglePreview}
             onSave={() => void onSave('수동 저장되었습니다.')}
             onPublish={onPublish}
@@ -195,7 +208,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
         </div>
       </div>
 
-      <div className="mx-auto grid min-w-0 max-w-[1500px] gap-4 px-3 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className={`mx-auto grid min-w-0 max-w-[1500px] gap-4 px-3 ${desktopInspectorOpen ? 'lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
         <div className="min-w-0">
           <PostEditorCanvas
             editor={editor}
@@ -259,7 +272,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
 
         <div
           id="post-inspector-panel"
-          className={`${inspectorOpen ? 'block' : 'hidden'} order-first min-w-0 lg:order-none lg:block`}
+          className={`${inspectorOpen ? 'block' : 'hidden'} order-first min-w-0 lg:order-none`}
         >
           <PostInspector
             activeId={activeId}

@@ -124,6 +124,9 @@ prepare_data node "$TEST_DATA_GID"
 start_container "" docker-smoke
 wait_for_health docker-smoke
 
+# Verify the native decoder shipped in the final Alpine image as well as CI's host.
+docker exec "$CONTAINER_NAME" node --test server/tests/dependency-security.test.js
+
 if [ "$(docker exec "$CONTAINER_NAME" id -un)" != "node" ]; then
   echo "Container is not running as the node user." >&2
   exit 1

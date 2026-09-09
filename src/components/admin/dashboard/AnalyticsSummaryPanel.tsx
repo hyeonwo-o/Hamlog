@@ -32,14 +32,14 @@ const MetricCard = ({
   description: string;
   icon: ReactNode;
 }) => (
-  <div className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-4 py-3">
+  <div className="min-w-0 rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-4 py-3 first:col-span-2 sm:first:col-span-1">
     <div className="flex items-center justify-between gap-3">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
         {label}
       </p>
       <span className="text-[var(--text-muted)]" aria-hidden="true">{icon}</span>
     </div>
-    <p className="mt-2 font-display text-2xl font-semibold text-[var(--text)]">
+    <p className="mt-2 break-words font-display text-xl font-semibold tabular-nums text-[var(--text)] sm:text-2xl">
       {numberFormatter.format(value)}
     </p>
     <p className="mt-1 text-xs text-[var(--text-muted)]">{description}</p>
@@ -130,12 +130,12 @@ const AnalyticsSummaryPanel = ({
       )}
 
       {summary && (
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
             {metrics.map(metric => <MetricCard key={metric.label} {...metric} />)}
           </div>
 
-          <div className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-4 py-3">
+          <div className="min-w-0 rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-[var(--text)]">최근 7일</h3>
               <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--text-muted)]">

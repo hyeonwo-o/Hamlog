@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff, List, Save, Send, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, List, Plus, Save, Send, SlidersHorizontal, Trash2 } from 'lucide-react';
 import type { PostStatus } from '../../../data/blogData';
 
 interface PostCommandBarProps {
@@ -17,7 +17,8 @@ interface PostCommandBarProps {
   inspectorOpen: boolean;
   onToggleInspector: () => void;
   postListOpen?: boolean;
-  onOpenPostList?: () => void;
+  onTogglePostList?: () => void;
+  onNewPost?: () => void;
   onTogglePreview: () => void;
   onSave: () => void;
   onPublish: () => void;
@@ -45,7 +46,8 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
   inspectorOpen,
   onToggleInspector,
   postListOpen,
-  onOpenPostList,
+  onTogglePostList,
+  onNewPost,
   onTogglePreview,
   onSave,
   onPublish,
@@ -107,76 +109,95 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {onOpenPostList && (
-          <button
-            id="admin-post-list-toggle"
-            type="button"
-            onClick={onOpenPostList}
-            aria-controls="admin-post-list-panel"
-            aria-expanded={Boolean(postListOpen)}
-            className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] 2xl:hidden"
-          >
-            <List size={15} />
-            목록
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onToggleInspector}
-          aria-expanded={inspectorOpen}
-          aria-controls="post-inspector-panel"
-          aria-label={inspectorOpen ? '글 설정 닫기' : '글 설정 열기'}
-          title={inspectorOpen ? '글 설정 닫기' : '글 설정 열기'}
-          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] lg:hidden"
-        >
-          <SlidersHorizontal size={15} />
-          <span className="hidden sm:inline">{inspectorOpen ? '설정 닫기' : '글 설정'}</span>
-        </button>
-        <button
-          type="button"
-          data-testid="post-preview-toggle"
-          onClick={onTogglePreview}
-          aria-label={previewMode ? '편집' : '미리보기'}
-          title={previewMode ? '편집' : '미리보기'}
-          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
-        >
-          {previewMode ? <EyeOff size={14} /> : <Eye size={14} />}
-          <span className="hidden sm:inline">{previewMode ? '편집' : '미리보기'}</span>
-        </button>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={saving}
-          title={saveLabel}
-          className="inline-flex min-h-9 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50"
-        >
-          <Save size={14} />
-          {saving ? '저장 중' : saveLabel}
-        </button>
-        <button
-          type="button"
-          data-testid="post-publish-button"
-          onClick={onPublish}
-          disabled={saving}
-          title="발행 설정"
-          className="inline-flex min-h-9 items-center gap-1.5 bg-[var(--text)] px-3 text-xs font-semibold text-[var(--bg)] transition hover:opacity-90 disabled:opacity-50"
-        >
-          <Send size={14} />
-          발행 설정
-        </button>
-        {activeId && (
+      <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {onTogglePostList && (
+            <button
+              id="admin-post-list-toggle"
+              type="button"
+              onClick={onTogglePostList}
+              aria-controls="admin-post-list-panel"
+              aria-expanded={Boolean(postListOpen)}
+              title={postListOpen ? '글 목록 접기' : '글 목록 열기'}
+              className="inline-flex min-h-11 items-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] sm:min-h-9"
+            >
+              <List size={15} />
+              목록
+            </button>
+          )}
+          {onNewPost && (
+            <button
+              type="button"
+              onClick={onNewPost}
+              disabled={saving || !activeId}
+              aria-label="새 글 작성"
+              title={activeId ? '새 글 작성' : '새 글을 작성 중입니다'}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9 sm:min-w-0"
+            >
+              <Plus size={15} />
+              <span className="hidden min-[360px]:inline">새 글</span>
+            </button>
+          )}
           <button
             type="button"
-            onClick={onDelete}
-            aria-label="글 삭제"
-            title="삭제"
-            className="inline-flex min-h-9 items-center gap-1.5 border border-red-200 dark:border-red-400/30 bg-[var(--surface)] px-2.5 text-xs text-red-500 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-400/10"
+            onClick={onToggleInspector}
+            aria-expanded={inspectorOpen}
+            aria-controls="post-inspector-panel"
+            aria-label={inspectorOpen ? '글 설정 닫기' : '글 설정 열기'}
+            title={inspectorOpen ? '글 설정 닫기' : '글 설정 열기'}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] sm:min-h-9 sm:min-w-0"
           >
-            <Trash2 size={14} />
-            <span className="hidden sm:inline">삭제</span>
+            <SlidersHorizontal size={15} />
+            <span className="hidden sm:inline">글 설정</span>
           </button>
-        )}
+          <button
+            type="button"
+            data-testid="post-preview-toggle"
+            onClick={onTogglePreview}
+            aria-label={previewMode ? '편집' : '미리보기'}
+            title={previewMode ? '편집' : '미리보기'}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] sm:min-h-9 sm:min-w-0"
+          >
+            {previewMode ? <EyeOff size={14} /> : <Eye size={14} />}
+            <span className="hidden sm:inline">{previewMode ? '편집' : '미리보기'}</span>
+          </button>
+          {activeId && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={saving}
+              aria-label="글 삭제"
+              title="삭제"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 border border-red-200 dark:border-red-400/30 bg-[var(--surface)] px-2.5 text-xs text-red-500 dark:text-red-300 transition hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-400/10 sm:min-h-9 sm:min-w-0"
+            >
+              <Trash2 size={14} />
+              <span className="hidden sm:inline">삭제</span>
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            title={saveLabel}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50 sm:min-h-9 sm:flex-none"
+          >
+            <Save size={14} />
+            {saving ? '저장 중' : saveLabel}
+          </button>
+          <button
+            type="button"
+            data-testid="post-publish-button"
+            onClick={onPublish}
+            disabled={saving}
+            title="발행 설정"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 bg-[var(--text)] px-3 text-xs font-semibold text-[var(--bg)] transition hover:opacity-90 disabled:opacity-50 sm:min-h-9 sm:flex-none"
+          >
+            <Send size={14} />
+            발행 설정
+          </button>
+        </div>
       </div>
     </div>
   );
