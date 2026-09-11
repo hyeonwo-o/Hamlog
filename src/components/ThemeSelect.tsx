@@ -1,32 +1,42 @@
+import { useId } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { parseThemePreference } from '../contexts/ThemeContext';
 import { useTheme } from '../hooks/useTheme';
 
-const labels = { system: '기기 설정', light: '라이트', dark: '다크' };
+const options = [
+  { value: 'system', label: '기기 설정', Icon: Monitor },
+  { value: 'light', label: '라이트', Icon: Sun },
+  { value: 'dark', label: '다크', Icon: Moon }
+] as const;
 
 export default function ThemeSelect() {
   const { preference, setPreference } = useTheme();
-  const Icon = preference === 'system' ? Monitor : preference === 'dark' ? Moon : Sun;
+  const name = useId();
 
   return (
-    <label
-      className="relative inline-flex h-11 min-h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:border-[color:var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)] sm:min-h-0 sm:w-auto sm:px-3"
-      title={`화면 테마: ${labels[preference]}`}
+    <div
+      role="radiogroup"
+      aria-label="화면 테마"
+      className="inline-flex shrink-0 rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-0.5"
     >
-      <span className="pointer-events-none inline-flex items-center gap-2" aria-hidden="true">
-        <Icon size={16} />
-        <span className="hidden text-xs sm:inline">{labels[preference]}</span>
-      </span>
-      <span className="sr-only">화면 테마</span>
-      <select
-        value={preference}
-        onChange={event => setPreference(parseThemePreference(event.target.value))}
-        className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] cursor-pointer bg-[var(--surface)] text-[var(--text)] opacity-0"
-      >
-        <option className="text-[var(--text)]" value="system">기기 설정</option>
-        <option className="text-[var(--text)]" value="light">라이트</option>
-        <option className="text-[var(--text)]" value="dark">다크</option>
-      </select>
-    </label>
+      {options.map(({ value, label, Icon }) => (
+        <label key={value} className="relative inline-flex cursor-pointer" title={label}>
+          <input
+            type="radio"
+            name={name}
+            value={value}
+            checked={preference === value}
+            onChange={() => setPreference(value)}
+            aria-label={label}
+            className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0"
+          />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none inline-flex min-h-11 w-11 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors peer-hover:text-[var(--accent-strong)] peer-checked:bg-[var(--accent-soft)] peer-checked:text-[var(--accent-strong)] peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-[var(--accent)] sm:min-h-9 sm:w-9"
+          >
+            <Icon size={16} />
+          </span>
+        </label>
+      ))}
+    </div>
   );
 }

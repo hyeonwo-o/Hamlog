@@ -46,7 +46,10 @@ export const getEditorExtensions = () => [
     }),
     CustomImage,
     Placeholder.configure({
-        placeholder: "내용을 입력하세요. '/'를 입력하면 수식, Mermaid, 영상, 링크 카드와 다단 레이아웃을 삽입할 수 있습니다."
+        placeholder: ({ editor }) => editor.isEmpty
+            ? '내용을 입력하세요. /로 블록 추가'
+            : '/로 블록 추가',
+        showOnlyCurrent: true
     }),
     TextAlign.configure({
         types: EDITOR_TEXT_ALIGN_TYPES

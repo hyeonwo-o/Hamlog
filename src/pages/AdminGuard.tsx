@@ -121,7 +121,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
     return (
       <div className="flex min-h-screen items-center justify-center px-4 text-[var(--text)]">
         <section className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="font-display text-xl font-semibold">{authMode ? 'Cloudflare Access 인증' : '인증 설정 확인'}</h1>
             <ThemeSelect />
           </div>
@@ -139,7 +139,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   return (
     <div className="flex min-h-screen items-center justify-center px-4 text-[var(--text)]">
       <div className="w-full max-w-sm rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--text-muted)]">
             관리자 접근
           </p>

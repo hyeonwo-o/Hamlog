@@ -32,15 +32,15 @@ test('theme follows the device, persists explicit choices, and synchronizes tabs
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/');
   const root = page.locator('html');
-  const select = page.getByRole('combobox', { name: themeControl });
+  const control = page.getByRole('radiogroup', { name: themeControl });
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  await expect(select).toHaveValue('system');
+  await expect(control.getByRole('radio', { name: '기기 설정' })).toBeChecked();
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(16, 21, 30)');
 
-  await select.selectOption('light');
+  await control.getByRole('radio', { name: '라이트' }).check();
   await expect(root).toHaveAttribute('data-theme', 'light');
   await page.reload();
-  await expect(select).toHaveValue('light');
+  await expect(control.getByRole('radio', { name: '라이트' })).toBeChecked();
   await expect(root).toHaveAttribute('data-theme', 'light');
   await page.emulateMedia({ colorScheme: 'light' });
   await page.emulateMedia({ colorScheme: 'dark' });
@@ -48,12 +48,12 @@ test('theme follows the device, persists explicit choices, and synchronizes tabs
 
   const otherTab = await context.newPage();
   await otherTab.goto('/');
-  await otherTab.getByRole('combobox', { name: themeControl }).selectOption('dark');
-  await expect(select).toHaveValue('dark');
+  await otherTab.getByRole('radiogroup', { name: themeControl }).getByRole('radio', { name: '다크' }).check();
+  await expect(control.getByRole('radio', { name: '다크' })).toBeChecked();
   await expect(root).toHaveAttribute('data-theme', 'dark');
   await otherTab.close();
 
-  await select.selectOption('system');
+  await control.getByRole('radio', { name: '기기 설정' }).check();
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(root).toHaveAttribute('data-theme', 'light');
   await page.emulateMedia({ colorScheme: 'dark' });
@@ -61,9 +61,13 @@ test('theme follows the device, persists explicit choices, and synchronizes tabs
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#10151e');
 
   await page.setViewportSize({ width: 320, height: 720 });
-  await expect(select).toBeVisible();
+  await expect(control).toBeVisible();
   await expect(page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link')).toBeVisible();
-  expect(await select.evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(44);
+  for (const radio of await control.getByRole('radio').all()) {
+    const bounds = await radio.boundingBox();
+    expect(bounds!.width).toBeGreaterThanOrEqual(44);
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+  }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath('dark-home-mobile.png') });
 });
@@ -86,10 +90,32 @@ test('theme switching still works when browser storage is unavailable', async ({
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('combobox', { name: themeControl }).selectOption('light');
+  await page.getByRole('radiogroup', { name: themeControl }).getByRole('radio', { name: '라이트' }).check();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   expect(errors).toEqual([]);
+});
+
+test('three theme icons fit narrow password and Access authentication screens', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto('/admin');
+  const control = page.getByRole('radiogroup', { name: themeControl });
+  await expect(page.getByLabel('관리자 비밀번호', { exact: true })).toBeVisible();
+  await expect(control.getByRole('radio')).toHaveCount(3);
+  await control.getByRole('radio', { name: '라이트' }).check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.route('**/api/auth/config', route => route.fulfill({ json: { mode: 'cloudflare-access' } }));
+  await page.route('**/admin/api/auth/me', route => route.fulfill({ status: 401, json: { message: 'Access session expired' } }));
+  await page.goto('/admin');
+  await expect(page.getByRole('heading', { name: 'Cloudflare Access 인증' })).toBeVisible();
+  await expect(control.getByRole('radio', { name: '라이트' })).toBeChecked();
+  await control.getByRole('radio', { name: '다크' }).check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await expect(page.getByLabel('관리자 비밀번호', { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath('theme-icons-access-mobile.png') });
 });
 
 for (const preference of ['system', 'light'] as const) {
@@ -113,7 +139,8 @@ for (const preference of ['system', 'light'] as const) {
       await navigation;
     }
     await expect(page.locator('[data-prerendered]')).toHaveCount(0);
-    await expect(page.getByRole('combobox', { name: themeControl })).toHaveValue(preference);
+    await expect(page.getByRole('radiogroup', { name: themeControl })
+      .getByRole('radio', { name: preference === 'system' ? '기기 설정' : '라이트' })).toBeChecked();
   });
 }
 
@@ -121,7 +148,7 @@ test('dark editor, dialogs, and public diagrams stay readable without changing s
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/admin?section=posts');
-  await expect(page.getByRole('combobox', { name: themeControl })).toHaveValue('system');
+  await expect(page.getByRole('radiogroup', { name: themeControl }).getByRole('radio', { name: '기기 설정' })).toBeChecked();
   await page.getByLabel('관리자 비밀번호', { exact: true }).fill(process.env.ADMIN_PASSWORD ?? 'e2e-password');
   await page.getByRole('button', { name: '로그인', exact: true }).click();
   await expect(page.getByPlaceholder('제목을 입력하세요')).toBeVisible();
@@ -161,10 +188,10 @@ test('dark editor, dialogs, and public diagrams stay readable without changing s
     const diagram = page.locator('.mermaid-node .mermaid-render svg');
     await expect(diagram).toBeVisible();
     const initialDiagram = await diagram.getAttribute('id');
-    await page.getByRole('combobox', { name: themeControl }).selectOption('light');
+    await page.getByRole('radiogroup', { name: themeControl }).getByRole('radio', { name: '라이트' }).check();
     await expect(page.locator('.ProseMirror span').filter({ hasText: /^글자색 문구$/ })).toHaveCSS('color', 'rgb(29, 25, 22)');
     await expect(diagram).not.toHaveAttribute('id', initialDiagram!);
-    await page.getByRole('combobox', { name: themeControl }).selectOption('dark');
+    await page.getByRole('radiogroup', { name: themeControl }).getByRole('radio', { name: '다크' }).check();
     await expect(page.getByText('저장되지 않은 변경', { exact: true })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Mermaid 소스 편집' }).click();

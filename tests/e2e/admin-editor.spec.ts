@@ -124,6 +124,83 @@ test('upgraded editor updates formatting controls and keeps table menus undoable
   expect(errors).toEqual([]);
 });
 
+for (const theme of ['light', 'dark'] as const) {
+  test(`editor placeholder stays secondary and out of saved content in ${theme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openAdminEditor(page);
+    const editor = page.locator('.ProseMirror');
+    const hint = editor.locator('p.is-empty[data-placeholder]');
+    let postId: string | null = null;
+
+    try {
+      await editor.click();
+      await expect(hint).toHaveAttribute('data-placeholder', '내용을 입력하세요. /로 블록 추가');
+      await page.getByPlaceholder('제목을 입력하세요').fill(`문단 안내 검증 ${theme} ${Date.now()}`);
+      await editor.fill('작성한 본문은 그대로 유지됩니다.');
+      await editor.press('Enter');
+      await expect(hint).toHaveCount(1);
+      await expect(hint).toHaveAttribute('data-placeholder', '/로 블록 추가');
+
+      const styles = await hint.evaluate(element => {
+        const placeholder = getComputedStyle(element, '::before');
+        const paragraph = getComputedStyle(element);
+        const background = getComputedStyle(element.closest('.ProseMirror')!).backgroundColor;
+        const luminance = (color: string) => color.match(/[\d.]+/g)!.slice(0, 3)
+          .map(Number).map(value => value / 255)
+          .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+          .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+        const contrast = (color: string) => {
+          const foreground = luminance(color);
+          const surface = luminance(background);
+          return (Math.max(foreground, surface) + 0.05) / (Math.min(foreground, surface) + 0.05);
+        };
+        return {
+          placeholderColor: placeholder.color,
+          paragraphColor: paragraph.color,
+          placeholderSize: parseFloat(placeholder.fontSize),
+          paragraphSize: parseFloat(paragraph.fontSize),
+          placeholderContrast: contrast(placeholder.color),
+          paragraphContrast: contrast(paragraph.color),
+          pointerEvents: placeholder.pointerEvents,
+          userSelect: placeholder.userSelect
+        };
+      });
+      expect(styles.placeholderColor).not.toBe(styles.paragraphColor);
+      expect(styles.placeholderSize).toBe(14);
+      expect(styles.placeholderSize).toBeLessThan(styles.paragraphSize);
+      expect(styles.placeholderContrast).toBeGreaterThanOrEqual(4.5);
+      expect(styles.placeholderContrast).toBeLessThan(styles.paragraphContrast);
+      expect(styles.pointerEvents).toBe('none');
+      expect(styles.userSelect).toBe('none');
+      await expect(editor).toHaveText('작성한 본문은 그대로 유지됩니다.');
+      await page.screenshot({ path: test.info().outputPath(`editor-placeholder-${theme}.png`) });
+
+      await page.keyboard.insertText('두 번째 문단입니다.');
+      await expect(hint).toHaveCount(0);
+      await editor.press('Enter');
+      await editor.press('Enter');
+      await expect(hint).toHaveCount(1);
+      await expect(hint).toHaveAttribute('data-placeholder', '/로 블록 추가');
+
+      const savedResponse = page.waitForResponse(response => response.request().method() === 'POST'
+        && new URL(response.url()).pathname === '/api/posts');
+      await editor.press('Control+s');
+      const response = await savedResponse;
+      expect(response.status()).toBe(201);
+      const saved = await response.json();
+      postId = saved.id;
+      const savedContent = `${saved.contentHtml} ${JSON.stringify(saved.contentJson)}`;
+      expect(savedContent).toContain('작성한 본문은 그대로 유지됩니다.');
+      expect(savedContent).toContain('두 번째 문단입니다.');
+      expect(savedContent).not.toContain('블록 추가');
+      expect(savedContent).not.toContain('data-placeholder');
+    } finally {
+      if (postId) await deletePostFromAdmin(page, postId);
+    }
+  });
+}
+
 test('admin editor toolbar is grouped and accessible', async ({ page }) => {
   await page.setViewportSize({ width: 760, height: 900 });
   await openAdminEditor(page);

@@ -25,39 +25,58 @@ async function openDashboard(page: Page) {
   await expect(page.getByRole('heading', { name: '방문자 현황' })).toBeVisible();
 }
 
-test('admin theme selector keeps a clear mobile icon and native keyboard control', async ({ page }) => {
+test('admin theme icons provide direct selection, touch targets, and native keyboard control', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.emulateMedia({ colorScheme: 'dark' });
   await openDashboard(page);
 
-  const select = page.getByRole('combobox', { name: '화면 테마', exact: true });
-  const label = select.locator('..');
-  const visibleText = label.locator('span[aria-hidden="true"] > span');
-  await expect(select).toHaveValue('system');
-  // Native select text is hidden as a whole, so option colors cannot leak over the icon.
-  await expect(select).toHaveCSS('opacity', '0');
-  await expect(visibleText).toBeHidden();
-  const bounds = await label.boundingBox();
-  expect(bounds?.width).toBeGreaterThanOrEqual(44);
-  expect(bounds?.height).toBeGreaterThanOrEqual(44);
-  const icon = await label.locator('svg').boundingBox();
-  expect(Math.abs(icon!.x + icon!.width / 2 - bounds!.x - bounds!.width / 2)).toBeLessThan(1);
-  expect(Math.abs(icon!.y + icon!.height / 2 - bounds!.y - bounds!.height / 2)).toBeLessThan(1);
+  const control = page.getByRole('radiogroup', { name: '화면 테마', exact: true });
+  const system = control.getByRole('radio', { name: '기기 설정', exact: true });
+  const light = control.getByRole('radio', { name: '라이트', exact: true });
+  const dark = control.getByRole('radio', { name: '다크', exact: true });
+  await expect(control.getByRole('radio')).toHaveCount(3);
+  await expect(page.getByRole('combobox', { name: '화면 테마' })).toHaveCount(0);
+  await expect(system).toBeChecked();
+  for (const radio of [system, light, dark]) {
+    const bounds = await radio.boundingBox();
+    expect(bounds!.width).toBeGreaterThanOrEqual(44);
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    const icon = await radio.locator('..').locator('svg').boundingBox();
+    expect(Math.abs(icon!.x + icon!.width / 2 - bounds!.x - bounds!.width / 2)).toBeLessThan(1);
+    expect(Math.abs(icon!.y + icon!.height / 2 - bounds!.y - bounds!.height / 2)).toBeLessThan(1);
+  }
 
-  await select.selectOption('dark');
-  await select.focus();
-  await expect(label).not.toHaveCSS('box-shadow', 'none');
-  await page.keyboard.press('ArrowUp');
-  await expect(select).toHaveValue('light');
+  await dark.check();
+  await expect(dark).toBeChecked();
+  await page.keyboard.press('ArrowLeft');
+  await expect(light).toBeChecked();
+  await expect(light).toBeFocused();
+  await expect(light.locator('..').locator('span')).not.toHaveCSS('box-shadow', 'none');
+  await expect(light.locator('..').locator('span')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(dark.locator('..').locator('span')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '로그아웃', exact: true })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(light).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(system).toBeChecked();
+  await page.keyboard.press('ArrowLeft');
+  await expect(dark).toBeChecked();
+  await page.keyboard.press('ArrowRight');
+  await expect(system).toBeChecked();
+  await page.keyboard.press('ArrowRight');
+  await expect(light).toBeChecked();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('.admin-compact')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   await page.screenshot({ path: test.info().outputPath('admin-mobile-theme.png') });
 
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(visibleText).toBeVisible();
-  await expect(visibleText).toHaveText('라이트');
+  for (const width of [320, 390, 640, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(control).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
   await page.reload();
-  await expect(select).toHaveValue('light');
+  await expect(light).toBeChecked();
 });
 
 test('analytics cards stay compact beside daily history and fit narrow screens', async ({ page }) => {

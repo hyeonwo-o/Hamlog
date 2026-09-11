@@ -47,7 +47,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   return (
     <header ref={headerRef} className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[var(--surface-overlay)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1700px] flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between">
+      <div className="mx-auto flex max-w-[1700px] flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         {logoutError && (
           <p className="sr-only" role="alert">{logoutError}</p>
         )}
@@ -56,7 +56,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
           sections={sections}
           onChange={onSectionChange}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ThemeSelect />
           <button
             onClick={onLogout}

@@ -11,6 +11,7 @@
   --surface-strong: rgba(255, 255, 255, 0.92);
   --text: #111111;
   --text-muted: #666666;
+  --editor-placeholder: #6e7683;
   --accent: #2563eb;
   --accent-strong: #1d4ed8;
   --accent-soft: rgba(37, 99, 235, 0.14);
@@ -38,6 +39,7 @@
   --surface-strong: rgba(23, 30, 42, 0.98);
   --text: #e5eaf3;
   --text-muted: #a2aec0;
+  --editor-placeholder: #7a879a;
   --accent: #60a5fa;
   --accent-strong: #93c5fd;
   --accent-soft: rgba(96, 165, 250, 0.16);
@@ -617,8 +619,13 @@ body::before {
 .tiptap-editor .is-empty::before {
   content: attr(data-placeholder);
   float: left;
-  color: var(--text-muted);
+  color: var(--editor-placeholder);
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 400;
+  font-style: normal;
   pointer-events: none;
+  user-select: none;
   height: 0;
 }
 
