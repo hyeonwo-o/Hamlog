@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Editor } from '@tiptap/react';
+import type { Editor, EditorEvents } from '@tiptap/react';
 import type { TocItem } from '../components/TableOfContents';
+import { collectEditorToc, updateEditorToc } from '../editor/utils/editorToc';
 
 export function useEditorToc(editor: Editor | null) {
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
@@ -11,25 +12,19 @@ export function useEditorToc(editor: Editor | null) {
       return;
     }
 
-    const updateToc = () => {
-      const items: TocItem[] = [];
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'heading') {
-          items.push({
-            id: `heading-${pos}`,
-            text: node.textContent,
-            level: node.attrs.level
-          });
-        }
-      });
-      setTocItems(items);
+    let index = collectEditorToc(editor.state.doc);
+    setTocItems(index.items);
+    const updateToc = ({ transaction, appendedTransactions }: EditorEvents['transaction']) => {
+      const next = updateEditorToc(index, [transaction, ...appendedTransactions], editor.state.doc);
+      if (next.items !== index.items) setTocItems(next.items);
+      index = next;
     };
 
-    updateToc();
-    editor.on('update', updateToc);
+    // The transaction event also covers setContent({ emitUpdate: false }).
+    editor.on('transaction', updateToc);
 
     return () => {
-      editor.off('update', updateToc);
+      editor.off('transaction', updateToc);
     };
   }, [editor]);
 

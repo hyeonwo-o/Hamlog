@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { PostDraft } from '../../../types/admin';
 import type { CategoryTreeResult } from '../../../utils/categoryTree';
 import type { PostRevision } from '../../../data/blogData';
 import { PostMetadata } from '../PostMetadata';
 import PostInspectorSection from './PostInspectorSection';
+import PostRevisionHistory from './PostRevisionHistory';
 import { TableOfContents } from '../../TableOfContents';
 import type { TocItem } from '../../TableOfContents';
+import { collectCleanupProtectedFilenames, collectUploadFilenames } from '../../../utils/uploadReferences';
 import {
   getEffectiveSeoMetadata,
   SEO_DESCRIPTION_MAX_LENGTH,
@@ -40,30 +42,6 @@ interface PostInspectorProps {
   tocItems: TocItem[];
   onTocLinkClick: (id: string) => void;
 }
-
-const formatRevisionLabel = (savedAt: string) => {
-  const timestamp = new Date(savedAt);
-  if (Number.isNaN(timestamp.getTime())) return '';
-  return timestamp.toLocaleString('ko-KR', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-const describeRevisionEvent = (event: PostRevision['event']) => {
-  switch (event) {
-    case 'created':
-      return '생성';
-    case 'restored':
-      return '복구';
-    case 'baseline':
-      return '이전 상태';
-    default:
-      return '저장';
-  }
-};
 
 const StatCard = ({ label, value }: { label: string; value: ReactNode }) => (
   <div className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] p-3">
@@ -106,6 +84,14 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   const [selectedUploads, setSelectedUploads] = useState<Set<string>>(() => new Set());
   const [uploadCleanupLoading, setUploadCleanupLoading] = useState(false);
   const [uploadCleanupNotice, setUploadCleanupNotice] = useState('');
+  // A scan can finish after further typing. Never offer images now in the
+  // current draft even when they appeared unused in the earlier response.
+  const cleanupCandidates = useMemo(() => {
+    if (!unusedUploads) return [];
+    const draftReferences = new Set(collectUploadFilenames(draft));
+    return unusedUploads.unused.filter(file => !draftReferences.has(file.filename));
+  }, [draft, unusedUploads]);
+  const selectedCandidates = cleanupCandidates.filter(file => selectedUploads.has(file.filename));
   const effectiveSeo = getEffectiveSeoMetadata(draft);
   const seoTitleLength = effectiveSeo.titleLength;
   const seoTitleNeedsWork = seoTitleLength > SEO_TITLE_MAX_LENGTH;
@@ -116,11 +102,12 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   const loadUnusedUploads = async () => {
     setUploadCleanupLoading(true);
     setUploadCleanupNotice('');
+    setUnusedUploads(null);
+    setSelectedUploads(new Set());
 
     try {
-      const response = await fetchUnusedUploads();
+      const response = await fetchUnusedUploads(collectCleanupProtectedFilenames(draft));
       setUnusedUploads(response);
-      setSelectedUploads(new Set(response.unused.map(file => file.filename)));
       setUploadCleanupNotice(
         response.unused.length > 0
           ? `미사용 이미지 ${response.unused.length}개를 찾았습니다.`
@@ -148,9 +135,9 @@ const PostInspector: React.FC<PostInspectorProps> = ({
   };
 
   const handleDeleteUnusedUploads = async () => {
-    if (!unusedUploads || selectedUploads.size === 0) return;
+    if (!unusedUploads || selectedCandidates.length === 0) return;
     const confirmed = window.confirm(
-      `선택한 미사용 이미지 ${selectedUploads.size}개를 영구 삭제할까요?`
+      `선택한 미사용 이미지 ${selectedCandidates.length}개를 영구 삭제할까요?\n다른 기기에서 작성 중인 글에 사용하지 않는 이미지인지 확인해 주세요.`
     );
     if (!confirmed) return;
 
@@ -158,15 +145,27 @@ const PostInspector: React.FC<PostInspectorProps> = ({
     setUploadCleanupNotice('');
 
     try {
-      const response = await deleteUnusedUploads(Array.from(selectedUploads));
+      const protectedFilenames = collectCleanupProtectedFilenames(draft);
+      const protectedNames = new Set(protectedFilenames);
+      const filenames = selectedCandidates
+        .map(file => file.filename)
+        .filter(filename => !protectedNames.has(filename));
+      if (filenames.length === 0) {
+        setSelectedUploads(new Set());
+        setUploadCleanupNotice('선택한 이미지가 작성 중인 글이나 임시 저장본에 사용되어 보호했습니다.');
+        return;
+      }
+      const response = await deleteUnusedUploads(filenames, protectedFilenames);
       setUnusedUploads(current => current
         ? {
           ...current,
+          totalFiles: current.totalFiles - response.deleted.length,
+          totalBytes: Math.max(0, current.totalBytes - response.deletedBytes),
           unused: response.remainingUnused,
           unusedBytes: response.remainingUnused.reduce((sum, file) => sum + file.size, 0)
         }
         : null);
-      setSelectedUploads(new Set(response.remainingUnused.map(file => file.filename)));
+      setSelectedUploads(new Set());
       setUploadCleanupNotice(
         `${response.deleted.length}개 이미지(${formatBytes(response.deletedBytes)})를 삭제했습니다.`
       );
@@ -187,6 +186,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
       <input
         type="checkbox"
         checked={selectedUploads.has(file.filename)}
+        disabled={uploadCleanupLoading}
         onChange={() => toggleSelectedUpload(file.filename)}
         className="h-4 w-4"
       />
@@ -242,7 +242,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
 
       <PostInspectorSection
         title="이미지 정리"
-        description="글, 리비전, 프로필에서 참조하지 않는 업로드 이미지를 찾아 삭제합니다."
+        description="저장된 글·리비전·프로필과 이 브라우저의 작성 중인 글·임시 저장본에 쓰인 이미지를 보호합니다. 최근 24시간 업로드는 정리하지 않습니다."
         collapsible
         defaultOpen={false}
       >
@@ -250,8 +250,14 @@ const PostInspector: React.FC<PostInspectorProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <StatCard label="업로드" value={unusedUploads ? unusedUploads.totalFiles : '-'} />
             <StatCard label="사용 중" value={unusedUploads ? unusedUploads.referencedFiles : '-'} />
-            <StatCard label="미사용" value={unusedUploads ? unusedUploads.unused.length : '-'} />
+            <StatCard label="정리 가능" value={unusedUploads ? cleanupCandidates.length : '-'} />
           </div>
+
+          {unusedUploads && unusedUploads.recentFiles > 0 && (
+            <p className="text-[11px] text-[var(--text-muted)]">
+              최근 {unusedUploads.gracePeriodHours}시간 이내 업로드 {unusedUploads.recentFiles}개는 삭제 유예 중입니다.
+            </p>
+          )}
 
           {uploadCleanupNotice && (
             <p className="text-xs text-[var(--text-muted)]">{uploadCleanupNotice}</p>
@@ -269,20 +275,20 @@ const PostInspector: React.FC<PostInspectorProps> = ({
             <button
               type="button"
               onClick={() => void handleDeleteUnusedUploads()}
-              disabled={uploadCleanupLoading || selectedUploads.size === 0}
+              disabled={uploadCleanupLoading || selectedCandidates.length === 0}
               className="rounded-lg border border-red-200 dark:border-red-400/30 px-3 py-1.5 text-xs font-semibold text-red-500 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-400/10 disabled:opacity-50"
             >
               선택 삭제
             </button>
           </div>
 
-          {unusedUploads && unusedUploads.unused.length > 0 && (
+          {cleanupCandidates.length > 0 && (
             <div className="space-y-2">
               <p className="text-[11px] text-[var(--text-muted)]">
-                선택됨 {selectedUploads.size}개 / {formatBytes(unusedUploads.unusedBytes)}
+                선택됨 {selectedCandidates.length}개 / {formatBytes(selectedCandidates.reduce((sum, file) => sum + file.size, 0))}
               </p>
               <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                {unusedUploads.unused.map(renderUploadCleanupRow)}
+                {cleanupCandidates.map(renderUploadCleanupRow)}
               </div>
             </div>
           )}
@@ -424,7 +430,7 @@ const PostInspector: React.FC<PostInspectorProps> = ({
 
       <PostInspectorSection
         title="리비전"
-        description="최근 저장본을 확인하고 원하는 시점으로 복구합니다."
+        description="전체 저장 이력을 조회하고 현재 편집본과 비교한 뒤 복구합니다."
         action={
           activeId ? (
             <span className="rounded-lg bg-[var(--surface-muted)] px-2.5 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
@@ -442,33 +448,14 @@ const PostInspector: React.FC<PostInspectorProps> = ({
         ) : revisions.length === 0 ? (
           <p className="text-xs text-[var(--text-muted)]">아직 저장된 리비전이 없습니다.</p>
         ) : (
-          <div className="space-y-3">
-            {revisions.slice(0, 5).map(revision => (
-              <div
-                key={revision.id}
-                className="rounded-lg border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 py-3"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-md bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-strong)]">
-                    {describeRevisionEvent(revision.event)}
-                  </span>
-                  <span className="text-[11px] text-[var(--text-muted)]">
-                    {formatRevisionLabel(revision.savedAt)}
-                  </span>
-                </div>
-                <p className="mt-2 truncate text-sm font-medium text-[var(--text)]">{revision.title}</p>
-                <p className="truncate text-[11px] text-[var(--text-muted)]">/{revision.slug}</p>
-                <button
-                  type="button"
-                  onClick={() => onRestoreRevision(revision.id)}
-                  disabled={Boolean(restoringRevisionId)}
-                  className="mt-3 rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-[11px] font-semibold text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50"
-                >
-                  {restoringRevisionId === revision.id ? '복구 중...' : '이 리비전 복구'}
-                </button>
-              </div>
-            ))}
-          </div>
+          <PostRevisionHistory
+            key={activeId}
+            activeId={activeId}
+            draft={draft}
+            revisions={revisions}
+            restoringRevisionId={restoringRevisionId}
+            onRestoreRevision={onRestoreRevision}
+          />
         )}
       </PostInspectorSection>
 

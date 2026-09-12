@@ -63,6 +63,8 @@ export interface Post {
     slug: string;
     title: string;
     summary: string;
+    /** Read-only SEO description resolved by the public detail/bootstrap API. */
+    metaDescription?: string;
     category?: string;
     contentJson?: JSONContent;
     contentHtml?: string;
@@ -89,4 +91,8 @@ export interface PostRevision {
     status: PostStatus;
 }
 
-export type PostInput = Omit<Post, 'id'>;
+export interface PostRevisionDetail extends PostRevision {
+    snapshot: Post;
+}
+
+export type PostInput = Omit<Post, 'id' | 'metaDescription'>;

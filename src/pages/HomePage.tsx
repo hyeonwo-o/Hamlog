@@ -28,6 +28,11 @@ const HomePage = () => {
         selectCategory,
         searchQuery,
         setSearchQuery,
+        normalizedQuery,
+        setIsComposing,
+        searchLoading,
+        searchError,
+        retrySearch,
         sortedPosts,
         popularPosts,
         filteredPosts,
@@ -109,19 +114,24 @@ const HomePage = () => {
                         </section>
                     )}
 
-                    <FeaturedSection posts={popularPosts} />
+                    {!normalizedQuery && !selectedCategory && <FeaturedSection posts={popularPosts} />}
 
                     <PostListSection
                         filteredPosts={filteredPosts}
                         categoryTree={categoryTree}
                         selectedCategory={selectedCategory}
                         searchQuery={searchQuery}
+                        normalizedQuery={normalizedQuery}
+                        searchLoading={searchLoading}
+                        searchError={searchError}
                         hasLoaded={hasLoaded}
                         loading={loading}
                         error={error}
                         onSelectCategory={selectCategory}
                         onSearchChange={setSearchQuery}
                         onClearSearch={() => setSearchQuery('')}
+                        onSearchCompositionChange={setIsComposing}
+                        onRetrySearch={retrySearch}
                     />
                 </main>
 

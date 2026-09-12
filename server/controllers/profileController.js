@@ -1,5 +1,6 @@
 import { readProfile, writeProfile } from '../models/profileModel.js';
 import { mergeProfile } from '../utils/normalizers/profileNormalizers.js';
+import { runWithDataStoreLock } from '../utils/storeLock.js';
 
 export const getProfile = async (req, res) => {
     try {
@@ -13,9 +14,11 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
     try {
-        const profile = await readProfile();
-        const next = mergeProfile(profile, req.body ?? {});
-        const saved = await writeProfile(next);
+        const saved = await runWithDataStoreLock(async () => {
+            const profile = await readProfile();
+            const next = mergeProfile(profile, req.body ?? {});
+            return writeProfile(next);
+        });
         res.json({ profile: saved });
     } catch (error) {
         console.error('Failed to update profile', error);

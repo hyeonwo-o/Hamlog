@@ -7,6 +7,7 @@ import { Copy, Check, Terminal } from 'lucide-react';
 import { resolveMeaningfulImageAlt } from '../editor/utils/imageAlt';
 import { buildImageVariantSrcSet, buildImageVariantUrl } from '../utils/imageUrl';
 import { resolveMermaidCodeBlockSource } from '../utils/mermaid';
+import { createHeadingIdAllocator } from '../../server/utils/headingAnchors.js';
 
 interface PostContentProps {
   contentHtml?: string;
@@ -263,6 +264,15 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
   }
 
   const sanitized = sanitizeHtml(contentHtml);
+  const template = document.createElement('template');
+  template.innerHTML = sanitized;
+  const headingSelector = 'h1, h2, h3';
+  const allocateHeadingId = createHeadingIdAllocator(
+    Array.from(template.content.querySelectorAll(headingSelector), heading => heading.id),
+    Array.from(template.content.querySelectorAll('[id]'))
+      .filter(element => !element.matches(headingSelector))
+      .map(element => element.id)
+  );
 
   const options: HTMLReactParserOptions = {
     replace: (domNode: DOMNode) => {
@@ -270,17 +280,8 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
 
       // 1. Handle Headings: Add IDs for TOC
       if (['h1', 'h2', 'h3'].includes(domNode.name)) {
-        if (!domNode.attribs.id) {
-          const text = getNodeText(domNode).trim() || 'heading';
-
-          const slug = text
-            .toLowerCase()
-            .replace(/[^a-z0-9가-힣\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .slice(0, 30);
-
-          domNode.attribs.id = `heading-${domNode.startIndex ?? ''}-${slug}`;
-        }
+        domNode.attribs.id = allocateHeadingId(getNodeText(domNode), domNode.attribs.id);
+        domNode.attribs.class = `${domNode.attribs.class || ''} scroll-mt-24`;
       }
 
       if (domNode.name === 'img') {

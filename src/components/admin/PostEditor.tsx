@@ -22,11 +22,9 @@ import {
 } from '../../utils/postContent';
 import { closeEditorOverlays } from '../../utils/editorOverlays';
 import { slugify } from '../../utils/slugify';
+import { getEditorContentSnapshot } from '../../editor/utils/editorContentSnapshot';
 
 const MAX_UPLOAD_MB = 8;
-
-const serializeContentJson = (contentJson?: ReturnType<typeof toDraft>['contentJson']) =>
-    contentJson ? JSON.stringify(contentJson) : '';
 
 const serializeDraftForDirtyCheck = (draft: ReturnType<typeof toDraft>) => JSON.stringify({
     title: draft.title,
@@ -51,6 +49,7 @@ const serializeDraftForDirtyCheck = (draft: ReturnType<typeof toDraft>) => JSON.
 
 interface PostEditorProps {
     post: Post | null;
+    requestedPostId: string | null;
     onSaveSuccess: (post: Post) => void;
     onDeleteSuccess: () => void;
     categoryTree: CategoryTreeResult;
@@ -63,6 +62,7 @@ interface PostEditorProps {
 
 const PostEditor: React.FC<PostEditorProps> = ({
     post,
+    requestedPostId,
     onSaveSuccess,
     onDeleteSuccess,
     categoryTree,
@@ -73,14 +73,18 @@ const PostEditor: React.FC<PostEditorProps> = ({
     onNewPost
 }) => {
     const activeId = post?.id || null;
-    const refreshPosts = usePostStore(state => state.fetchPosts);
+    const applyConfirmedPost = usePostStore(state => state.applyConfirmedPost);
     const posts = usePostStore(state => state.posts);
 
     // 1. Form Logic (extracted)
     const {
         draft,
         setDraft,
-        setSlugTouched,
+        getCurrentDraft,
+        getDraftBaseUpdatedAt,
+        restoreDraftBaseUpdatedAt,
+        acceptDraftBaseline,
+        acceptSavedPost,
         tagInput,
         setTagInput,
         updateDraft,
@@ -97,6 +101,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
     const editorRef = useRef<Editor | null>(null);
     const previewToggleTimeoutRef = useRef<number | null>(null);
     const preserveNoticeOnPostChangeRef = useRef(false);
+    const isSaveBusyRef = useRef<() => boolean>(() => false);
     const loadDraftSnapshot = useCallback(() => toDraft(post || undefined), [post]);
 
     // Reset post-scoped UI before autosave checks can surface a restorable draft notice.
@@ -111,34 +116,57 @@ const PostEditor: React.FC<PostEditorProps> = ({
 
     // 2. Auto-save Logic (extracted)
     const {
-        clearAutosave,
         handleRestoreAutosave,
         discardAutosave,
         hasRestorableDraft,
-        autosaveUpdatedAt
+        autosaveUpdatedAt,
+        browserSaveStatus,
+        browserSavedAt,
+        reconcileSavedDraft
     } = useAutosave({
         activeId,
         draft,
         setDraft,
         setNotice,
-        onLoadDraft: loadDraftSnapshot
+        onLoadDraft: loadDraftSnapshot,
+        getDraftBaseUpdatedAt,
+        restoreDraftBaseUpdatedAt
     });
 
     const {
         revisions,
         revisionsLoading,
         restoringRevisionId,
+        restoringRef,
         loadRevisions,
         handleRestoreRevision
     } = usePostRevisions({
         activeId,
+        expectedUpdatedAt: getDraftBaseUpdatedAt(),
+        isBusy: useCallback(() => {
+            if (hasRestorableDraft) {
+                setNotice('브라우저 임시 저장본을 먼저 복구하거나 삭제해 주세요.');
+                return true;
+            }
+            return isSaveBusyRef.current();
+        }, [hasRestorableDraft]),
+        captureRestoreGuard: useCallback(() => {
+            const before = getCurrentDraft();
+            return () => getCurrentDraft() === before;
+        }, [getCurrentDraft]),
         setNotice,
-        onAfterRestore: useCallback(async (restoredPost: Post) => {
-            clearAutosave();
-            setDraft(toDraft(restoredPost));
-            await refreshPosts('full');
+        onRestoreWithoutApply: useCallback((restoredPost: Post) => {
+            acceptDraftBaseline(restoredPost);
+            applyConfirmedPost(restoredPost);
+        }, [acceptDraftBaseline, applyConfirmedPost]),
+        onAfterRestore: useCallback((restoredPost: Post) => {
+            const result = acceptSavedPost(restoredPost, getCurrentDraft());
+            reconcileSavedDraft({ previousId: activeId, savedId: restoredPost.id, ...result });
+            preserveNoticeOnPostChangeRef.current = true;
+            applyConfirmedPost(restoredPost);
             onSaveSuccess(restoredPost);
-        }, [clearAutosave, onSaveSuccess, refreshPosts, setDraft])
+            onDirtyChange?.(false);
+        }, [acceptSavedPost, getCurrentDraft, reconcileSavedDraft, activeId, applyConfirmedPost, onSaveSuccess, onDirtyChange])
     });
 
     // 3. Persistence Logic (extracted)
@@ -146,23 +174,36 @@ const PostEditor: React.FC<PostEditorProps> = ({
         handleSave,
         handleDelete,
         saving,
+        savingRef,
     } = usePostPersistence({
-        draft,
+        getCurrentDraft,
+        getDraftBaseUpdatedAt,
         activeId,
-        onSaveSuccess: useCallback((savedPost: Post) => {
+        documentKey: requestedPostId,
+        isBusy: useCallback(() => {
+            if (hasRestorableDraft) {
+                setNotice('브라우저 임시 저장본을 먼저 복구하거나 삭제해 주세요.');
+                return true;
+            }
+            return restoringRef.current;
+        }, [hasRestorableDraft, restoringRef]),
+        onSaveSuccess: useCallback((savedPost: Post, submittedDraft: ReturnType<typeof toDraft>) => {
+            const result = acceptSavedPost(savedPost, submittedDraft);
+            if (result.hasNewerChanges) {
+                setNotice('저장 요청한 내용은 서버에 저장했습니다. 이후 입력한 변경사항은 아직 서버에 저장되지 않았습니다.');
+            }
+            // Recovery errors take precedence over the normal save notice.
+            reconcileSavedDraft({ previousId: activeId, savedId: savedPost.id, ...result });
             preserveNoticeOnPostChangeRef.current = true;
             onSaveSuccess(savedPost);
+            onDirtyChange?.(result.hasNewerChanges);
             void loadRevisions(savedPost.id);
-        }, [loadRevisions, onSaveSuccess]),
-        onDeleteSuccess,
-        setNotice,
-        onAfterSave: useCallback(() => {
-            setSlugTouched(true);
-            setTagInput('');
-            clearAutosave();
             void onLoadCategories();
-        }, [setSlugTouched, setTagInput, clearAutosave, onLoadCategories])
+        }, [acceptSavedPost, reconcileSavedDraft, activeId, onSaveSuccess, onDirtyChange, loadRevisions, onLoadCategories]),
+        onDeleteSuccess,
+        setNotice
     });
+    isSaveBusyRef.current = () => savingRef.current;
 
     const {
         fileInputRef,
@@ -189,10 +230,6 @@ const PostEditor: React.FC<PostEditorProps> = ({
         handleDrop
     });
 
-    const draftContentJsonKey = useMemo(
-        () => serializeContentJson(draft.contentJson),
-        [draft.contentJson]
-    );
     const baselineDraftKey = useMemo(
         () => serializeDraftForDirtyCheck(toDraft(post || undefined)),
         [post]
@@ -267,19 +304,21 @@ const PostEditor: React.FC<PostEditorProps> = ({
     // Sync editor content when draft changes
     useEffect(() => {
         if (!editor) return;
-        if (draftContentJsonKey) {
-            const editorContentKey = serializeContentJson(editor.getJSON());
-            if (editorContentKey !== draftContentJsonKey && draft.contentJson) {
+        const editorSnapshot = getEditorContentSnapshot(editor);
+        if (draft.contentJson && draft.contentJson === editorSnapshot.contentJson) return;
+        if (draft.contentJson) {
+            const editorContentKey = editorSnapshot.contentJsonKey;
+            if (editorContentKey !== JSON.stringify(draft.contentJson)) {
                 editor.commands.setContent(draft.contentJson, { emitUpdate: false });
             }
             return;
         }
 
         const safeHtml = draft.contentHtml?.trim() ? draft.contentHtml : '';
-        if (editor.getHTML() !== safeHtml) {
+        if (editorSnapshot.contentHtml !== safeHtml) {
             editor.commands.setContent(safeHtml, { emitUpdate: false });
         }
-    }, [editor, activeId, draft.contentHtml, draft.contentJson, draftContentJsonKey]);
+    }, [editor, activeId, draft.contentHtml, draft.contentJson]);
 
     const contentStats = useMemo(() => {
         const plainText = stripHtml(draft.contentHtml || '');
@@ -301,11 +340,15 @@ const PostEditor: React.FC<PostEditorProps> = ({
     });
 
     const openPublishDialog = useCallback(() => {
+        if (hasRestorableDraft) {
+            setNotice('브라우저 임시 저장본을 먼저 복구하거나 삭제해 주세요.');
+            return;
+        }
         closeEditorOverlays();
         editor?.commands.blur();
         setPublishStatus(draft.status);
         setPublishDialogOpen(true);
-    }, [draft.status, editor]);
+    }, [draft.status, editor, hasRestorableDraft]);
 
     const closePublishDialog = useCallback(() => {
         if (!saving) setPublishDialogOpen(false);
@@ -379,6 +422,9 @@ const PostEditor: React.FC<PostEditorProps> = ({
             onNoticeClick: notice.includes('복구') ? handleRestoreAutosave : undefined,
             hasRestorableDraft,
             autosaveUpdatedAt,
+            browserSaveStatus,
+            browserSavedAt,
+            serverSavedAt: post?.updatedAt || null,
             onRestoreAutosave: handleRestoreAutosave,
             onDiscardAutosave: discardAutosave
         },

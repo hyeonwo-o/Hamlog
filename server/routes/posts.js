@@ -7,6 +7,7 @@ import {
   updatePost,
   deletePost,
   getPostRevisions,
+  getPostRevision,
   restorePostRevision
 } from '../controllers/postController.js';
 
@@ -24,7 +25,8 @@ router.get('/', attachOptionalUser, getPosts);
 router.post('/', authenticateToken, requireTrustedOrigin, ...adminContentBodyParsers, createPost);
 router.post('/:slug/view', viewRateLimiter, ...publicBodyParsers, recordPostView);
 router.get('/:id/revisions', authenticateToken, getPostRevisions);
-router.post('/:id/revisions/:revisionId/restore', authenticateToken, requireTrustedOrigin, restorePostRevision);
+router.get('/:id/revisions/:revisionId', authenticateToken, getPostRevision);
+router.post('/:id/revisions/:revisionId/restore', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, restorePostRevision);
 router.put('/:id', authenticateToken, requireTrustedOrigin, ...adminContentBodyParsers, updatePost);
 router.delete('/:id', authenticateToken, requireTrustedOrigin, deletePost);
 router.get('/:slug', getPostBySlug);

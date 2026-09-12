@@ -22,10 +22,11 @@ export const uploadImage = async (req, res) => {
     }
 };
 
-export const getUnusedUploads = async (_req, res) => {
+export const getUnusedUploads = async (req, res) => {
     try {
-        res.json(await scanUnusedUploads());
+        res.json(await scanUnusedUploads(req.body?.protectedFilenames));
     } catch (error) {
+        if (error.status === 400) return res.status(400).json({ message: error.message });
         console.error('Failed to scan unused uploads', error);
         res.status(500).json({ message: '미사용 이미지를 확인하지 못했습니다.' });
     }
@@ -33,9 +34,10 @@ export const getUnusedUploads = async (_req, res) => {
 
 export const deleteUnusedUploadFiles = async (req, res) => {
     try {
-        const { filenames } = req.body ?? {};
-        res.json(await deleteUnusedUploads(filenames));
+        const { filenames, protectedFilenames } = req.body ?? {};
+        res.json(await deleteUnusedUploads(filenames, protectedFilenames));
     } catch (error) {
+        if (error.status === 400) return res.status(400).json({ message: error.message });
         console.error('Failed to delete unused uploads', error);
         res.status(500).json({ message: '미사용 이미지를 삭제하지 못했습니다.' });
     }

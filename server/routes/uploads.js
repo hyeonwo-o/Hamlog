@@ -16,6 +16,7 @@ import {
 const router = express.Router();
 
 router.get('/unused', authenticateToken, getUnusedUploads);
+router.post('/unused/scan', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, getUnusedUploads);
 router.delete('/unused', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, deleteUnusedUploadFiles);
 router.post('/', uploadRateLimiter, authenticateToken, requireTrustedOrigin, ...imageUploadBodyParsers, uploadImage);
 

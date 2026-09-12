@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { escapeHtml } from './seoHtml.js';
+import { createHeadingIdAllocator } from './headingAnchors.js';
 
 const MIN_POST_DESCRIPTION_LENGTH = 50;
 const MIN_HOME_DESCRIPTION_LENGTH = 40;
@@ -151,6 +152,14 @@ export const sanitizePostContentHtml = (
 ) => {
   const $ = cheerio.load(String(contentHtml ?? ''), {}, false);
   $(Array.from(SKIPPED_CONTENT_TAGS).join(',')).remove();
+  const headingSelector = 'h1, h2, h3';
+  const allocateHeadingId = createHeadingIdAllocator(
+    $(headingSelector).toArray().map(node => $(node).attr('id') || ''),
+    $('[id]').not(headingSelector).toArray().map(node => $(node).attr('id') || '')
+  );
+  $(headingSelector).each((_index, node) => {
+    $(node).attr('id', allocateHeadingId($(node).text(), $(node).attr('id')));
+  });
 
   const renderChildren = (node) => (
     Array.isArray(node?.children)
@@ -236,6 +245,9 @@ export const sanitizePostContentHtml = (
 
     const outputTag = demoteH1 && tagName === 'h1' ? 'h2' : tagName;
     let attributes = '';
+    if (['h1', 'h2', 'h3'].includes(tagName)) {
+      attributes = ` id="${escapeHtml($(node).attr('id'))}"`;
+    }
     if (outputTag === 'div') {
       const dataType = normalizeText($(node).attr('data-type'));
       if (dataType === 'columns') {
@@ -287,6 +299,13 @@ export const resolvePostMetaDescription = (post) => {
     ? truncateGeneratedDescription(combined)
     : summary;
 };
+
+// Derived metadata belongs to the public response, not the persisted author's
+// summary or explicit SEO fields. Both bootstrap and detail requests use this.
+export const toPublicPostDetail = (post, metaDescription = resolvePostMetaDescription(post)) => ({
+  ...post,
+  metaDescription
+});
 
 export const resolveHomeMetaDescription = (profile, fallbackDescription) => {
   const description = normalizeText(profile?.description) || normalizeText(fallbackDescription);

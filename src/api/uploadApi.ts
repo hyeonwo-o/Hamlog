@@ -18,6 +18,8 @@ export interface UnusedUploadsResponse {
   totalFiles: number;
   totalBytes: number;
   referencedFiles: number;
+  recentFiles: number;
+  gracePeriodHours: number;
   unused: UploadFileInfo[];
   unusedBytes: number;
 }
@@ -50,18 +52,23 @@ export async function uploadLocalImage(file: File): Promise<UploadResponse> {
   });
 }
 
-export async function fetchUnusedUploads(): Promise<UnusedUploadsResponse> {
-  return requestJson<UnusedUploadsResponse>('/uploads/unused');
+export async function fetchUnusedUploads(protectedFilenames: string[] = []): Promise<UnusedUploadsResponse> {
+  return requestJson<UnusedUploadsResponse>('/uploads/unused/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ protectedFilenames })
+  });
 }
 
 export async function deleteUnusedUploads(
-  filenames?: string[]
+  filenames: string[],
+  protectedFilenames: string[] = []
 ): Promise<DeleteUnusedUploadsResponse> {
   return requestJson<DeleteUnusedUploadsResponse>('/uploads/unused', {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ filenames })
+    body: JSON.stringify({ filenames, protectedFilenames })
   });
 }

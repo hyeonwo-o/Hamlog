@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BookOpen, Calendar, ChevronLeft } from 'lucide-react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -26,6 +26,7 @@ import { ApiError } from '../api/client';
 import type { Post } from '../types/blog';
 import { TableOfContents } from '../components/TableOfContents';
 import { appBootstrapData } from '../utils/appBootstrap';
+import { getPostMetaDescription } from '../utils/postSeo';
 
 const normalizePageProfile = (profile: SiteMeta) => ({
   ...siteMeta,
@@ -44,6 +45,11 @@ const normalizePageProfile = (profile: SiteMeta) => ({
 const PostPage: React.FC = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedReturnTo = location.state?.returnTo;
+  const returnTo = typeof requestedReturnTo === 'string' && /^\/(?:[?#]|$)/.test(requestedReturnTo)
+    ? requestedReturnTo
+    : '/';
   const initialPost = appBootstrapData?.route === 'post' && appBootstrapData.post.slug === slug
     ? appBootstrapData.post
     : null;
@@ -198,7 +204,7 @@ const PostPage: React.FC = () => {
         ? unavailableTitle
         : `글을 불러오는 중 | ${siteTitle}`,
     description: post
-      ? post.seo?.description || post.summary
+      ? getPostMetaDescription(post)
       : isUnavailable
         ? '요청한 글을 표시할 수 없습니다.'
         : '글 정보를 불러오는 중입니다.',
@@ -325,14 +331,14 @@ const PostPage: React.FC = () => {
 
             <main className="mx-auto w-full min-w-0 max-w-[960px] space-y-8 2xl:mx-0 2xl:max-w-none">
               <Link
-                to="/"
+                to={returnTo}
                 className="group inline-flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-[var(--accent)]"
               >
                 <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 메인화면으로 돌아가기
               </Link>
 
-              <article className="space-y-8">
+              <article className="relative space-y-8">
                 <header className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 sm:p-6 lg:p-7">
                   <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)] sm:gap-4">
                     <button
@@ -376,6 +382,14 @@ const PostPage: React.FC = () => {
                   )}
                 </header>
 
+                <TableOfContents
+                  key={post.slug}
+                  contentSelector=".post-content"
+                  collapsible
+                  containerClassName="2xl:absolute 2xl:left-[calc(100%+2rem)] 2xl:top-0 2xl:!mt-0 2xl:h-full 2xl:w-[220px]"
+                  className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] px-4 py-2 2xl:sticky 2xl:top-8 2xl:p-4"
+                />
+
                 <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:p-8 xl:px-10">
                   <div className="post-content prose prose-lg max-w-none w-full">
                     <PostContent contentHtml={post.contentHtml} />
@@ -407,11 +421,6 @@ const PostPage: React.FC = () => {
               )}
             </main>
 
-            <aside className="hidden 2xl:block">
-              <div className="sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto border border-[color:var(--border)] bg-[var(--surface)] p-4">
-                <TableOfContents contentSelector=".post-content" />
-              </div>
-            </aside>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
-import type { Post, PostInput, PostRevision } from '../data/blogData';
+import type { Post, PostInput, PostRevision, PostRevisionDetail } from '../data/blogData';
 import { requestJson, requestVoid } from './client';
-
-const SEARCH_QUERY_MAX_LENGTH = 120;
+import type { SearchPost } from '../types/search';
+import { normalizeSearchQuery } from '../utils/searchQuery';
 
 export type SavePostInput = PostInput & {
   expectedUpdatedAt?: string;
@@ -56,17 +56,27 @@ export async function recordPostView(slug: string): Promise<PostViewResponse> {
   });
 }
 
-export async function fetchPostRevisions(id: string): Promise<PostRevision[]> {
-  return requestJson<PostRevision[]>(`/posts/${id}/revisions`);
+export async function fetchPostRevisions(id: string, signal?: AbortSignal): Promise<PostRevision[]> {
+  return requestJson<PostRevision[]>(`/posts/${encodeURIComponent(id)}/revisions`, { signal });
 }
 
-export async function restorePostRevision(id: string, revisionId: string): Promise<Post> {
-  return requestJson<Post>(`/posts/${id}/revisions/${revisionId}/restore`, {
-    method: 'POST'
+export async function fetchPostRevision(id: string, revisionId: string, signal?: AbortSignal): Promise<PostRevisionDetail> {
+  return requestJson<PostRevisionDetail>(`/posts/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}`, { signal });
+}
+
+export async function restorePostRevision(id: string, revisionId: string, expectedUpdatedAt: string): Promise<Post> {
+  return requestJson<Post>(`/posts/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedUpdatedAt })
   });
 }
 
-export async function searchPosts(query: string): Promise<Post[]> {
-  const normalizedQuery = query.replace(/\s+/g, ' ').trim().slice(0, SEARCH_QUERY_MAX_LENGTH);
-  return requestJson<Post[]>(`/search?q=${encodeURIComponent(normalizedQuery)}`);
+export async function searchPosts(
+  query: string,
+  options: { category?: string | null; signal?: AbortSignal } = {}
+): Promise<SearchPost[]> {
+  const params = new URLSearchParams({ q: normalizeSearchQuery(query) });
+  if (options.category) params.set('category', options.category);
+  return requestJson<SearchPost[]>(`/search?${params}`, { signal: options.signal }, true);
 }

@@ -319,6 +319,7 @@ const AdminPage: React.FC = () => {
               >
                 <PostEditor
                   post={activePost}
+                  requestedPostId={activeId}
                   onSaveSuccess={handleSaveSuccess}
                   onDeleteSuccess={handleDeleteSuccess}
                   categoryTree={categoryTree}

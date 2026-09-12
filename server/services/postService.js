@@ -105,6 +105,19 @@ export async function getPostRevisionsService(id) {
     return { success: true, data: revisions.map(toRevisionSummary) };
 }
 
+export async function getPostRevisionService(id, revisionId) {
+    const allPosts = await readPosts();
+    if (!allPosts.some(post => post.id === id)) {
+        return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
+    }
+    const revisions = await readPostRevisions(id);
+    const revision = revisions.find(item => item.id === revisionId && item.snapshot);
+    if (!revision) {
+        return { success: false, error: '리비전을 찾을 수 없습니다.', code: 'not_found' };
+    }
+    return { success: true, data: { ...toRevisionSummary(revision), snapshot: revision.snapshot } };
+}
+
 export async function recordPostViewService(slug) {
     return runWithDataStoreLock(async () => {
         const normalizedSlug = String(slug ?? '').trim();
@@ -198,7 +211,7 @@ export async function updatePostService(id, rawData) {
     });
 }
 
-export async function restorePostRevisionService(id, revisionId) {
+export async function restorePostRevisionService(id, revisionId, rawData = {}) {
     return runWithDataStoreLock(async () => {
         const allPosts = await readPostsWithViews();
         const index = allPosts.findIndex(post => post.id === id);
@@ -208,6 +221,12 @@ export async function restorePostRevisionService(id, revisionId) {
         }
 
         const existing = allPosts[index];
+        if (typeof rawData?.expectedUpdatedAt !== 'string') {
+            return { success: false, error: '현재 저장본의 버전을 확인한 뒤 복구해 주세요.', code: 'precondition_required' };
+        }
+        if (rawData.expectedUpdatedAt !== String(existing.updatedAt ?? '')) {
+            return { success: false, error: '다른 탭 또는 세션에서 글이 먼저 수정되었습니다. 최신 글을 다시 불러온 뒤 복구해 주세요.', code: 'edit_conflict' };
+        }
         const revisions = await readPostRevisions(id);
         const targetRevision = revisions.find(revision => revision.id === revisionId);
 

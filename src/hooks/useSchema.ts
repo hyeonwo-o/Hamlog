@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { Post, SiteMeta } from '../types/blog';
 import { siteMeta } from '../data/blogData';
+import { getPostMetaDescription } from '../utils/postSeo';
 
 interface UseSchemaProps {
     post: Post | undefined;
@@ -107,7 +108,7 @@ export const useSchema = ({ post, profile, preserveExisting = false }: UseSchema
                     "url": publisherLogo
                 }
             },
-            "description": post.seo?.description || post.summary
+            "description": getPostMetaDescription(post)
         };
 
         if (post.category) {

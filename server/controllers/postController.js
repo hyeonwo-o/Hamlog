@@ -5,9 +5,11 @@ import {
     updatePostService,
     deletePostService,
     getPostRevisionsService,
+    getPostRevisionService,
     restorePostRevisionService,
     recordPostViewService
 } from '../services/postService.js';
+import { toPublicPostDetail } from '../utils/seoContent.js';
 
 export const getPosts = async (req, res) => {
     try {
@@ -26,7 +28,7 @@ export const getPostBySlug = async (req, res) => {
         if (!result.success) {
             return res.status(404).json({ message: result.error });
         }
-        res.json(result.data);
+        res.json(toPublicPostDetail(result.data));
     } catch (error) {
         console.error('Failed to fetch post', error);
         res.status(500).json({ message: '포스트를 불러오지 못했습니다.' });
@@ -106,12 +108,13 @@ export const getPostRevisions = async (req, res) => {
 export const restorePostRevision = async (req, res) => {
     try {
         const { id, revisionId } = req.params;
-        const result = await restorePostRevisionService(id, revisionId);
+        const result = await restorePostRevisionService(id, revisionId, req.body);
 
         if (!result.success) {
             const status = result.code === 'not_found' ? 404
                 : result.code === 'validation_error' ? 400
-                    : result.code === 'duplicate_slug' ? 409
+                    : result.code === 'precondition_required' ? 428
+                    : result.code === 'duplicate_slug' || result.code === 'edit_conflict' ? 409
                         : 500;
             return res.status(status).json({ message: result.error });
         }
@@ -120,6 +123,17 @@ export const restorePostRevision = async (req, res) => {
     } catch (error) {
         console.error('Failed to restore post revision', error);
         res.status(500).json({ message: '리비전 복구에 실패했습니다.' });
+    }
+};
+
+export const getPostRevision = async (req, res) => {
+    try {
+        const result = await getPostRevisionService(req.params.id, req.params.revisionId);
+        if (!result.success) return res.status(404).json({ message: result.error });
+        res.set('Cache-Control', 'no-store').json(result.data);
+    } catch (error) {
+        console.error('Failed to fetch post revision', error);
+        res.status(500).json({ message: '리비전 미리보기를 불러오지 못했습니다.' });
     }
 };
 

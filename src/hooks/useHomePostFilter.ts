@@ -1,9 +1,13 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { Post } from '../types/blog';
 import type { Category } from '../types/category';
 import { isPostVisible } from '../utils/postStatus';
 import { DEFAULT_CATEGORY, normalizeCategoryKey } from '../utils/category';
 import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree';
+import { searchPosts } from '../api/postApi';
+import type { SearchPost } from '../types/search';
+import { normalizeSearchQuery, SEARCH_QUERY_MAX_LENGTH } from '../utils/searchQuery';
 
 const NEW_BADGE_DAYS = 7;
 const POPULAR_POST_LIMIT = 3;
@@ -14,32 +18,67 @@ interface UsePostFilterProps {
 }
 
 export function useHomePostFilter({ posts, managedCategories }: UsePostFilterProps) {
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [params, setParams] = useSearchParams();
+    const selectedCategory = params.get('category') || null;
+    const searchQuery = (params.get('q') ?? '').slice(0, SEARCH_QUERY_MAX_LENGTH);
+    const normalizedQuery = normalizeSearchQuery(searchQuery);
+    const [isComposing, setIsComposing] = useState(false);
+    const [retryId, setRetryId] = useState(0);
+    const requestKey = JSON.stringify([normalizedQuery, selectedCategory, retryId]);
+    const [searchState, setSearchState] = useState<{
+        key: string;
+        status: 'loading' | 'success' | 'error';
+        posts: SearchPost[];
+        error: string;
+    } | null>(null);
 
-    // Load category from URL and keep browser back/forward navigation in sync.
+    const setSearchQuery = useCallback((query: string) => {
+        setParams(current => {
+            const next = new URLSearchParams(current);
+            if (query) next.set('q', query.slice(0, SEARCH_QUERY_MAX_LENGTH));
+            else next.delete('q');
+            return next;
+        }, { replace: true, preventScrollReset: true });
+    }, [setParams]);
+
+    const selectCategory = useCallback((category: string | null) => {
+        setParams(current => {
+            const next = new URLSearchParams(current);
+            if (category) next.set('category', category);
+            else next.delete('category');
+            return next;
+        }, { preventScrollReset: true });
+    }, [setParams]);
+
     useEffect(() => {
-        const syncCategoryFromUrl = () => {
-            const params = new URLSearchParams(window.location.search);
-            setSelectedCategory(params.get('category'));
+        if (!normalizedQuery || isComposing) return;
+        const controller = new AbortController();
+        let active = true;
+        setSearchState({ key: requestKey, status: 'loading', posts: [], error: '' });
+        const timer = window.setTimeout(() => {
+            void searchPosts(normalizedQuery, { category: selectedCategory, signal: controller.signal })
+                .then(results => {
+                    if (active) setSearchState({ key: requestKey, status: 'success', posts: results, error: '' });
+                })
+                .catch(error => {
+                    if (!active || controller.signal.aborted) return;
+                    setSearchState({
+                        key: requestKey, status: 'error', posts: [],
+                        error: error instanceof Error ? error.message : '검색하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+                    });
+                });
+        }, 250);
+        return () => {
+            active = false;
+            window.clearTimeout(timer);
+            controller.abort();
         };
+    }, [normalizedQuery, selectedCategory, isComposing, requestKey]);
 
-        syncCategoryFromUrl();
-        window.addEventListener('popstate', syncCategoryFromUrl);
-        return () => window.removeEventListener('popstate', syncCategoryFromUrl);
-    }, []);
-
-    // Sync URL when category changes
-    const selectCategory = (category: string | null) => {
-        setSelectedCategory(category);
-        const url = new URL(window.location.href);
-        if (category) {
-            url.searchParams.set('category', category);
-        } else {
-            url.searchParams.delete('category');
-        }
-        window.history.pushState({}, '', url.toString());
-    };
+    const currentSearch = searchState?.key === requestKey ? searchState : null;
+    const searchLoading = Boolean(normalizedQuery && (isComposing || !currentSearch || currentSearch.status === 'loading'));
+    const searchError = normalizedQuery && currentSearch?.status === 'error' ? currentSearch.error : '';
+    const retrySearch = useCallback(() => setRetryId(value => value + 1), []);
 
     const visiblePosts = useMemo(() => posts.filter(post => isPostVisible(post)), [posts]);
 
@@ -105,7 +144,7 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
         return keys;
     }, [selectedCategory, categoryTree]);
 
-    const filteredPosts = useMemo(() => {
+    const categoryPosts = useMemo(() => {
         let result = sortedPosts;
 
         if (selectedCategoryKeys) {
@@ -116,28 +155,25 @@ export function useHomePostFilter({ posts, managedCategories }: UsePostFilterPro
             );
         }
 
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase();
-            result = result.filter(post => {
-                const fields = [
-                    post.title,
-                    post.summary,
-                    post.series ?? '',
-                    post.tags.join(' '),
-                    post.category ?? ''
-                ];
-                return fields.some(text => text.toLowerCase().includes(q));
-            });
-        }
-
         return result;
-    }, [sortedPosts, selectedCategoryKeys, searchQuery]);
+    }, [sortedPosts, selectedCategoryKeys]);
+
+    // The API filters categories before its result limit. Filtering a truncated
+    // response here could incorrectly hide matching posts in child categories.
+    const filteredPosts = normalizedQuery
+        ? (!searchLoading && !searchError ? currentSearch?.posts ?? [] : [])
+        : categoryPosts;
 
     return {
         selectedCategory,
         selectCategory,
         searchQuery,
         setSearchQuery,
+        normalizedQuery,
+        setIsComposing,
+        searchLoading,
+        searchError,
+        retrySearch,
         sortedPosts,
         popularPosts,
         filteredPosts,

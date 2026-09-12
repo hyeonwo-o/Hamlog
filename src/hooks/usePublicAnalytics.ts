@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   recordAnalyticsHeartbeat,
@@ -24,21 +24,22 @@ export const usePublicAnalytics = () => {
   const location = useLocation();
   const path = location.pathname;
   const navigationEventRef = useRef<{
-    key: string;
+    path: string;
     eventId: string;
     sent: boolean;
   } | null>(null);
-  const navigationKey = useMemo(
-    () => `${location.key || 'default'}:${path}`,
-    [location.key, path]
-  );
 
   useEffect(() => {
-    if (!isTrackablePath(path)) return;
+    if (!isTrackablePath(path)) {
+      navigationEventRef.current = null;
+      return;
+    }
 
-    if (navigationEventRef.current?.key !== navigationKey) {
+    // Search filters and table-of-contents links change location.key without
+    // opening another page. Keep both the visit ID and heartbeat cadence intact.
+    if (navigationEventRef.current?.path !== path) {
       navigationEventRef.current = {
-        key: navigationKey,
+        path,
         eventId: createEventId(),
         sent: false
       };
@@ -67,5 +68,5 @@ export const usePublicAnalytics = () => {
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [navigationKey, path]);
+  }, [path]);
 };

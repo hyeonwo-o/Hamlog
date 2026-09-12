@@ -11,7 +11,8 @@ import {
   resolveHomeMetaDescription,
   resolvePostMetaDescription,
   resolveSeoFavicon,
-  sanitizePostContentHtml
+  sanitizePostContentHtml,
+  toPublicPostDetail
 } from '../utils/seoContent.js';
 import {
   escapeHtml,
@@ -66,8 +67,8 @@ const normalizeSitemapUrl = (value) => {
   return url.href;
 };
 
-const toPostBootstrap = (post) => {
-  const postWithoutEditorState = { ...post };
+const toPostBootstrap = (post, description) => {
+  const postWithoutEditorState = toPublicPostDetail(post, description);
   delete postWithoutEditorState.contentJson;
   delete postWithoutEditorState.sections;
 
@@ -297,7 +298,7 @@ export const injectPostMeta = async (req, res) => {
       profile,
       posts: toPostSummaries(publicPosts),
       categories,
-      post: toPostBootstrap(post)
+      post: toPostBootstrap(post, description)
     });
 
     res.send(injectSearchVerificationMeta(html));

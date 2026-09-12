@@ -11,6 +11,7 @@ import CategoryPicker from '../category/CategoryPicker';
 import PostInspector from '../post/PostInspector';
 import { useEditorToc } from '../../../hooks/useEditorToc';
 import { useMediaQuery } from '../../../hooks/useMediaQuery';
+import type { BrowserSaveStatus } from '../../../hooks/useAutosave';
 
 export interface EditorHandlers {
   onTitleChange: (value: string) => void;
@@ -54,6 +55,9 @@ export interface UIState {
   onNoticeClick?: () => void;
   hasRestorableDraft?: boolean;
   autosaveUpdatedAt?: string | null;
+  browserSaveStatus?: BrowserSaveStatus;
+  browserSavedAt?: string | null;
+  serverSavedAt?: string | null;
   onRestoreAutosave?: () => void;
   onDiscardAutosave?: () => void;
 }
@@ -109,6 +113,9 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
     onNoticeClick,
     hasRestorableDraft,
     autosaveUpdatedAt,
+    browserSaveStatus,
+    browserSavedAt,
+    serverSavedAt,
     onRestoreAutosave,
     onDiscardAutosave
   } = uiState;
@@ -187,6 +194,9 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
             onNoticeClick={onNoticeClick}
             hasRestorableDraft={hasRestorableDraft}
             autosaveLabel={autosaveLabel}
+            browserSaveStatus={browserSaveStatus}
+            browserSavedAt={browserSavedAt}
+            serverSavedAt={serverSavedAt}
             onRestoreAutosave={onRestoreAutosave}
             onDiscardAutosave={onDiscardAutosave}
             inspectorOpen={inspectorOpen}

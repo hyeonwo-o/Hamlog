@@ -2,7 +2,7 @@ import test, { after, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from 'node:fs/promises';
 import request from 'supertest';
 import sharp from 'sharp';
 
@@ -433,7 +433,7 @@ test('post contentHtml is derived from contentJson for public feeds', async () =
 
     const rssResponse = await request(app).get('/rss.xml');
     assert.equal(rssResponse.status, 200);
-    assert.match(rssResponse.text, /<!\[CDATA\[<h1>Heading<\/h1><p>Body copy<\/p>\]\]>/);
+    assert.match(rssResponse.text, /<!\[CDATA\[<h1 id="heading--heading">Heading<\/h1><p>Body copy<\/p>\]\]>/);
     assert.doesNotMatch(rssResponse.text, /onerror/);
     assert.doesNotMatch(rssResponse.text, /<script>/);
 });
@@ -527,9 +527,28 @@ test('post revisions can be listed and restored', async () => {
     );
     assert.ok(createdRevision);
 
+    const previewUrl = `/api/posts/${createdPostId}/revisions/${createdRevision.id}`;
+    await request(app).get(previewUrl).expect(401);
+    const previewResponse = await request(app).get(previewUrl).set('Cookie', cookies).expect(200);
+    assert.equal(previewResponse.headers['cache-control'], 'no-store');
+    assert.equal(previewResponse.body.snapshot.title, 'Revision Driven Post');
+    assert.equal(previewResponse.body.snapshot.id, createdPostId);
+    await request(app).get(`/api/posts/${createdPostId}/revisions/missing`).set('Cookie', cookies).expect(404);
+    const revisionsBeforeRejectedRestore = await readPostRevisions(createdPostId);
+    await withTrustedOrigin(request(app)
+        .post(`${previewUrl}/restore`)
+        .set('Cookie', cookies)).expect(428);
+    await withTrustedOrigin(request(app)
+        .post(`${previewUrl}/restore`)
+        .set('Cookie', cookies))
+        .send({ expectedUpdatedAt: 'stale-version' }).expect(409);
+    assert.deepEqual(await readPostRevisions(createdPostId), revisionsBeforeRejectedRestore);
+    assert.equal((await readPosts()).find(post => post.id === createdPostId).title, 'Revision Driven Post Updated');
+
     const restoreResponse = await withTrustedOrigin(request(app)
         .post(`/api/posts/${createdPostId}/revisions/${createdRevision.id}/restore`)
-        .set('Cookie', cookies));
+        .set('Cookie', cookies))
+        .send({ expectedUpdatedAt: updatePostResponse.body.updatedAt });
 
     assert.equal(restoreResponse.status, 200);
     assert.equal(restoreResponse.body.title, 'Revision Driven Post');
@@ -691,6 +710,11 @@ test('unused upload cleanup keeps referenced images and deletes selected unused 
     await writeFile(path.join(uploadDir, 'used.webp'), 'used image');
     await writeFile(path.join(uploadDir, 'unused.webp'), 'unused image');
     await writeFile(path.join(uploadDir, 'unused-two.webp'), 'unused image two');
+    // Cleanup candidates must be older than the recent-upload protection window.
+    const oldUploadTime = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    for (const filename of ['used.webp', 'unused.webp', 'unused-two.webp']) {
+        await utimes(path.join(uploadDir, filename), oldUploadTime, oldUploadTime);
+    }
     await writePosts([
         {
             id: 'post-with-upload-reference',
@@ -1474,7 +1498,7 @@ test('seo routes ignore non-public posts, escape meta values, and include visibl
 
     const safePrerenderResponse = await request(app).get('/posts/prerender-safe-post');
     assert.equal(safePrerenderResponse.status, 200);
-    assert.match(safePrerenderResponse.text, /<h2>본문 제목<\/h2>/);
+    assert.match(safePrerenderResponse.text, /<h2 id="heading--본문-제목">본문 제목<\/h2>/);
     assert.match(safePrerenderResponse.text, /alt="배포 구성도"/);
     assert.match(safePrerenderResponse.text, /href="https:\/\/docs\.example\.com\/guide"/);
     const bootstrapMarker = '<script id="hamlog-bootstrap" type="application/json">';

@@ -3,11 +3,15 @@ import { Link } from 'react-router-dom';
 import type { Post } from '../data/blogData';
 import { formatDate } from '../utils/formatDate';
 import { buildImageVariantSrcSet, buildImageVariantUrl } from '../utils/imageUrl';
+import SearchHighlight from './SearchHighlight';
 
 interface PostCardProps {
   post: Post;
   variant?: 'featured' | 'compact';
   index?: number;
+  searchQuery?: string;
+  searchExcerpt?: string;
+  returnTo?: string;
 }
 
 // Sub-components
@@ -113,7 +117,7 @@ const PostImage: React.FC<PostImageProps> = ({ post, variant, eager = false, pri
 };
 
 // Main Component
-const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 0 }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 0, searchQuery, searchExcerpt, returnTo }) => {
   const delay = `${index * 90}ms`;
   const isFeatured = variant === 'featured';
 
@@ -124,6 +128,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
   return (
     <Link
       to={`/posts/${post.slug}`}
+      state={returnTo ? { returnTo } : undefined}
       className={containerClass}
       style={{ animationDelay: delay }}
     >
@@ -161,12 +166,14 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'compact', index = 
           <PostMeta post={post} className="text-xs" />
           <div className="flex flex-col gap-3 md:flex-row">
             <PostImage post={post} variant="compact" />
-            <div className="flex flex-1 flex-col gap-2.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-2.5">
               <div className="space-y-1">
-                <h3 className="font-display text-base font-semibold text-[var(--text)]">
-                  {post.title}
+                <h3 className="break-words font-display text-base font-semibold text-[var(--text)]">
+                  <SearchHighlight text={post.title} query={searchQuery} />
                 </h3>
-                <p className="line-clamp-2 text-xs leading-relaxed text-[var(--text-muted)]">{post.summary}</p>
+                <p className="line-clamp-2 break-words text-xs leading-relaxed text-[var(--text-muted)]">
+                  <SearchHighlight text={searchExcerpt || post.summary} query={searchQuery} />
+                </p>
               </div>
               <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">

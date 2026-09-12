@@ -49,7 +49,7 @@ test('prerender sanitizer rebuilds safe markup, link cards, and contextual image
     <link-card url="https://example.com/guide" title="안전한 가이드" description="참고 문서"></link-card>
   `, { postTitle: '테스트 글' });
 
-  assert.match(html, /<h2>본문 제목<\/h2>/);
+  assert.match(html, /<h2 id="heading--본문-제목">본문 제목<\/h2>/);
   assert.match(html, /alt="배포 구성도"/);
   assert.match(html, /alt="운영 화면"/);
   assert.match(html, /<a href="https:\/\/example\.com\/guide" rel="noopener noreferrer">안전한 가이드<\/a>/);

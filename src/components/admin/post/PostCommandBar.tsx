@@ -1,6 +1,7 @@
 import React from 'react';
 import { Eye, EyeOff, List, Plus, Save, Send, SlidersHorizontal, Trash2 } from 'lucide-react';
 import type { PostStatus } from '../../../data/blogData';
+import type { BrowserSaveStatus } from '../../../hooks/useAutosave';
 
 interface PostCommandBarProps {
   activeId: string | null;
@@ -12,6 +13,9 @@ interface PostCommandBarProps {
   onNoticeClick?: () => void;
   hasRestorableDraft?: boolean;
   autosaveLabel?: string;
+  browserSaveStatus?: BrowserSaveStatus;
+  browserSavedAt?: string | null;
+  serverSavedAt?: string | null;
   onRestoreAutosave?: () => void;
   onDiscardAutosave?: () => void;
   inspectorOpen: boolean;
@@ -41,6 +45,9 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
   onNoticeClick,
   hasRestorableDraft,
   autosaveLabel,
+  browserSaveStatus = 'idle',
+  browserSavedAt,
+  serverSavedAt,
   onRestoreAutosave,
   onDiscardAutosave,
   inspectorOpen,
@@ -55,6 +62,17 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
 }) => {
   const statusLabel = statusLabels[status];
   const saveLabel = status === 'draft' ? '초안 저장' : '변경 저장';
+  const formatSavedAt = (value?: string | null) => {
+    if (!value || !Number.isFinite(Date.parse(value))) return '';
+    return new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  };
+  const browserStatusLabels: Record<BrowserSaveStatus, string> = {
+    idle: '브라우저: 변경 없음',
+    pending: '브라우저 임시 저장 대기',
+    saved: `브라우저 임시 저장됨 · ${formatSavedAt(browserSavedAt)}`,
+    error: '브라우저 임시 저장 실패',
+    blocked: '브라우저 복구본 확인 필요'
+  };
 
   return (
     <div data-testid="post-command-bar" className="flex w-full flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
@@ -78,6 +96,12 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
               저장되지 않은 변경
             </span>
           )}
+          <span data-testid="browser-save-status" className={browserSaveStatus === 'error' ? 'text-red-600 dark:text-red-300' : ''} title="이 브라우저에만 보관하는 복구용 사본이며, 서버에 저장하거나 발행하지 않습니다. 시각은 한국 시간입니다.">
+            {browserStatusLabels[browserSaveStatus]}
+          </span>
+          <span data-testid="server-save-status" title="서버에서 확인한 저장 시각입니다. 이후 입력은 다시 저장해야 합니다. 시각은 한국 시간입니다.">
+            {saving ? '서버 저장 중…' : serverSavedAt ? `서버 저장 · ${formatSavedAt(serverSavedAt)}` : '서버 미저장'}
+          </span>
           {notice ? (
             <button
               type="button"
@@ -179,7 +203,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
           <button
             type="button"
             onClick={onSave}
-            disabled={saving}
+            disabled={saving || hasRestorableDraft}
             title={saveLabel}
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 border border-[color:var(--border)] bg-[var(--surface)] px-2.5 text-xs text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-50 sm:min-h-9 sm:flex-none"
           >
@@ -190,7 +214,7 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             type="button"
             data-testid="post-publish-button"
             onClick={onPublish}
-            disabled={saving}
+            disabled={saving || hasRestorableDraft}
             title="발행 설정"
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 bg-[var(--text)] px-3 text-xs font-semibold text-[var(--bg)] transition hover:opacity-90 disabled:opacity-50 sm:min-h-9 sm:flex-none"
           >

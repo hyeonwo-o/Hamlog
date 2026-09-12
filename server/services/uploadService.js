@@ -1,14 +1,36 @@
-import { writeFile, mkdir, readdir, readFile, stat, unlink } from 'fs/promises';
+import { writeFile, mkdir, readdir, readFile, lstat, unlink } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
-import { revisionsDir, uploadDir } from '../config/paths.js';
-import { readPosts } from '../models/postModel.js';
-import { readProfile } from '../models/profileModel.js';
+import { postsFilePath, profileFilePath, revisionsDir, uploadDir } from '../config/paths.js';
 import { parseDataUrl, allowedImageTypes } from '../utils/normalizers/uploadNormalizers.js';
+import { runWithDataStoreLock } from '../utils/storeLock.js';
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const UPLOAD_URL_PATTERN = /\/uploads\/([^"')\s<>?#]+)/g;
+export const UPLOAD_CLEANUP_GRACE_HOURS = 24;
+const UPLOAD_CLEANUP_GRACE_MS = UPLOAD_CLEANUP_GRACE_HOURS * 60 * 60 * 1000;
+
+const normalizeFilenames = (filenames) => Array.isArray(filenames)
+    ? [...new Set(filenames.filter(filename => (
+        typeof filename === 'string'
+        && filename.length > 0
+        && filename !== '.'
+        && filename !== '..'
+        && !filename.includes('\\')
+        && !filename.includes('\0')
+        && filename === path.basename(filename)
+    )))]
+    : [];
+
+const invalidCleanupRequest = (message) => Object.assign(new Error(message), { status: 400 });
+
+const validateProtectedFilenames = (filenames) => {
+    if (!Array.isArray(filenames) || filenames.some(filename => typeof filename !== 'string')) {
+        throw invalidCleanupRequest('보호할 이미지 목록이 올바르지 않습니다.');
+    }
+    return normalizeFilenames(filenames);
+};
 
 export async function processImageUpload(dataUrl) {
     const parsed = parseDataUrl(dataUrl);
@@ -73,7 +95,12 @@ const addUploadReferencesFromString = (value, references) => {
     if (typeof value !== 'string' || !value.includes('/uploads/')) return;
 
     for (const match of value.matchAll(UPLOAD_URL_PATTERN)) {
-        const filename = decodeURIComponent(match[1] || '').trim();
+        let filename = match[1] || '';
+        try {
+            filename = decodeURIComponent(filename);
+        } catch {
+            // A malformed URL must not prevent scanning other valid references.
+        }
         if (filename && filename === path.basename(filename)) {
             references.add(filename);
         }
@@ -105,28 +132,35 @@ const readRevisionSnapshots = async () => {
 
         for (const file of files) {
             if (!file.endsWith('.json')) continue;
-            try {
-                const raw = await readFile(path.join(revisionsDir, file), 'utf8');
-                snapshots.push(JSON.parse(raw));
-            } catch (error) {
-                console.error(`Failed to scan upload references from revision ${file}:`, error);
-            }
+            const raw = await readFile(path.join(revisionsDir, file), 'utf8');
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) throw new Error(`Invalid revision store: ${file}`);
+            snapshots.push(parsed);
         }
 
         return snapshots;
     } catch (error) {
-        if (error.code === 'ENOENT') return [];
+        // Only a missing directory is an empty revision store. A disappearing
+        // or unreadable snapshot must stop cleanup, not hide its references.
+        if (error.code === 'ENOENT' && error.path === revisionsDir) return [];
         throw error;
     }
 };
 
 async function collectReferencedUploadFilenames() {
     const references = new Set();
-    const [posts, profile, revisions] = await Promise.all([
-        readPosts(),
-        readProfile(),
+    const [postsRaw, profileRaw, revisions] = await Promise.all([
+        readFile(postsFilePath, 'utf8'),
+        readFile(profileFilePath, 'utf8'),
         readRevisionSnapshots()
     ]);
+    // Cleanup must not use forgiving model readers: malformed or missing
+    // metadata is not proof that an uploaded image is unused.
+    const posts = JSON.parse(postsRaw);
+    const profile = JSON.parse(profileRaw);
+    if (!Array.isArray(posts) || !profile || typeof profile !== 'object' || Array.isArray(profile)) {
+        throw new Error('Invalid upload reference store');
+    }
 
     addUploadReferences(posts, references);
     addUploadReferences(profile, references);
@@ -143,7 +177,10 @@ async function listUploadFiles() {
     for (const entry of entries) {
         if (entry !== path.basename(entry)) continue;
         const filePath = path.join(uploadDir, entry);
-        const fileStat = await stat(filePath).catch(() => null);
+        const fileStat = await lstat(filePath).catch(error => {
+            if (error.code === 'ENOENT') return null;
+            throw error;
+        });
         if (!fileStat?.isFile()) continue;
 
         files.push({
@@ -157,48 +194,62 @@ async function listUploadFiles() {
     return files.sort((left, right) => left.filename.localeCompare(right.filename));
 }
 
-export async function scanUnusedUploads() {
+async function scanUnusedUploadsUnlocked(protectedFilenames) {
     const [files, references] = await Promise.all([
         listUploadFiles(),
         collectReferencedUploadFilenames()
     ]);
 
-    const unused = files.filter(file => !references.has(file.filename));
+    protectedFilenames.forEach(filename => references.add(filename));
+    const cutoff = Date.now() - UPLOAD_CLEANUP_GRACE_MS;
+    const unreferenced = files.filter(file => !references.has(file.filename));
+    const unused = unreferenced.filter(file => Date.parse(file.modifiedAt) <= cutoff);
 
     return {
         files,
         totalFiles: files.length,
         totalBytes: files.reduce((sum, file) => sum + file.size, 0),
         referencedFiles: files.filter(file => references.has(file.filename)).length,
+        recentFiles: unreferenced.length - unused.length,
+        gracePeriodHours: UPLOAD_CLEANUP_GRACE_HOURS,
         unused,
         unusedBytes: unused.reduce((sum, file) => sum + file.size, 0)
     };
 }
 
-export async function deleteUnusedUploads(filenames = []) {
-    const scan = await scanUnusedUploads();
-    const unusedByName = new Map(scan.unused.map(file => [file.filename, file]));
-    const requestedNames = Array.isArray(filenames)
-        ? filenames.map(filename => String(filename ?? '').trim()).filter(Boolean)
-        : [];
-    const targets = requestedNames.length > 0
-        ? requestedNames
-            .filter(filename => filename === path.basename(filename))
-            .map(filename => unusedByName.get(filename))
-            .filter(Boolean)
-        : scan.unused;
-    const deleted = [];
+export async function scanUnusedUploads(protectedFilenames = []) {
+    const protectedNames = validateProtectedFilenames(protectedFilenames);
+    return runWithDataStoreLock(() => scanUnusedUploadsUnlocked(protectedNames));
+}
 
-    for (const file of targets) {
-        await unlink(path.join(uploadDir, file.filename));
-        deleted.push(file);
+export async function deleteUnusedUploads(filenames, protectedFilenames = []) {
+    const requestedNames = normalizeFilenames(filenames);
+    if (!requestedNames.length) {
+        throw invalidCleanupRequest('삭제할 이미지를 명시적으로 선택해 주세요.');
     }
+    const protectedNames = validateProtectedFilenames(protectedFilenames);
 
-    return {
-        deleted,
-        deletedBytes: deleted.reduce((sum, file) => sum + file.size, 0),
-        remainingUnused: scan.unused.filter(
-            file => !deleted.some(deletedFile => deletedFile.filename === file.filename)
-        )
-    };
+    // Scan again at deletion time and hold the same lock used by post/profile
+    // saves until unlink finishes, so a completed save cannot be overlooked.
+    return runWithDataStoreLock(async () => {
+        const scan = await scanUnusedUploadsUnlocked(protectedNames);
+        const unusedByName = new Map(scan.unused.map(file => [file.filename, file]));
+        const targets = requestedNames
+            .map(filename => unusedByName.get(filename))
+            .filter(Boolean);
+        const deleted = [];
+
+        for (const file of targets) {
+            await unlink(path.join(uploadDir, file.filename));
+            deleted.push(file);
+        }
+
+        return {
+            deleted,
+            deletedBytes: deleted.reduce((sum, file) => sum + file.size, 0),
+            remainingUnused: scan.unused.filter(
+                file => !deleted.some(deletedFile => deletedFile.filename === file.filename)
+            )
+        };
+    });
 }

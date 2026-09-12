@@ -19,6 +19,7 @@ interface PostState {
   addPost: (post: PostInput) => Promise<Post>;
   updatePost: (id: string, post: PostInput) => Promise<Post>;
   deletePost: (id: string) => Promise<void>;
+  applyConfirmedPost: (post: Post) => void;
   recordPostView: (slug: string) => Promise<number>;
 }
 
@@ -30,7 +31,20 @@ const normalizeError = (error: unknown, fallback: string) => {
 const initialPosts = appBootstrapData?.posts ?? [];
 const hasBootstrapPosts = appBootstrapData !== null;
 
-export const usePostStore = create<PostState>((set, get) => ({
+export const usePostStore = create<PostState>((set, get) => {
+  let contentGeneration = 0;
+  let pendingWrites = 0;
+  const beginWrite = () => {
+    contentGeneration += 1;
+    pendingWrites += 1;
+    set({ loading: true, error: null });
+  };
+  const finishWrite = () => {
+    contentGeneration += 1;
+    pendingWrites -= 1;
+  };
+
+  return {
   posts: initialPosts,
   loading: false,
   error: null,
@@ -40,11 +54,16 @@ export const usePostStore = create<PostState>((set, get) => ({
   fetchPosts: async (mode = 'full') => {
     if (get().loading) return;
     if (get().loadedMode === 'full' && mode === 'summary') return;
+    const generation = contentGeneration;
     set({ loading: true, error: null });
     try {
       const posts = await fetchPostsRequest(mode === 'summary');
+      // A list requested before a save/delete/restore is not authoritative after
+      // that mutation. It must not resurrect a deletion or erase a new post.
+      if (generation !== contentGeneration) return;
       set({ posts, loading: false, hasLoaded: true, loadedMode: mode });
     } catch (error) {
+      if (generation !== contentGeneration) return;
       set({
         loading: false,
         hasLoaded: true,
@@ -55,53 +74,72 @@ export const usePostStore = create<PostState>((set, get) => ({
   },
 
   addPost: async (post) => {
-    set({ loading: true, error: null });
+    beginWrite();
     try {
       const created = await createPostRequest(post);
+      finishWrite();
       set(state => ({
         posts: [created, ...state.posts],
-        loading: false,
+        loading: pendingWrites > 0,
         hasLoaded: true,
         loadedMode: 'full'
       }));
       return created;
     } catch (error) {
-      set({ loading: false, error: normalizeError(error, 'Failed to create post.') });
+      finishWrite();
+      set({ loading: pendingWrites > 0, error: normalizeError(error, 'Failed to create post.') });
       throw error;
     }
   },
 
   updatePost: async (id, post) => {
-    set({ loading: true, error: null });
+    beginWrite();
     try {
       const updated = await updatePostRequest(id, post);
+      finishWrite();
       set(state => ({
         posts: state.posts.map(item => (item.id === id ? updated : item)),
-        loading: false,
+        loading: pendingWrites > 0,
         hasLoaded: true,
         loadedMode: 'full'
       }));
       return updated;
     } catch (error) {
-      set({ loading: false, error: normalizeError(error, 'Failed to update post.') });
+      finishWrite();
+      set({ loading: pendingWrites > 0, error: normalizeError(error, 'Failed to update post.') });
       throw error;
     }
   },
 
   deletePost: async (id) => {
-    set({ loading: true, error: null });
+    beginWrite();
     try {
       await deletePostRequest(id);
+      finishWrite();
       set(state => ({
         posts: state.posts.filter(item => item.id !== id),
-        loading: false,
+        loading: pendingWrites > 0,
         hasLoaded: true,
         loadedMode: 'full'
       }));
     } catch (error) {
-      set({ loading: false, error: normalizeError(error, 'Failed to delete post.') });
+      finishWrite();
+      set({ loading: pendingWrites > 0, error: normalizeError(error, 'Failed to delete post.') });
       throw error;
     }
+  },
+
+  applyConfirmedPost: (post) => {
+    contentGeneration += 1;
+    set(state => ({
+      posts: state.posts.some(item => item.id === post.id)
+        ? state.posts.map(item => item.id === post.id ? post : item)
+        : [post, ...state.posts],
+      loading: pendingWrites > 0,
+      error: null,
+      hasLoaded: true,
+      loadedMode: 'full'
+    }));
   },
 
   recordPostView: async (slug) => {
@@ -113,4 +151,5 @@ export const usePostStore = create<PostState>((set, get) => ({
     }));
     return result.views;
   }
-}));
+  };
+});

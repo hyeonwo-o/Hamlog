@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { PostDraft } from '../types/admin';
 import type { Post, PostStatus } from '../data/blogData';
 import type { SavePostInput } from '../api/postApi';
@@ -11,23 +11,37 @@ import { normalizeDraftCategory, DEFAULT_CATEGORY } from '../utils/category';
 import { isAuthenticationError } from '../api/client';
 
 interface UsePostPersistenceProps {
-    draft: PostDraft;
+    getCurrentDraft: () => PostDraft;
+    getDraftBaseUpdatedAt: () => string | undefined;
     activeId: string | null;
-    onSaveSuccess: (post: Post) => void;
+    documentKey: string | null;
+    onSaveSuccess: (post: Post, submittedDraft: PostDraft) => void;
     onDeleteSuccess: () => void;
-    onAfterSave: () => void;
     setNotice: (message: string) => void;
+    isBusy?: () => boolean;
 }
 
 export const usePostPersistence = ({
-    draft,
+    getCurrentDraft,
+    getDraftBaseUpdatedAt,
     activeId,
+    documentKey,
     onSaveSuccess,
     onDeleteSuccess,
-    onAfterSave,
-    setNotice
+    setNotice,
+    isBusy
 }: UsePostPersistenceProps) => {
     const [saving, setSaving] = useState(false);
+    const savingRef = useRef(false);
+    const mountedRef = useRef(true);
+    const documentRef = useRef({ id: documentKey, generation: 0 });
+    if (documentRef.current.id !== documentKey) {
+        documentRef.current = { id: documentKey, generation: documentRef.current.generation + 1 };
+    }
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     const posts = usePostStore(state => state.posts);
     const addPost = usePostStore(state => state.addPost);
@@ -35,6 +49,11 @@ export const usePostPersistence = ({
     const deletePost = usePostStore(state => state.deletePost);
 
     const handleSave = useCallback(async (successMessage?: string, statusOverride?: PostStatus) => {
+        // State alone cannot guard two shortcuts fired before React commits a render.
+        if (savingRef.current || isBusy?.()) return false;
+        const document = documentRef.current;
+        const isCurrentDocument = () => mountedRef.current && documentRef.current === document;
+        const draft: PostDraft = JSON.parse(JSON.stringify(getCurrentDraft()));
         setNotice('');
         const title = draft.title.trim();
         const slug = slugify(draft.slug.trim() || title);
@@ -92,7 +111,23 @@ export const usePostPersistence = ({
                 ? scheduledAtIso.slice(0, 10)
                 : draft.publishedAt || new Date().toISOString().slice(0, 10);
 
-        const existingPost = activeId ? posts.find(post => post.id === activeId) : null;
+        let expectedUpdatedAt = activeId ? getDraftBaseUpdatedAt() : undefined;
+        if (activeId && expectedUpdatedAt === undefined) {
+            const verifiedPost = posts.find(post => post.id === activeId);
+            if (!verifiedPost || usePostStore.getState().loadedMode !== 'full') {
+                setNotice('임시 저장본의 기준 버전을 확인할 수 없습니다. 최신 서버 저장본을 불러온 뒤 다시 확인해 주세요.');
+                return false;
+            }
+            const confirmed = window.confirm('이 임시 저장본에는 서버 기준 버전 정보가 없습니다. 저장하면 현재 확인한 서버 저장본을 복구한 내용으로 교체합니다. 최신 내용을 검토했으며 덮어쓰시겠습니까?');
+            if (!confirmed) {
+                setNotice('서버 저장을 취소했습니다. 복구한 내용은 편집기에 유지됩니다.');
+                return false;
+            }
+            // Only an explicit overwrite choice may adopt this known server
+            // version. A later concurrent edit still fails the server lock.
+            expectedUpdatedAt = verifiedPost.updatedAt ?? '';
+        }
+
         const payload: SavePostInput = {
             slug,
             title,
@@ -112,24 +147,29 @@ export const usePostPersistence = ({
                     ? seo
                     : undefined,
             sections: [],
-            expectedUpdatedAt: activeId ? existingPost?.updatedAt ?? '' : undefined
+            expectedUpdatedAt
         };
 
+        savingRef.current = true;
         setSaving(true);
         try {
             const saved = activeId
                 ? await updatePost(activeId, payload)
                 : await addPost(payload);
 
+            // Saving still updates the store, but must never navigate back to an old
+            // document or overwrite the draft that the user switched to.
+            if (!isCurrentDocument()) return false;
+
             const fallbackMessage = activeId ? '글이 저장되었습니다.' : '새 글이 생성되었습니다.';
             setNotice(successMessage ?? fallbackMessage);
 
             // Notify Parent
-            onSaveSuccess(saved);
-            onAfterSave();
+            onSaveSuccess(saved, draft);
             return true;
 
         } catch (error) {
+            if (!isCurrentDocument()) return false;
             if (isAuthenticationError(error)) {
                 window.location.assign('/admin?auth=required');
                 return false;
@@ -142,21 +182,28 @@ export const usePostPersistence = ({
             }
             return false;
         } finally {
-            setSaving(false);
+            savingRef.current = false;
+            if (mountedRef.current) setSaving(false);
         }
-    }, [draft, posts, activeId, updatePost, addPost, onSaveSuccess, onAfterSave, setNotice]);
+    }, [getCurrentDraft, getDraftBaseUpdatedAt, posts, activeId, updatePost, addPost, onSaveSuccess, setNotice, isBusy]);
 
     const handleDelete = async () => {
-        if (!activeId) return;
+        if (!activeId || savingRef.current || isBusy?.()) return;
+        const document = documentRef.current;
+        const isCurrentDocument = () => mountedRef.current && documentRef.current === document;
+        const draft = getCurrentDraft();
         const confirmed = window.confirm(`"${draft.title}" 글을 삭제할까요? 되돌릴 수 없습니다.`);
         if (!confirmed) return;
 
+        savingRef.current = true;
         setSaving(true);
         try {
             await deletePost(activeId);
+            if (!isCurrentDocument()) return;
             setNotice('글이 삭제되었습니다.');
             onDeleteSuccess();
         } catch (error) {
+            if (!isCurrentDocument()) return;
             if (isAuthenticationError(error)) {
                 window.location.assign('/admin?auth=required');
                 return;
@@ -168,7 +215,8 @@ export const usePostPersistence = ({
                 setNotice('삭제에 실패했습니다.');
             }
         } finally {
-            setSaving(false);
+            savingRef.current = false;
+            if (mountedRef.current) setSaving(false);
         }
     };
 
@@ -176,6 +224,6 @@ export const usePostPersistence = ({
         handleSave,
         handleDelete,
         saving,
-        setSaving
+        savingRef
     };
 };
