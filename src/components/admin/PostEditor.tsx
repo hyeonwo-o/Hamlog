@@ -56,6 +56,8 @@ interface PostEditorProps {
     onLoadCategories: () => void | Promise<void>;
     onDirtyChange?: (dirty: boolean) => void;
     postListOpen?: boolean;
+    focusMode?: boolean;
+    onToggleFocus?: () => void;
     onTogglePostList?: () => void;
     onNewPost?: () => void;
 }
@@ -69,6 +71,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
     onLoadCategories,
     onDirtyChange,
     postListOpen,
+    focusMode,
+    onToggleFocus,
     onTogglePostList,
     onNewPost
 }) => {
@@ -443,6 +447,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
             <PostEditorSection
                 {...groupedProps}
                 postListOpen={postListOpen}
+                focusMode={focusMode}
+                onToggleFocus={onToggleFocus}
                 onTogglePostList={onTogglePostList}
                 onNewPost={onNewPost}
             />

@@ -21,6 +21,7 @@ export interface AdminSidebarProps {
   page: number;
   onPageChange: (page: number) => void;
   onNew: () => void;
+  onOpenTrash?: () => void;
   saving: boolean;
   onSelect: (post: Post) => void;
   filteredPosts: Post[];

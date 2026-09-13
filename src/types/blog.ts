@@ -70,6 +70,8 @@ export interface Post {
     contentHtml?: string;
     publishedAt: string;
     updatedAt?: string;
+    /** Server-owned trash marker. Restoring removes it and returns a private draft. */
+    deletedAt?: string;
     tags: string[];
     series?: string;
     featured?: boolean;
@@ -95,4 +97,4 @@ export interface PostRevisionDetail extends PostRevision {
     snapshot: Post;
 }
 
-export type PostInput = Omit<Post, 'id' | 'metaDescription'>;
+export type PostInput = Omit<Post, 'id' | 'metaDescription' | 'deletedAt'>;

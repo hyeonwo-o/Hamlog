@@ -7,7 +7,7 @@ import {
 } from '../models/revisionModel.js';
 import { createCategoryUnlocked } from './categoryService.js';
 import { normalizePostData } from '../utils/postHelpers.js';
-import { filterPublicPosts, isPostPublicVisible } from '../utils/postVisibility.js';
+import { filterPublicPosts, isPostPublicVisible, isPostTrashed } from '../utils/postVisibility.js';
 import { normalizePostViews } from '../utils/normalizers/postNormalizers.js';
 import { runWithDataStoreLock } from '../utils/storeLock.js';
 import {
@@ -42,7 +42,7 @@ const readPostsWithViews = async () => {
 
 export async function getAllPostsService(includeAll = false, summaryOnly = false) {
     const posts = await readPostsWithViews();
-    const visiblePosts = includeAll ? posts : filterPublicPosts(posts);
+    const visiblePosts = includeAll ? posts.filter(post => !isPostTrashed(post)) : filterPublicPosts(posts);
     return {
         success: true,
         data: summaryOnly ? toPostSummaries(visiblePosts) : visiblePosts
@@ -159,6 +159,10 @@ export async function updatePostService(id, rawData) {
 
         const existing = allPosts[index];
 
+        if (isPostTrashed(existing)) {
+            return { success: false, error: '휴지통의 글은 먼저 복원해 주세요.', code: 'edit_conflict' };
+        }
+
         if (rawData.expectedUpdatedAt !== undefined) {
             const expectedUpdatedAt = String(rawData.expectedUpdatedAt ?? '');
             const currentUpdatedAt = String(existing.updatedAt ?? '');
@@ -221,6 +225,9 @@ export async function restorePostRevisionService(id, revisionId, rawData = {}) {
         }
 
         const existing = allPosts[index];
+        if (isPostTrashed(existing)) {
+            return { success: false, error: '휴지통의 글은 먼저 복원해 주세요.', code: 'edit_conflict' };
+        }
         if (typeof rawData?.expectedUpdatedAt !== 'string') {
             return { success: false, error: '현재 저장본의 버전을 확인한 뒤 복구해 주세요.', code: 'precondition_required' };
         }
@@ -276,13 +283,65 @@ export async function restorePostRevisionService(id, revisionId, rawData = {}) {
 export async function deletePostService(id) {
     return runWithDataStoreLock(async () => {
         const allPosts = await readPostsWithViews();
-        const next = allPosts.filter(post => post.id !== id);
-
-        if (next.length === allPosts.length) {
+        const existing = allPosts.find(post => post.id === id);
+        if (!existing) {
             return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
         }
+        if (isPostTrashed(existing)) return { success: true };
+        const deletedAt = nextPostTimestamp(existing);
+        // Keep it private even if an older server that does not know deletedAt is rolled back into service.
+        await writePosts(allPosts.map(post => post.id === id ? { ...post, status: 'draft', deletedAt, updatedAt: deletedAt } : post));
+        return { success: true };
+    });
+}
 
-        await writePosts(next);
+const nextPostTimestamp = (post) => new Date(Math.max(Date.now(), (Date.parse(post.updatedAt) || 0) + 1)).toISOString();
+
+export async function getTrashedPostsService() {
+    const posts = await readPostsWithViews();
+    return { success: true, data: toPostSummaries(posts.filter(isPostTrashed)
+        .sort((left, right) => Date.parse(right.deletedAt) - Date.parse(left.deletedAt))) };
+}
+
+const checkTrashVersion = (post, rawData) => {
+    if (!post || !isPostTrashed(post)) {
+        return { success: false, error: '휴지통에서 글을 찾을 수 없습니다.', code: 'not_found' };
+    }
+    if (typeof rawData?.expectedDeletedAt !== 'string') {
+        return { success: false, error: '휴지통의 최신 상태를 확인해 주세요.', code: 'precondition_required' };
+    }
+    if (rawData.expectedDeletedAt !== post.deletedAt) {
+        return { success: false, error: '휴지통 상태가 변경되었습니다. 목록을 새로고침해 주세요.', code: 'edit_conflict' };
+    }
+    return null;
+};
+
+export async function restoreTrashedPostService(id, rawData = {}) {
+    return runWithDataStoreLock(async () => {
+        const posts = await readPostsWithViews();
+        const existing = posts.find(post => post.id === id);
+        const error = checkTrashVersion(existing, rawData);
+        if (error) return error;
+        // Never unexpectedly publish an old published/scheduled post on restore.
+        const restored = { ...existing, status: 'draft', updatedAt: nextPostTimestamp(existing) };
+        delete restored.deletedAt;
+        delete restored.scheduledAt;
+        await writePosts(posts.map(post => post.id === id ? restored : post));
+        return { success: true, data: restored };
+    });
+}
+
+export async function permanentlyDeletePostService(id, rawData = {}) {
+    return runWithDataStoreLock(async () => {
+        const posts = await readPostsWithViews();
+        const existing = posts.find(post => post.id === id);
+        const error = checkTrashVersion(existing, rawData);
+        if (error) return error;
+        if (rawData.confirmTitle !== existing.title) {
+            return { success: false, error: '영구삭제하려면 글 제목을 정확히 입력해 주세요.', code: 'validation_error' };
+        }
+
+        await writePosts(posts.filter(post => post.id !== id));
         await deletePostRevisions(id);
         await deletePostView(id);
         await deleteCommentsByPostIdUnlocked(id);

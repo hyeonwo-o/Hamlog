@@ -23,6 +23,7 @@ import { ADMIN_SECTIONS } from '../utils/adminSections';
 import * as authApi from '../api/authApi';
 import { useAnalyticsSummary } from '../hooks/useAnalyticsSummary';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import PostTrashDialog from '../components/admin/post/PostTrashDialog';
 
 const AdminPage: React.FC = () => {
   const posts = usePostStore(state => state.posts);
@@ -37,8 +38,10 @@ const AdminPage: React.FC = () => {
   const [editorDirty, setEditorDirty] = useState(false);
   const [postListOpen, setPostListOpen] = useState(false);
   const [desktopPostListOpen, setDesktopPostListOpen] = useState(true);
+  const [writingFocus, setWritingFocus] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   const isWideWorkspace = useMediaQuery('(min-width: 1536px)');
-  const postListVisible = isWideWorkspace ? desktopPostListOpen : postListOpen;
+  const postListVisible = !writingFocus && (isWideWorkspace ? desktopPostListOpen : postListOpen);
   const postListFocusTargetRef = useRef<'list' | 'editor' | null>(null);
   const { activeId, activeSection, updateAdminLocation } = useAdminRouteState();
   const {
@@ -183,6 +186,7 @@ const AdminPage: React.FC = () => {
 
   const handleDeleteSuccess = () => {
     setEditorDirty(false);
+    setWritingFocus(false);
     updateAdminLocation({ post: null }, { replace: true });
     setPostListVisibility(true);
   };
@@ -209,15 +213,17 @@ const AdminPage: React.FC = () => {
 
   return (
     <div className="admin-compact min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
-      <AdminHeader
-        activeSection={activeSection}
-        sections={ADMIN_SECTIONS}
-        logoutError={logoutError}
-        isLoggingOut={isLoggingOut}
-        onSectionChange={handleSectionChange}
-        onLogout={handleLogout}
-        onBeforeNavigateHome={confirmEditorNavigation}
-      />
+      <div className={writingFocus && activeSection === 'posts' ? 'hidden' : 'contents'}>
+        <AdminHeader
+          activeSection={activeSection}
+          sections={ADMIN_SECTIONS}
+          logoutError={logoutError}
+          isLoggingOut={isLoggingOut}
+          onSectionChange={handleSectionChange}
+          onLogout={handleLogout}
+          onBeforeNavigateHome={confirmEditorNavigation}
+        />
+      </div>
       <AdminNotice
         message={adminNotice}
         tone={adminNoticeTone}
@@ -269,7 +275,7 @@ const AdminPage: React.FC = () => {
           )}
 
           {activeSection === 'posts' && (
-            <div className={`grid min-w-0 gap-4 ${desktopPostListOpen ? '2xl:grid-cols-[340px_minmax(0,1fr)]' : ''}`}>
+            <div className={`grid min-w-0 gap-4 ${desktopPostListOpen && !writingFocus ? '2xl:grid-cols-[340px_minmax(0,1fr)]' : ''}`}>
               <div
                 id="admin-post-list-panel"
                 className={`${postListVisible ? 'block' : 'hidden'} mx-auto min-w-0 w-full max-w-[640px] 2xl:mx-0 2xl:max-w-none`}
@@ -300,6 +306,7 @@ const AdminPage: React.FC = () => {
                   page={page}
                   onPageChange={setPage}
                   onNew={handleNew}
+                  onOpenTrash={() => setTrashOpen(true)}
                   saving={loading}
                   onSelect={handleSelect}
                   filteredPosts={filteredPosts}
@@ -315,7 +322,7 @@ const AdminPage: React.FC = () => {
 
               <div
                 id="admin-post-editor-panel"
-                className={`${postListOpen ? 'hidden' : 'block'} min-w-0 2xl:block`}
+                className={`${postListOpen && !writingFocus ? 'hidden' : 'block'} min-w-0 2xl:block`}
               >
                 <PostEditor
                   post={activePost}
@@ -326,9 +333,12 @@ const AdminPage: React.FC = () => {
                   onLoadCategories={loadCategories}
                   onDirtyChange={setEditorDirty}
                   postListOpen={postListVisible}
+                  focusMode={writingFocus}
+                  onToggleFocus={() => setWritingFocus(value => !value)}
                   onTogglePostList={() => {
+                    setWritingFocus(false);
                     if (isWideWorkspace) {
-                      setDesktopPostListOpen(open => !open);
+                      setDesktopPostListOpen(open => writingFocus || !open);
                     } else {
                       setPostListVisibility(true);
                     }
@@ -340,6 +350,9 @@ const AdminPage: React.FC = () => {
           )}
         </section>
       </main>
+      {trashOpen && <PostTrashDialog onClose={() => setTrashOpen(false)}
+        onRestored={post => usePostStore.getState().applyConfirmedPost(post)}
+        onDeleted={id => usePostStore.getState().removeConfirmedPost(id)} />}
     </div>
   );
 };

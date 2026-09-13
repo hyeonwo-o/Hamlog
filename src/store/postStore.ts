@@ -20,6 +20,7 @@ interface PostState {
   updatePost: (id: string, post: PostInput) => Promise<Post>;
   deletePost: (id: string) => Promise<void>;
   applyConfirmedPost: (post: Post) => void;
+  removeConfirmedPost: (id: string) => void;
   recordPostView: (slug: string) => Promise<number>;
 }
 
@@ -139,6 +140,14 @@ export const usePostStore = create<PostState>((set, get) => {
       error: null,
       hasLoaded: true,
       loadedMode: 'full'
+    }));
+  },
+
+  removeConfirmedPost: (id) => {
+    contentGeneration += 1;
+    set(state => ({
+      posts: state.posts.filter(post => post.id !== id),
+      loading: pendingWrites > 0
     }));
   },
 

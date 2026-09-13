@@ -78,6 +78,8 @@ interface PostEditorSectionProps {
   uiState: UIState;
   data: EditorData;
   postListOpen?: boolean;
+  focusMode?: boolean;
+  onToggleFocus?: () => void;
   onTogglePostList?: () => void;
   onNewPost?: () => void;
 }
@@ -89,13 +91,15 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
   uiState,
   data,
   postListOpen,
+  focusMode = false,
+  onToggleFocus,
   onTogglePostList,
   onNewPost
 }) => {
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const [desktopInspectorOpen, setDesktopInspectorOpen] = useState(true);
   const isDesktopWorkspace = useMediaQuery('(min-width: 1024px)');
-  const inspectorOpen = isDesktopWorkspace ? desktopInspectorOpen : mobileInspectorOpen;
+  const inspectorOpen = !focusMode && (isDesktopWorkspace ? desktopInspectorOpen : mobileInspectorOpen);
   const sectionRef = useRef<HTMLDivElement>(null);
   const commandBarRef = useRef<HTMLDivElement>(null);
   const { draft, categoryTree, revisions, contentStats, currentCoverUrl, editor } = data;
@@ -201,6 +205,12 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
             onDiscardAutosave={onDiscardAutosave}
             inspectorOpen={inspectorOpen}
             onToggleInspector={() => {
+              if (focusMode) {
+                onToggleFocus?.();
+                if (isDesktopWorkspace) setDesktopInspectorOpen(true);
+                else setMobileInspectorOpen(true);
+                return;
+              }
               if (isDesktopWorkspace) {
                 setDesktopInspectorOpen(current => !current);
               } else {
@@ -208,6 +218,8 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
               }
             }}
             postListOpen={postListOpen}
+            focusMode={focusMode}
+            onToggleFocus={onToggleFocus}
             onTogglePostList={onTogglePostList}
             onNewPost={onNewPost}
             onTogglePreview={onTogglePreview}
@@ -218,7 +230,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
         </div>
       </div>
 
-      <div className={`mx-auto grid min-w-0 max-w-[1500px] gap-4 px-3 ${desktopInspectorOpen ? 'lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
+      <div className={`mx-auto grid min-w-0 max-w-[1500px] gap-4 px-3 ${desktopInspectorOpen && !focusMode ? 'lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
         <div className="min-w-0">
           <PostEditorCanvas
             editor={editor}
@@ -235,7 +247,7 @@ const PostEditorSection: React.FC<PostEditorSectionProps> = ({
             onSetCoverFromContent={onSetCoverFromContent}
             uploadLocalImage={uploadLocalImage}
           >
-            <div className="mx-auto w-full max-w-[920px] px-0 pb-3 pt-6 sm:px-3 lg:px-6">
+            <div className="mx-auto w-full max-w-[920px] px-0 pb-1 pt-3 sm:px-3 sm:pb-3 sm:pt-6 lg:px-6">
               <CategoryPicker
                 categoryTree={categoryTree}
                 value={draft.category}

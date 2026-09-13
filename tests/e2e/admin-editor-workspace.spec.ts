@@ -177,7 +177,7 @@ test('mobile new-post action protects unsaved edits and opens a blank draft afte
     await expect(page).not.toHaveURL(/(?:\?|&)post=/);
     await expect(title).toHaveValue('');
     await expect(editor).toHaveText('');
-    await expect(page.getByTestId('post-command-bar').getByText('새 초안', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('현재 글 상태: 초안', { exact: true })).toBeVisible();
     await expect(newPost).toBeDisabled();
     await expectPanels(page, false, false);
     await expectFittingWorkspace(page);

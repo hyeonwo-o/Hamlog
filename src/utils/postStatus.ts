@@ -9,6 +9,7 @@ export const getScheduledTimestamp = (value?: string) => {
 };
 
 export const isPostVisible = (post: Post, now: number = Date.now()) => {
+  if (Object.hasOwn(post, 'deletedAt')) return false;
   const status = normalizePostStatus(post.status);
   if (status === 'draft') return false;
   if (status === 'scheduled') {

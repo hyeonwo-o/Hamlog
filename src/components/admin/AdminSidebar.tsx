@@ -23,6 +23,7 @@ export default function AdminSidebar({
   page,
   onPageChange,
   onNew,
+  onOpenTrash,
   saving,
   onSelect,
   filteredPosts,
@@ -101,6 +102,7 @@ export default function AdminSidebar({
       />
 
       <SidebarPagination page={page} totalPages={totalPages} onPageChange={onPageChange} />
+      {onOpenTrash && <button type="button" onClick={onOpenTrash} className="min-h-11 rounded-lg border border-[color:var(--border)] px-3 text-sm text-[var(--text-muted)] hover:text-[var(--text)]">휴지통 열기</button>}
     </aside>
   );
 }

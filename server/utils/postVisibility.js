@@ -1,5 +1,8 @@
 import { normalizePostStatus, normalizeScheduledAt } from './normalizers/postNormalizers.js';
 
+// A malformed tombstone must stay private too. Only an explicit restore removes it.
+export const isPostTrashed = (post) => Object.hasOwn(post ?? {}, 'deletedAt');
+
 export function getScheduledTimestamp(value) {
     const normalized = normalizeScheduledAt(value);
     if (!normalized) return null;
@@ -9,6 +12,7 @@ export function getScheduledTimestamp(value) {
 }
 
 export function isPostPublicVisible(post, now = Date.now()) {
+    if (isPostTrashed(post)) return false;
     const status = normalizePostStatus(post?.status);
     if (status === 'draft') return false;
     if (status === 'scheduled') {

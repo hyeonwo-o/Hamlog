@@ -234,7 +234,7 @@ test('authenticated content routes persist posts and categories', async () => {
         postId: createPostResponse.body.id,
         author: 'Test',
         password: 'legacy-test-password',
-        content: 'This comment should be removed with its post.',
+        content: 'This comment should survive trash until permanent deletion.',
         createdAt: new Date().toISOString()
     }]);
 
@@ -249,7 +249,20 @@ test('authenticated content routes persist posts and categories', async () => {
     assert.equal(deletePostResponse.status, 204);
 
     const postsAfterDelete = await readPosts();
-    assert.equal(postsAfterDelete.length, 0);
+    assert.equal(postsAfterDelete.length, 1);
+    assert.ok(postsAfterDelete[0].deletedAt);
+    const activePostsAfterDelete = await request(app).get('/api/posts').set('Cookie', cookies);
+    assert.equal(activePostsAfterDelete.body.posts.length, 0);
+    assert.deepEqual(await readPostRevisions(createPostResponse.body.id), revisionsAfterUpdate);
+    assert.equal((await readComments()).length, 1);
+    assert.equal((await readPostViews())[createPostResponse.body.id], 1);
+
+    await withTrustedOrigin(request(app)
+        .delete(`/api/posts/${createPostResponse.body.id}/permanent`)
+        .set('Cookie', cookies))
+        .send({ expectedDeletedAt: postsAfterDelete[0].deletedAt, confirmTitle: postsAfterDelete[0].title })
+        .expect(204);
+    assert.deepEqual(await readPosts(), []);
     assert.deepEqual(await readPostRevisions(createPostResponse.body.id), []);
     assert.deepEqual(await readComments(), []);
     assert.equal(Object.hasOwn(await readPostViews(), createPostResponse.body.id), false);

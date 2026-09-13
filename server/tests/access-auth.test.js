@@ -78,6 +78,8 @@ test('origin admin pages and every sensitive API reject unauthenticated requests
         ['get', '/admin'], ['get', '/admin/'], ['get', '/admin/api/auth/me'], ['get', '/admin/api/posts'],
         ['post', '/api/posts'], ['put', '/api/posts/missing'], ['delete', '/api/posts/missing'],
         ['get', '/api/posts/missing/revisions'], ['post', '/api/posts/missing/revisions/r/restore'],
+        ['get', '/api/posts/trash/list'], ['post', '/api/posts/missing/trash/restore'], ['delete', '/api/posts/missing/permanent'],
+        ['get', '/admin/api/posts/trash/list'], ['post', '/admin/api/posts/missing/trash/restore'], ['delete', '/admin/api/posts/missing/permanent'],
         ['post', '/api/categories'], ['patch', '/api/categories/reorder'], ['delete', '/api/categories/missing'],
         ['put', '/api/profile'], ['post', '/api/uploads'], ['get', '/api/uploads/unused'],
         ['delete', '/api/uploads/unused'], ['get', '/api/analytics/summary'], ['get', '/api/preview']
@@ -155,6 +157,33 @@ test('Access admin CRUD keeps CSRF checks and private posts stay invisible to pu
     } finally {
         if (id) await request(app).delete(`/admin/api/posts/${id}`).set(headers).expect(204);
     }
+});
+
+test('Access protects trash and permits private restoration and explicit permanent deletion', async () => {
+    const token = await signedToken();
+    const headers = { ...trusted, 'Cf-Access-Jwt-Assertion': token };
+    const created = await request(app).post('/admin/api/posts').set(headers)
+        .send({ title: 'Access trash test', slug: 'access-trash-test', status: 'draft' }).expect(201);
+    const id = created.body.id;
+    await request(app).delete(`/admin/api/posts/${id}`).set(headers).expect(204);
+    const list = await request(app).get('/admin/api/posts/trash/list').set(headers).expect(200);
+    assert.equal(list.headers['cache-control'], 'no-store');
+    const post = list.body.posts.find(post => post.id === id);
+    const restoreBody = { expectedDeletedAt: post.deletedAt };
+    await request(app).post(`/admin/api/posts/${id}/trash/restore`)
+        .set('Cf-Access-Jwt-Assertion', token).set('Origin', 'https://foreign.test')
+        .send(restoreBody).expect(403);
+    const restored = await request(app).post(`/admin/api/posts/${id}/trash/restore`).set(headers).send(restoreBody).expect(200);
+    assert.equal(restored.body.status, 'draft');
+    await request(app).get(`/api/posts/${post.slug}`).expect(404);
+    await request(app).delete(`/admin/api/posts/${id}`).set(headers).expect(204);
+    const latest = (await request(app).get('/admin/api/posts/trash/list').set(headers)).body.posts.find(post => post.id === id);
+    const purgeBody = { expectedDeletedAt: latest.deletedAt, confirmTitle: latest.title };
+    await request(app).delete(`/admin/api/posts/${id}/permanent`)
+        .set('Cf-Access-Jwt-Assertion', token).set('Origin', 'https://foreign.test')
+        .send(purgeBody).expect(403);
+    await request(app).delete(`/admin/api/posts/${id}/permanent`).set(headers).send(purgeBody).expect(204);
+    await request(app).get(`/admin/api/posts/${id}/revisions`).set(headers).expect(404);
 });
 
 test('public health and content stay open; logout clears old auth and hands off to Access', async () => {

@@ -7,7 +7,10 @@ import {
     getPostRevisionsService,
     getPostRevisionService,
     restorePostRevisionService,
-    recordPostViewService
+    recordPostViewService,
+    getTrashedPostsService,
+    restoreTrashedPostService,
+    permanentlyDeletePostService
 } from '../services/postService.js';
 import { toPublicPostDetail } from '../utils/seoContent.js';
 
@@ -152,3 +155,31 @@ export const deletePost = async (req, res) => {
         res.status(500).json({ message: '포스트 삭제에 실패했습니다.' });
     }
 };
+
+export const getTrash = async (_req, res) => {
+    try {
+        const result = await getTrashedPostsService();
+        res.set('Cache-Control', 'no-store').json({ posts: result.data, total: result.data.length });
+    } catch (error) {
+        console.error('Failed to load trash', error);
+        res.status(500).json({ message: '휴지통을 불러오지 못했습니다.' });
+    }
+};
+
+const trashAction = (service, successStatus) => async (req, res) => {
+    try {
+        const result = await service(req.params.id, req.body);
+        if (!result.success) {
+            const status = { not_found: 404, precondition_required: 428, edit_conflict: 409, validation_error: 400 }[result.code] ?? 500;
+            return res.status(status).json({ message: result.error });
+        }
+        if (successStatus === 204) return res.status(204).send();
+        return res.set('Cache-Control', 'no-store').json(result.data);
+    } catch (error) {
+        console.error('Trash action failed', error);
+        return res.status(500).json({ message: '휴지통 작업에 실패했습니다. 목록을 새로고침해 확인해 주세요.' });
+    }
+};
+
+export const restoreTrashedPost = trashAction(restoreTrashedPostService, 200);
+export const permanentlyDeletePost = trashAction(permanentlyDeletePostService, 204);

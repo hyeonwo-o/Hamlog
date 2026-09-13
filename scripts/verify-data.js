@@ -96,6 +96,9 @@ const verify = async () => {
   addDuplicateErrors(indexPosts, 'slug', '글 slug', errors);
 
   for (const post of indexPosts) {
+    if (Object.hasOwn(post ?? {}, 'deletedAt') && (typeof post.deletedAt !== 'string' || !Number.isFinite(Date.parse(post.deletedAt)))) {
+      errors.push(`유효하지 않은 휴지통 이동 시각: ${post?.slug ?? post?.id ?? '(식별자 없음)'}`);
+    }
     const status = String(post?.status ?? '').trim().toLowerCase();
     if (!allowedPostStatuses.has(status)) {
       errors.push(`유효하지 않은 글 상태: ${post?.slug ?? post?.id ?? '(식별자 없음)'}`);

@@ -50,6 +50,25 @@ export async function deletePost(id: string): Promise<void> {
   await requestVoid(`/posts/${id}`, { method: 'DELETE' });
 }
 
+export async function fetchTrashedPosts(signal?: AbortSignal): Promise<Post[]> {
+  const data = await requestJson<PostListResponse>('/posts/trash/list', { signal });
+  return data.posts;
+}
+
+export async function restoreTrashedPost(post: Post): Promise<Post> {
+  return requestJson<Post>(`/posts/${encodeURIComponent(post.id)}/trash/restore`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedDeletedAt: post.deletedAt })
+  });
+}
+
+export async function permanentlyDeletePost(post: Post, confirmTitle: string): Promise<void> {
+  return requestVoid(`/posts/${encodeURIComponent(post.id)}/permanent`, {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expectedDeletedAt: post.deletedAt, confirmTitle })
+  });
+}
+
 export async function recordPostView(slug: string): Promise<PostViewResponse> {
   return requestJson<PostViewResponse>(`/posts/${encodeURIComponent(slug)}/view`, {
     method: 'POST'

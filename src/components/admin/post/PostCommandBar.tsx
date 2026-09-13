@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, EyeOff, List, Plus, Save, Send, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, List, Maximize2, Minimize2, Plus, Save, Send, SlidersHorizontal, Trash2 } from 'lucide-react';
 import type { PostStatus } from '../../../data/blogData';
 import type { BrowserSaveStatus } from '../../../hooks/useAutosave';
 
@@ -21,6 +21,8 @@ interface PostCommandBarProps {
   inspectorOpen: boolean;
   onToggleInspector: () => void;
   postListOpen?: boolean;
+  focusMode?: boolean;
+  onToggleFocus?: () => void;
   onTogglePostList?: () => void;
   onNewPost?: () => void;
   onTogglePreview: () => void;
@@ -53,6 +55,8 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
   inspectorOpen,
   onToggleInspector,
   postListOpen,
+  focusMode = false,
+  onToggleFocus,
   onTogglePostList,
   onNewPost,
   onTogglePreview,
@@ -73,43 +77,52 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
     error: '브라우저 임시 저장 실패',
     blocked: '브라우저 복구본 확인 필요'
   };
+  const compactSaveStatus = saving ? '서버 저장 중…'
+    : browserSaveStatus === 'error' ? '임시 저장 실패'
+      : hasRestorableDraft ? '복구본 확인 필요'
+        : isDirty ? (browserSaveStatus === 'saved' ? '브라우저에 보관됨' : '임시 저장 대기')
+          : serverSavedAt ? '서버 저장됨' : '서버 미저장';
 
   return (
     <div data-testid="post-command-bar" className="flex w-full flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
-      <div className="min-w-0">
+      <div className="relative min-w-0">
         <div
-          className="flex flex-wrap items-center gap-1.5 text-[11px] leading-6 text-[var(--text-muted)]"
-          aria-live="polite"
+          className="flex flex-wrap items-center gap-2 text-xs leading-6 text-[var(--text-muted)]"
         >
-          <span className="font-medium text-[var(--text)]">
-            {activeId ? '편집 중' : '새 초안'}
-          </span>
           <span
             aria-label={`현재 글 상태: ${statusLabel}`}
             className="rounded-full border border-[color:var(--border)] bg-[var(--surface-muted)] px-2 py-0.5 font-medium text-[var(--text-muted)]"
             title="상태 변경은 발행 설정에서 할 수 있습니다."
           >
-            현재: {statusLabel}
+            {statusLabel}
           </span>
           {isDirty && (
             <span className="rounded-full bg-amber-50 dark:bg-amber-400/10 px-2 py-0.5 font-medium text-amber-700 dark:text-amber-300">
               저장되지 않은 변경
             </span>
           )}
-          <span data-testid="browser-save-status" className={browserSaveStatus === 'error' ? 'text-red-600 dark:text-red-300' : ''} title="이 브라우저에만 보관하는 복구용 사본이며, 서버에 저장하거나 발행하지 않습니다. 시각은 한국 시간입니다.">
-            {browserStatusLabels[browserSaveStatus]}
-          </span>
-          <span data-testid="server-save-status" title="서버에서 확인한 저장 시각입니다. 이후 입력은 다시 저장해야 합니다. 시각은 한국 시간입니다.">
-            {saving ? '서버 저장 중…' : serverSavedAt ? `서버 저장 · ${formatSavedAt(serverSavedAt)}` : '서버 미저장'}
-          </span>
+          <details onBlur={event => {
+            if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+          }} onKeyDown={event => {
+            if (event.key === 'Escape') {
+              event.stopPropagation();
+              event.currentTarget.open = false;
+              event.currentTarget.querySelector('summary')?.focus();
+            }
+          }}>
+            <summary aria-label="저장 상태 상세" className={`flex cursor-pointer list-none items-center gap-1 rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${browserSaveStatus === 'error' ? 'text-red-600 dark:text-red-300' : ''}`}>
+              <span role="status" aria-live="polite">{compactSaveStatus}</span><ChevronDown size={13} aria-hidden="true" />
+            </summary>
+            <div className="absolute left-0 top-full z-50 mt-1 w-[min(280px,calc(100vw-5rem))] space-y-2 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-3 text-xs leading-5 shadow-lg">
+              <p data-testid="browser-save-status">{browserStatusLabels[browserSaveStatus]}</p>
+              <p data-testid="server-save-status">{saving ? '서버 저장 중…' : serverSavedAt ? `서버 저장 · ${formatSavedAt(serverSavedAt)}` : '서버 미저장'}</p>
+              <p>브라우저 임시본은 이 기기에만 보관됩니다. 다른 기기에서 이어 쓰려면 서버에 저장하세요. 시각은 한국 시간입니다.</p>
+            </div>
+          </details>
           {notice ? (
-            <button
-              type="button"
-              onClick={() => onNoticeClick?.()}
-              className={onNoticeClick ? 'text-[var(--accent-strong)] hover:underline' : ''}
-            >
-              {notice}
-            </button>
+            <p role={browserSaveStatus === 'error' ? 'alert' : 'status'} className="basis-full break-words text-xs leading-5">
+              {onNoticeClick ? <button type="button" onClick={onNoticeClick} className="text-left text-[var(--accent-strong)] underline">{notice}</button> : notice}
+            </p>
           ) : null}
           {hasRestorableDraft && (
             <>
@@ -135,6 +148,10 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
 
       <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="flex flex-wrap items-center gap-1.5">
+          {onToggleFocus && <button type="button" onClick={onToggleFocus} aria-label={focusMode ? '집중 모드 끄기' : '집중 모드 켜기'} aria-pressed={focusMode}
+            title={focusMode ? '집중 모드 끄기' : '집중 모드 켜기'} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 border border-[color:var(--border)] px-2 text-xs sm:min-h-9 sm:min-w-0">
+            {focusMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />}<span className="hidden sm:inline">{focusMode ? '집중 해제' : '집중'}</span>
+          </button>}
           {onTogglePostList && (
             <button
               id="admin-post-list-toggle"
@@ -185,21 +202,21 @@ const PostCommandBar: React.FC<PostCommandBarProps> = ({
             {previewMode ? <EyeOff size={14} /> : <Eye size={14} />}
             <span className="hidden sm:inline">{previewMode ? '편집' : '미리보기'}</span>
           </button>
+        </div>
+        <div className="flex items-center gap-1.5">
           {activeId && (
             <button
               type="button"
               onClick={onDelete}
               disabled={saving}
               aria-label="글 삭제"
-              title="삭제"
+              title="휴지통으로 이동"
               className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 border border-red-200 dark:border-red-400/30 bg-[var(--surface)] px-2.5 text-xs text-red-500 dark:text-red-300 transition hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-400/10 sm:min-h-9 sm:min-w-0"
             >
               <Trash2 size={14} />
               <span className="hidden sm:inline">삭제</span>
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={onSave}

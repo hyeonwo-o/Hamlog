@@ -192,7 +192,7 @@ export const usePostPersistence = ({
         const document = documentRef.current;
         const isCurrentDocument = () => mountedRef.current && documentRef.current === document;
         const draft = getCurrentDraft();
-        const confirmed = window.confirm(`"${draft.title}" 글을 삭제할까요? 되돌릴 수 없습니다.`);
+        const confirmed = window.confirm(`"${draft.title}" 글을 휴지통으로 이동할까요? 공개 화면에서 숨겨지며 나중에 초안으로 복원할 수 있습니다. 저장하지 않은 입력은 서버 복원본에 포함되지 않습니다.`);
         if (!confirmed) return;
 
         savingRef.current = true;
@@ -200,7 +200,7 @@ export const usePostPersistence = ({
         try {
             await deletePost(activeId);
             if (!isCurrentDocument()) return;
-            setNotice('글이 삭제되었습니다.');
+            setNotice('글을 휴지통으로 이동했습니다.');
             onDeleteSuccess();
         } catch (error) {
             if (!isCurrentDocument()) return;

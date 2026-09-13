@@ -304,7 +304,7 @@ test('admin editor keeps the mobile workspace focused without page overflow', as
 
   const titleInput = page.getByPlaceholder('제목을 입력하세요');
   await expect(titleInput).toBeVisible();
-  await expect(page.getByLabel('현재 글 상태: 초안')).toContainText('현재: 초안');
+  await expect(page.getByLabel('현재 글 상태: 초안')).toHaveText('초안');
   await expect(page.locator('select[aria-label="글 상태"]')).toHaveCount(0);
 
   const initialTitleHeight = await titleInput.evaluate(element => element.getBoundingClientRect().height);
@@ -1003,7 +1003,7 @@ test('failed publish validation keeps the editor in draft status', async ({ page
 
   await expect(dialog).toBeVisible();
   await expect(page.getByText('본문 내용을 입력하세요.')).toBeVisible();
-  await expect(page.getByLabel('현재 글 상태: 초안')).toContainText('현재: 초안');
+  await expect(page.getByLabel('현재 글 상태: 초안')).toHaveText('초안');
 });
 
 test('publish dialog reports a duplicate post URL before saving', async ({ page }) => {
@@ -1212,7 +1212,7 @@ test('admin can publish a simple post and view it publicly', async ({ page }) =>
   ]);
 
   await expect(page.getByText('발행되었습니다.')).toBeVisible();
-  await expect(page.getByLabel('현재 글 상태: 발행')).toContainText('현재: 발행');
+  await expect(page.getByLabel('현재 글 상태: 발행')).toHaveText('발행');
 
   await page.keyboard.press('Control+Shift+S');
   await expect(publishDialog).toBeVisible();

@@ -8,7 +8,10 @@ import {
   deletePost,
   getPostRevisions,
   getPostRevision,
-  restorePostRevision
+  restorePostRevision,
+  getTrash,
+  restoreTrashedPost,
+  permanentlyDeletePost
 } from '../controllers/postController.js';
 
 import { attachOptionalUser, authenticateToken } from '../middleware/auth.js';
@@ -22,6 +25,9 @@ import {
 const router = express.Router();
 
 router.get('/', attachOptionalUser, getPosts);
+router.get('/trash/list', authenticateToken, getTrash);
+router.post('/:id/trash/restore', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, restoreTrashedPost);
+router.delete('/:id/permanent', authenticateToken, requireTrustedOrigin, ...publicBodyParsers, permanentlyDeletePost);
 router.post('/', authenticateToken, requireTrustedOrigin, ...adminContentBodyParsers, createPost);
 router.post('/:slug/view', viewRateLimiter, ...publicBodyParsers, recordPostView);
 router.get('/:id/revisions', authenticateToken, getPostRevisions);
