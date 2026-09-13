@@ -207,9 +207,12 @@ test('returning to a saved existing post still offers its newer local recovery c
   });
   await page.goto(`/admin?section=posts&post=${first.id}`);
   const title = page.getByPlaceholder('제목을 입력하세요');
+  // Wait for the source document before fill selects/replaces its title.
+  await expect(title).toHaveValue(first.title);
   await title.fill('서버에 저장된 제목');
   await title.press('Control+s');
   await expect(page.getByText('저장되지 않은 변경', { exact: true })).toBeHidden();
+  await expect.poll(() => first.title).toBe('서버에 저장된 제목');
   await title.fill('돌아와서 복구할 최신 제목');
   const storedTitle = () => page.evaluate(id => {
     const raw = localStorage.getItem(`hamlog_draft_${id}`);
