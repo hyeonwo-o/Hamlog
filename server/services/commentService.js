@@ -76,9 +76,7 @@ export async function getCommentsService(postId) {
 
     const comments = await getCommentsByPostId(normalizedPostId);
 
-    // Exclude password from response
-    // eslint-disable-next-line no-unused-vars
-    const safeComments = comments.map(({ password, ...rest }) => rest);
+    const safeComments = comments.filter(comment => !Object.hasOwn(comment, 'hiddenAt')).map(toPublicComment);
 
     return { success: true, data: safeComments };
 }
@@ -114,12 +112,14 @@ export async function createCommentService({ postId, author, password, content }
         password: normalizedPassword,
         content: normalizedContent
     });
+    if (!newComment) {
+        return { success: false, error: '댓글을 남길 수 있는 공개 글을 찾을 수 없습니다.', code: 'not_found' };
+    }
 
-    // eslint-disable-next-line no-unused-vars
-    const { password: _, ...safeComment } = newComment;
-
-    return { success: true, data: safeComment };
+    return { success: true, data: toPublicComment(newComment) };
 }
+
+const toPublicComment = ({ id, postId, author, content, createdAt }) => ({ id, postId, author, content, createdAt });
 
 export async function deleteCommentService(id, password) {
     const normalizedPassword = normalizePassword(password);

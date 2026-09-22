@@ -57,7 +57,7 @@ const getArticleDate = (value = '') => {
 };
 
 const resolveCanonicalUrl = (post, baseUrl) => {
-  const postUrl = `${baseUrl}/posts/${post.slug}`;
+  const postUrl = `${baseUrl}/posts/${encodeURIComponent(post.slug)}`;
   return toAbsoluteUrl(baseUrl, post.seo?.canonicalUrl || postUrl);
 };
 
@@ -139,6 +139,14 @@ export const injectPostMeta = async (req, res) => {
     const baseUrl = resolveBaseUrl(profile);
     const post = findPublicPostBySlug(posts, slug);
     const publicPosts = filterPublicPosts(posts);
+
+    if (post && slug !== post.slug) {
+      // Keep only the incoming query, never its origin or a return URL. The
+      // destination is an encoded path on this origin, after visibility checks.
+      const search = new URL(req.originalUrl, 'http://localhost').search;
+      // Recheck visibility on future visits if the author later unpublishes it.
+      return res.set('Cache-Control', 'no-store').redirect(301, `/posts/${encodeURIComponent(post.slug)}${search}`);
+    }
 
     let html = await readSpaIndexHtml();
 

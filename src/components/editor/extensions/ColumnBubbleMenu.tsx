@@ -48,7 +48,12 @@ export const ColumnBubbleMenu: React.FC<ColumnBubbleMenuProps> = ({ editor, enab
     // v3 dispatches a transaction when menu options change; keep props stable
     // so transaction-driven React renders do not trigger an update loop.
     const shouldShow = useCallback<NonNullable<React.ComponentProps<typeof BubbleMenu>['shouldShow']>>(
-        ({ editor, state }) => enabled
+        // A loaded document may already have its selection inside columns.
+        // Only attach the floating menu after focus enters the editor/menu;
+        // an unfocused initial attachment races StrictMode's plugin cleanup.
+        ({ editor, state, view, element }) => enabled
+            && editor.isEditable
+            && (view.hasFocus() || element.contains(element.ownerDocument.activeElement))
             && editor.isActive('columns')
             && !(state.selection instanceof NodeSelection && state.selection.node.type.name === 'image'),
         [enabled]

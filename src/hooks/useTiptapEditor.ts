@@ -28,14 +28,10 @@ export const useTiptapEditor = ({
         shouldRerenderOnTransaction: true,
         extensions,
         content: contentJson ?? contentHtml ?? '',
-        onCreate: ({ editor }) => {
-            const { contentHtml, contentJson } = getEditorContentSnapshot(editor);
-            setDraft(prev => ({
-                ...prev,
-                contentHtml,
-                contentJson
-            }));
-        },
+        // Loading a saved document is not an edit. Tiptap fills schema defaults
+        // (for example textAlign: null) and normalizes HTML on construction; do
+        // not replace the author's baseline or create a recovery copy for that
+        // projection. Actual document changes are captured below.
         onUpdate: ({ editor }) => {
             // Capture once, synchronously. React may replay a state updater,
             // which must not serialize a later mutable editor state again.

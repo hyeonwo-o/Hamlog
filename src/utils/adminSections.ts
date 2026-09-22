@@ -4,6 +4,7 @@ export const ADMIN_SECTIONS: Array<{ key: AdminSection; label: string }> = [
   { key: 'dashboard', label: '대시보드' },
   { key: 'posts', label: '글 관리' },
   { key: 'categories', label: '카테고리' },
+  { key: 'comments', label: '댓글 관리' },
   { key: 'profile', label: '자기소개' }
 ];
 

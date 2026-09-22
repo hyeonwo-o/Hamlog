@@ -1,8 +1,27 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState, type SetStateAction } from 'react';
 import { fetchProfile, updateProfile } from '../api/profileApi';
 import { siteMeta, type SiteMeta } from '../data/blogData';
 
 const PROFILE_DRAFT_STORAGE_KEY = 'hamlog-admin-profile-draft';
+const PROFILE_SAVED_NOTICE = '자기소개 정보가 저장되었습니다.';
+
+const equalValues = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
+
+// Apply server normalization only to fields that still match the submitted draft.
+// Collections such as stack are one field; social/display are merged per setting.
+const mergeSavedFields = <T extends object>(submitted: T, current: T, saved: T): T => {
+  const merged = { ...saved };
+  for (const key of Object.keys(current) as (keyof T)[]) {
+    if (!equalValues(current[key], submitted[key])) merged[key] = current[key];
+  }
+  return merged;
+};
+
+const mergeSavedProfile = (submitted: SiteMeta, current: SiteMeta, saved: SiteMeta): SiteMeta => ({
+  ...mergeSavedFields(submitted, current, saved),
+  social: mergeSavedFields(submitted.social, current.social, saved.social),
+  display: mergeSavedFields(submitted.display, current.display, saved.display)
+});
 
 const normalizeProfileDraft = (profile: SiteMeta): SiteMeta => ({
   ...profile,
@@ -60,11 +79,23 @@ const createTemporaryProfileDraft = (seed?: Partial<SiteMeta>): SiteMeta =>
   });
 
 export const useProfile = () => {
-  const [profileDraft, setProfileDraft] = useState<SiteMeta | null>(null);
+  const [profileDraft, setProfileDraftState] = useState<SiteMeta | null>(null);
+  const profileDraftRef = useRef<SiteMeta | null>(null);
+  const saveInFlightRef = useRef(false);
+  const [savedProfile, setSavedProfile] = useState<SiteMeta | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  // Keep request completions and repeated same-turn actions in sync with the
+  // newest input, without putting cache writes inside React state updaters.
+  const setProfileDraft = useCallback((value: SetStateAction<SiteMeta | null>) => {
+    const next = typeof value === 'function' ? value(profileDraftRef.current) : value;
+    profileDraftRef.current = next;
+    setProfileDraftState(next);
+    if (next) writeCachedProfileDraft(next);
+  }, []);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -74,7 +105,7 @@ export const useProfile = () => {
       const profile = await fetchProfile();
       const normalized = normalizeProfileDraft(profile);
       setProfileDraft(normalized);
-      writeCachedProfileDraft(normalized);
+      setSavedProfile(normalized);
     } catch (err) {
       const message =
         err instanceof Error && err.message
@@ -83,6 +114,7 @@ export const useProfile = () => {
       const cachedDraft = readCachedProfileDraft();
       const temporaryDraft = cachedDraft ?? createTemporaryProfileDraft();
       setProfileDraft(temporaryDraft);
+      setSavedProfile(null);
       setError(message);
       setNotice(
         cachedDraft
@@ -92,34 +124,31 @@ export const useProfile = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setProfileDraft]);
 
   const updateProfileField = useCallback(
     <K extends keyof SiteMeta>(key: K, value: SiteMeta[K]) => {
       setProfileDraft(prev => {
         if (!prev) return prev;
-        const next = { ...prev, [key]: value };
-        writeCachedProfileDraft(next);
-        return next;
+        return { ...prev, [key]: value };
       });
     },
-    []
+    [setProfileDraft]
   );
 
   const updateProfileSocial = useCallback(
     (key: keyof SiteMeta['social'], value: string) => {
       setProfileDraft(prev => {
         if (!prev) return prev;
-        const next = { ...prev, social: { ...prev.social, [key]: value } };
-        writeCachedProfileDraft(next);
-        return next;
+        return { ...prev, social: { ...prev.social, [key]: value } };
       });
     },
-    []
+    [setProfileDraft]
   );
 
   const saveProfile = useCallback(async () => {
-    if (!profileDraft || saving) return;
+    const submitted = profileDraftRef.current;
+    if (!submitted || saveInFlightRef.current) return;
     const requiredFields = [
       { key: 'title', label: '블로그 이름' },
       { key: 'name', label: '이름' },
@@ -127,53 +156,59 @@ export const useProfile = () => {
       { key: 'description', label: '소개 문장' }
     ] as const;
     for (const field of requiredFields) {
-      const value = String(profileDraft[field.key] ?? '').trim();
+      const value = String(submitted[field.key] ?? '').trim();
       if (!value) {
         setError(`${field.label}을(를) 입력하세요.`);
         return;
       }
     }
+    saveInFlightRef.current = true;
     setSaving(true);
     setError('');
     setNotice('');
     try {
       const payload: SiteMeta = {
-        ...profileDraft,
-        title: profileDraft.title.trim(),
-        name: profileDraft.name.trim(),
-        role: profileDraft.role.trim(),
-        tagline: profileDraft.tagline.trim(),
-        description: profileDraft.description.trim(),
-        location: profileDraft.location.trim(),
-        profileImage: profileDraft.profileImage.trim(),
-        favicon: profileDraft.favicon?.trim() || '/avatar.jpg',
-        email: profileDraft.email.trim(),
-        siteUrl: profileDraft.siteUrl.trim(),
-        now: profileDraft.now.trim(),
-        stack: profileDraft.stack, // Use array directly
+        ...submitted,
+        title: submitted.title.trim(),
+        name: submitted.name.trim(),
+        role: submitted.role.trim(),
+        tagline: submitted.tagline.trim(),
+        description: submitted.description.trim(),
+        location: submitted.location.trim(),
+        profileImage: submitted.profileImage.trim(),
+        favicon: submitted.favicon?.trim() || '/avatar.jpg',
+        email: submitted.email.trim(),
+        siteUrl: submitted.siteUrl.trim(),
+        now: submitted.now.trim(),
+        stack: submitted.stack,
         social: {
-          github: profileDraft.social.github?.trim() ?? '',
-          linkedin: profileDraft.social.linkedin?.trim() ?? '',
-          twitter: profileDraft.social.twitter?.trim() ?? '',
-          instagram: profileDraft.social.instagram?.trim() ?? '',
-          threads: profileDraft.social.threads?.trim() ?? '',
-          telegram: profileDraft.social.telegram?.trim() ?? ''
+          github: submitted.social.github?.trim() ?? '',
+          linkedin: submitted.social.linkedin?.trim() ?? '',
+          twitter: submitted.social.twitter?.trim() ?? '',
+          instagram: submitted.social.instagram?.trim() ?? '',
+          threads: submitted.social.threads?.trim() ?? '',
+          telegram: submitted.social.telegram?.trim() ?? ''
         },
-        display: profileDraft.display
+        display: submitted.display
       };
       const saved = await updateProfile(payload);
       const normalized = normalizeProfileDraft(saved);
-      setProfileDraft(normalized);
-      writeCachedProfileDraft(normalized);
-      setNotice('자기소개 정보가 저장되었습니다.');
+      setSavedProfile(normalized);
+      setProfileDraft(current => current ? mergeSavedProfile(submitted, current, normalized) : current);
+      setNotice(PROFILE_SAVED_NOTICE);
     } catch (err) {
       const message =
         err instanceof Error && err.message ? err.message : '저장에 실패했습니다.';
       setError(message);
     } finally {
+      saveInFlightRef.current = false;
       setSaving(false);
     }
-  }, [profileDraft, saving]);
+  }, [setProfileDraft]);
+
+  const currentNotice = notice === PROFILE_SAVED_NOTICE && savedProfile && !equalValues(profileDraft, savedProfile)
+    ? '자기소개 정보가 저장되었습니다. 저장되지 않은 변경이 남아 있습니다.'
+    : notice;
 
   return {
     profileDraft,
@@ -181,7 +216,7 @@ export const useProfile = () => {
     loading,
     saving,
     error,
-    notice,
+    notice: currentNotice,
     loadProfile,
     saveProfile,
     updateProfileField,

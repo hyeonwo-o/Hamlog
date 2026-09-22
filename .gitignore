@@ -25,6 +25,7 @@ dist-ssr
 *.sw?
 server/data/*.json
 server/data/posts/
+server/data/post-deletions/
 server/uploads/
 test-results/
 playwright-report/

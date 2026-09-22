@@ -61,6 +61,8 @@ export interface PostSeo {
 export interface Post {
     id: string;
     slug: string;
+    /** Server-owned old slugs, reserved for this post and omitted publicly. */
+    previousSlugs?: string[];
     title: string;
     summary: string;
     /** Read-only SEO description resolved by the public detail/bootstrap API. */
@@ -72,6 +74,8 @@ export interface Post {
     updatedAt?: string;
     /** Server-owned trash marker. Restoring removes it and returns a private draft. */
     deletedAt?: string;
+    /** Server-owned marker: permanent deletion has started and may need retry. */
+    purgeRequestedAt?: string;
     tags: string[];
     series?: string;
     featured?: boolean;
@@ -97,4 +101,4 @@ export interface PostRevisionDetail extends PostRevision {
     snapshot: Post;
 }
 
-export type PostInput = Omit<Post, 'id' | 'metaDescription' | 'deletedAt'>;
+export type PostInput = Omit<Post, 'id' | 'metaDescription' | 'deletedAt' | 'purgeRequestedAt' | 'previousSlugs'>;

@@ -13,8 +13,11 @@ interface PostState {
   posts: Post[];
   loading: boolean;
   error: string | null;
+  fetchError: string | null;
   hasLoaded: boolean;
   loadedMode: 'none' | 'summary' | 'full';
+  // A single confirmed mutation verifies only its own document, not the list.
+  fullPostIds: string[];
   fetchPosts: (mode?: 'summary' | 'full') => Promise<void>;
   addPost: (post: PostInput) => Promise<Post>;
   updatePost: (id: string, post: PostInput) => Promise<Post>;
@@ -49,27 +52,36 @@ export const usePostStore = create<PostState>((set, get) => {
   posts: initialPosts,
   loading: false,
   error: null,
+  fetchError: null,
   hasLoaded: hasBootstrapPosts,
   loadedMode: hasBootstrapPosts ? 'summary' : 'none',
+  fullPostIds: [],
 
   fetchPosts: async (mode = 'full') => {
     if (get().loading) return;
     if (get().loadedMode === 'full' && mode === 'summary') return;
     const generation = contentGeneration;
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, fetchError: null });
     try {
       const posts = await fetchPostsRequest(mode === 'summary');
       // A list requested before a save/delete/restore is not authoritative after
       // that mutation. It must not resurrect a deletion or erase a new post.
       if (generation !== contentGeneration) return;
-      set({ posts, loading: false, hasLoaded: true, loadedMode: mode });
+      set({
+        posts,
+        loading: false,
+        hasLoaded: true,
+        loadedMode: mode,
+        fullPostIds: mode === 'full' ? posts.map(post => post.id) : []
+      });
     } catch (error) {
       if (generation !== contentGeneration) return;
       set({
         loading: false,
-        hasLoaded: true,
-        loadedMode: mode,
-        error: normalizeError(error, 'Failed to load posts.')
+        // A failed read does not verify list completeness. In particular, a
+        // failed full read must not turn a public summary into an editor source.
+        error: normalizeError(error, 'Failed to load posts.'),
+        fetchError: normalizeError(error, 'Failed to load posts.')
       });
     }
   },
@@ -82,8 +94,7 @@ export const usePostStore = create<PostState>((set, get) => {
       set(state => ({
         posts: [created, ...state.posts],
         loading: pendingWrites > 0,
-        hasLoaded: true,
-        loadedMode: 'full'
+        fullPostIds: [...new Set([...state.fullPostIds, created.id])]
       }));
       return created;
     } catch (error) {
@@ -101,8 +112,7 @@ export const usePostStore = create<PostState>((set, get) => {
       set(state => ({
         posts: state.posts.map(item => (item.id === id ? updated : item)),
         loading: pendingWrites > 0,
-        hasLoaded: true,
-        loadedMode: 'full'
+        fullPostIds: [...new Set([...state.fullPostIds, updated.id])]
       }));
       return updated;
     } catch (error) {
@@ -120,8 +130,7 @@ export const usePostStore = create<PostState>((set, get) => {
       set(state => ({
         posts: state.posts.filter(item => item.id !== id),
         loading: pendingWrites > 0,
-        hasLoaded: true,
-        loadedMode: 'full'
+        fullPostIds: state.fullPostIds.filter(postId => postId !== id)
       }));
     } catch (error) {
       finishWrite();
@@ -138,8 +147,7 @@ export const usePostStore = create<PostState>((set, get) => {
         : [post, ...state.posts],
       loading: pendingWrites > 0,
       error: null,
-      hasLoaded: true,
-      loadedMode: 'full'
+      fullPostIds: [...new Set([...state.fullPostIds, post.id])]
     }));
   },
 
@@ -147,7 +155,8 @@ export const usePostStore = create<PostState>((set, get) => {
     contentGeneration += 1;
     set(state => ({
       posts: state.posts.filter(post => post.id !== id),
-      loading: pendingWrites > 0
+      loading: pendingWrites > 0,
+      fullPostIds: state.fullPostIds.filter(postId => postId !== id)
     }));
   },
 

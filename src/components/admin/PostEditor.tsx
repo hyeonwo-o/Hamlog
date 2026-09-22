@@ -307,7 +307,9 @@ const PostEditor: React.FC<PostEditorProps> = ({
 
     // Sync editor content when draft changes
     useEffect(() => {
-        if (!editor) return;
+        // StrictMode can replay this effect with an instance Tiptap has already
+        // disposed while its replacement is waiting for the next render.
+        if (!editor || editor.isDestroyed) return;
         const editorSnapshot = getEditorContentSnapshot(editor);
         if (draft.contentJson && draft.contentJson === editorSnapshot.contentJson) return;
         if (draft.contentJson) {

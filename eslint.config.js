@@ -7,7 +7,7 @@ import pluginImport from 'eslint-plugin-import'
 import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', '.tmp/**', 'test-results/**', 'playwright-report/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

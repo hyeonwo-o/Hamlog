@@ -15,6 +15,7 @@ const categoriesFilePath = path.join(dataDir, 'categories.json');
 const commentsFilePath = path.join(dataDir, 'comments.json');
 const profileFilePath = path.join(dataDir, 'profile.json');
 const revisionsDir = path.join(dataDir, 'revisions');
+const deletionIntentsDir = path.join(dataDir, 'post-deletions');
 const allowedPostStatuses = new Set(['draft', 'scheduled', 'published']);
 
 const pathExists = async (targetPath) => {
@@ -99,9 +100,24 @@ const verify = async () => {
     if (Object.hasOwn(post ?? {}, 'deletedAt') && (typeof post.deletedAt !== 'string' || !Number.isFinite(Date.parse(post.deletedAt)))) {
       errors.push(`유효하지 않은 휴지통 이동 시각: ${post?.slug ?? post?.id ?? '(식별자 없음)'}`);
     }
+    if (Object.hasOwn(post ?? {}, 'purgeRequestedAt') && (typeof post.purgeRequestedAt !== 'string' || !Number.isFinite(Date.parse(post.purgeRequestedAt)))) {
+      errors.push(`유효하지 않은 영구삭제 요청 시각: ${post?.slug ?? post?.id ?? '(식별자 없음)'}`);
+    }
     const status = String(post?.status ?? '').trim().toLowerCase();
     if (!allowedPostStatuses.has(status)) {
       errors.push(`유효하지 않은 글 상태: ${post?.slug ?? post?.id ?? '(식별자 없음)'}`);
+    }
+  }
+
+  if (await pathExists(deletionIntentsDir)) {
+    const intents = (await fs.readdir(deletionIntentsDir)).filter(file => file.endsWith('.json'));
+    for (const file of intents) {
+      try {
+        const intent = await readJsonFile(path.join(deletionIntentsDir, file));
+        errors.push(`영구삭제 정리 대기: ${intent?.slug ?? intent?.id ?? file} (서버 재시작 또는 휴지통에서 영구삭제 재시도 필요)`);
+      } catch (error) {
+        errors.push(`영구삭제 요청을 읽을 수 없습니다: ${file}: ${error.message}`);
+      }
     }
   }
 

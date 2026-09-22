@@ -302,10 +302,11 @@ export const resolvePostMetaDescription = (post) => {
 
 // Derived metadata belongs to the public response, not the persisted author's
 // summary or explicit SEO fields. Both bootstrap and detail requests use this.
-export const toPublicPostDetail = (post, metaDescription = resolvePostMetaDescription(post)) => ({
-  ...post,
-  metaDescription
-});
+export const toPublicPostDetail = (post, metaDescription = resolvePostMetaDescription(post)) => {
+  const { previousSlugs, ...publicPost } = post;
+  void previousSlugs;
+  return { ...publicPost, metaDescription };
+};
 
 export const resolveHomeMetaDescription = (profile, fallbackDescription) => {
   const description = normalizeText(profile?.description) || normalizeText(fallbackDescription);

@@ -133,7 +133,10 @@ test('direct production post preserves rich editor content through bootstrap', a
   } finally {
     if (postId) {
       const deleteResponse = await request.delete(`${backendOrigin}/api/posts/${postId}`, {
-        headers: { Cookie: authCookie, Origin: backendOrigin }
+        headers: { Cookie: authCookie, Origin: backendOrigin },
+        // Rendering can outlast the HTTP keep-alive socket. Retry only a
+        // connection reset for this idempotent fixture cleanup, not assertions.
+        maxRetries: 1
       });
       expect(deleteResponse.status()).toBe(204);
     }

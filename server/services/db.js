@@ -8,6 +8,7 @@ import { ensureRevisionsStorage } from '../models/revisionModel.js';
 import { readPosts } from '../models/postModel.js';
 import { ensurePostViewsFile } from '../models/postViewModel.js';
 import { ensureAnalyticsFile } from '../models/analyticsModel.js';
+import { recoverPendingPostDeletions } from './postDeletionService.js';
 
 export async function initializeDatabase() {
     try {
@@ -18,6 +19,7 @@ export async function initializeDatabase() {
         await ensureProfileFile();
         await ensureCommentsFile();
         await ensureRevisionsStorage();
+        await recoverPendingPostDeletions();
         await mkdir(uploadDir, { recursive: true });
         console.log('Database and directories initialized successfully');
     } catch (error) {

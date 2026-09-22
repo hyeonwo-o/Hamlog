@@ -46,7 +46,10 @@ const MenuButton = ({
 
 export const TableBubbleMenu: React.FC<TableBubbleMenuProps> = ({ editor, enabled = true }) => {
     const shouldShow = useCallback<NonNullable<React.ComponentProps<typeof BubbleMenu>['shouldShow']>>(
-        ({ editor }) => enabled && editor.isActive('table'),
+        ({ editor, view, element }) => enabled
+            && editor.isEditable
+            && (view.hasFocus() || element.contains(element.ownerDocument.activeElement))
+            && editor.isActive('table'),
         [enabled]
     );
     if (!editor) return null;

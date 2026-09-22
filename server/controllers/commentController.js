@@ -20,7 +20,7 @@ export const getComments = async (req, res) => {
             return res.status(getCommentErrorStatus(result.code)).json({ message: result.error });
         }
 
-        res.json({ comments: result.data });
+        res.set('Cache-Control', 'no-store').json({ comments: result.data });
     } catch (error) {
         console.error('Failed to fetch comments', error);
         res.status(500).json({ message: 'Failed to load comments.' });

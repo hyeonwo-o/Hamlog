@@ -2,22 +2,23 @@ import { randomUUID } from 'crypto';
 import { readPosts, writePosts } from '../models/postModel.js';
 import {
     createPostRevision,
-    readPostRevisions,
-    deletePostRevisions
+    readPostRevisions
 } from '../models/revisionModel.js';
 import { createCategoryUnlocked } from './categoryService.js';
 import { normalizePostData } from '../utils/postHelpers.js';
-import { filterPublicPosts, isPostPublicVisible, isPostTrashed } from '../utils/postVisibility.js';
+import { filterPublicPosts, findPublicPostBySlug, isPostPublicVisible, isPostTrashed, isPostDeletionPending } from '../utils/postVisibility.js';
+import { aliasesAfterSlugChange, postOwnsSlug, withoutPostAliases } from '../utils/postSlugAliases.js';
 import { normalizePostViews } from '../utils/normalizers/postNormalizers.js';
 import { runWithDataStoreLock } from '../utils/storeLock.js';
 import {
     applyPostViews,
-    deletePostView,
     incrementPostView,
     readPostViews
 } from '../models/postViewModel.js';
 import { toPostSummaries } from '../utils/postSummaries.js';
-import { deleteCommentsByPostIdUnlocked } from '../models/commentModel.js';
+import { nextPostTimestamp } from '../utils/postVersion.js';
+import { beginPostDeletion } from '../models/postDeletionModel.js';
+import { completePostDeletionUnlocked } from './postDeletionService.js';
 
 const serializeComparablePost = (post) => JSON.stringify(post ?? null);
 
@@ -45,19 +46,19 @@ export async function getAllPostsService(includeAll = false, summaryOnly = false
     const visiblePosts = includeAll ? posts.filter(post => !isPostTrashed(post)) : filterPublicPosts(posts);
     return {
         success: true,
-        data: summaryOnly ? toPostSummaries(visiblePosts) : visiblePosts
+        data: summaryOnly ? toPostSummaries(visiblePosts) : includeAll ? visiblePosts : visiblePosts.map(withoutPostAliases)
     };
 }
 
 export async function getPostBySlugService(slug) {
     const posts = await readPostsWithViews();
-    const post = posts.find(item => item.slug === String(slug ?? '').trim());
+    const post = findPublicPostBySlug(posts, String(slug ?? '').trim());
 
     if (!post || !isPostPublicVisible(post)) {
         return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
     }
 
-    return { success: true, data: post };
+    return { success: true, data: withoutPostAliases(post) };
 }
 
 export async function createPostService(rawData) {
@@ -71,7 +72,7 @@ export async function createPostService(rawData) {
 
         // 2. Check Slug Uniqueness
         const allPosts = await readPostsWithViews();
-        if (allPosts.some(post => post.slug === data.slug)) {
+        if (allPosts.some(post => postOwnsSlug(post, data.slug))) {
             return { success: false, error: '슬러그가 이미 존재합니다.', code: 'duplicate_slug' };
         }
 
@@ -126,7 +127,7 @@ export async function recordPostViewService(slug) {
         }
 
         const allPosts = await readPosts();
-        const index = allPosts.findIndex(post => post.slug === normalizedSlug);
+        const index = allPosts.findIndex(post => postOwnsSlug(post, normalizedSlug));
 
         if (index === -1 || !isPostPublicVisible(allPosts[index])) {
             return { success: false, error: '포스트를 찾을 수 없습니다.', code: 'not_found' };
@@ -185,7 +186,7 @@ export async function updatePostService(id, rawData) {
 
         // 2. Check Slug Uniqueness (if changed)
         if (data.slug !== existing.slug) {
-            if (allPosts.some(post => post.slug === data.slug && post.id !== id)) {
+            if (allPosts.some(post => post.id !== id && postOwnsSlug(post, data.slug))) {
                 return { success: false, error: '슬러그가 이미 존재합니다.', code: 'duplicate_slug' };
             }
         }
@@ -200,9 +201,10 @@ export async function updatePostService(id, rawData) {
         // 4. Update Post
         const updatedPost = {
             ...existing,
-            ...data
+            ...data,
+            previousSlugs: aliasesAfterSlugChange(existing, data.slug)
         };
-        updatedPost.updatedAt = new Date().toISOString();
+        updatedPost.updatedAt = nextPostTimestamp(existing);
 
         allPosts[index] = updatedPost;
         await writePosts(allPosts);
@@ -251,7 +253,7 @@ export async function restorePostRevisionService(id, revisionId, rawData = {}) {
         }
 
         if (data.slug !== existing.slug) {
-            if (allPosts.some(post => post.slug === data.slug && post.id !== id)) {
+            if (allPosts.some(post => post.id !== id && postOwnsSlug(post, data.slug))) {
                 return { success: false, error: '슬러그가 이미 존재합니다.', code: 'duplicate_slug' };
             }
         }
@@ -264,9 +266,12 @@ export async function restorePostRevisionService(id, revisionId, rawData = {}) {
         const restoredPost = {
             ...existing,
             ...data,
-            id: existing.id
+            id: existing.id,
+            // Keep all current reservations, never replace them with the older
+            // revision's alias list or client-controlled metadata.
+            previousSlugs: aliasesAfterSlugChange(existing, data.slug)
         };
-        restoredPost.updatedAt = new Date().toISOString();
+        restoredPost.updatedAt = nextPostTimestamp(existing);
 
         allPosts[index] = restoredPost;
         await writePosts(allPosts);
@@ -295,8 +300,6 @@ export async function deletePostService(id) {
     });
 }
 
-const nextPostTimestamp = (post) => new Date(Math.max(Date.now(), (Date.parse(post.updatedAt) || 0) + 1)).toISOString();
-
 export async function getTrashedPostsService() {
     const posts = await readPostsWithViews();
     return { success: true, data: toPostSummaries(posts.filter(isPostTrashed)
@@ -322,6 +325,9 @@ export async function restoreTrashedPostService(id, rawData = {}) {
         const existing = posts.find(post => post.id === id);
         const error = checkTrashVersion(existing, rawData);
         if (error) return error;
+        if (isPostDeletionPending(existing)) {
+            return { success: false, error: '영구삭제가 시작된 글은 복원할 수 없습니다. 영구삭제를 다시 시도해 주세요.', code: 'edit_conflict' };
+        }
         // Never unexpectedly publish an old published/scheduled post on restore.
         const restored = { ...existing, status: 'draft', updatedAt: nextPostTimestamp(existing) };
         delete restored.deletedAt;
@@ -341,10 +347,9 @@ export async function permanentlyDeletePostService(id, rawData = {}) {
             return { success: false, error: '영구삭제하려면 글 제목을 정확히 입력해 주세요.', code: 'validation_error' };
         }
 
-        await writePosts(posts.filter(post => post.id !== id));
-        await deletePostRevisions(id);
-        await deletePostView(id);
-        await deleteCommentsByPostIdUnlocked(id);
+        const pending = await beginPostDeletion(existing);
+        await writePosts(posts.map(post => post.id === id ? pending : post));
+        await completePostDeletionUnlocked(id);
         return { success: true };
     });
 }

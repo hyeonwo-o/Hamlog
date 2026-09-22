@@ -6,6 +6,7 @@ import AdminSidebar from '../components/admin/AdminSidebar';
 import CategorySection from '../components/admin/sections/CategorySection';
 import DashboardSection from '../components/admin/sections/DashboardSection';
 import ProfileSection from '../components/admin/sections/ProfileSection';
+import CommentModerationSection from '../components/admin/sections/CommentModerationSection';
 import PostEditor from '../components/admin/PostEditor';
 import { useAdminDataBootstrap } from '../hooks/useAdminDataBootstrap';
 import { useCategoryManagement } from '../hooks/useCategoryManagement';
@@ -24,13 +25,15 @@ import * as authApi from '../api/authApi';
 import { useAnalyticsSummary } from '../hooks/useAnalyticsSummary';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import PostTrashDialog from '../components/admin/post/PostTrashDialog';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const AdminPage: React.FC = () => {
   const posts = usePostStore(state => state.posts);
   const loading = usePostStore(state => state.loading);
   const postError = usePostStore(state => state.error);
-  const hasLoaded = usePostStore(state => state.hasLoaded);
+  const postFetchError = usePostStore(state => state.fetchError);
   const loadedMode = usePostStore(state => state.loadedMode);
+  const fullPostIds = usePostStore(state => state.fullPostIds);
   const fetchPosts = usePostStore(state => state.fetchPosts);
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -44,6 +47,16 @@ const AdminPage: React.FC = () => {
   const postListVisible = !writingFocus && (isWideWorkspace ? desktopPostListOpen : postListOpen);
   const postListFocusTargetRef = useRef<'list' | 'editor' | null>(null);
   const { activeId, activeSection, updateAdminLocation } = useAdminRouteState();
+  const resolvedPostRef = useRef<Post | null>(null);
+  const fetchedPost = activeId && fullPostIds.includes(activeId)
+    ? posts.find(post => post.id === activeId) ?? null
+    : null;
+  // Once an editor is open, a background error or a missing list entry cannot
+  // replace its draft with a blank/new document. Only navigation clears it.
+  const activePost = fetchedPost ?? (resolvedPostRef.current?.id === activeId ? resolvedPostRef.current : null);
+  useEffect(() => {
+    resolvedPostRef.current = activePost;
+  }, [activePost]);
   const {
     adminNotice,
     adminNoticeTone,
@@ -107,17 +120,11 @@ const AdminPage: React.FC = () => {
     activeSection,
     postsLoadedMode: loadedMode,
     postsLoading: loading,
+    postsError: postFetchError,
     fetchPosts,
     loadCategories,
     loadProfile
   });
-
-  useEffect(() => {
-    if (!hasLoaded || !activeId) return;
-    if (!posts.some(post => post.id === activeId)) {
-      updateAdminLocation({ post: null }, { replace: true });
-    }
-  }, [activeId, hasLoaded, posts, updateAdminLocation]);
 
   useEffect(() => {
     const focusTarget = postListFocusTargetRef.current;
@@ -209,7 +216,8 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const activePost = activeId ? posts.find(p => p.id === activeId) || null : null;
+  const waitingForRequestedPost = Boolean(activeId && !activePost);
+  const requestedPostLoading = loading || (!postFetchError && loadedMode !== 'full');
 
   return (
     <div className="admin-compact min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
@@ -231,6 +239,7 @@ const AdminPage: React.FC = () => {
       />
       <main className="mx-auto max-w-[1700px] px-2 py-4 sm:px-4 sm:py-5">
         <section className="space-y-6">
+          {activeSection === 'comments' && <CommentModerationSection />}
           {activeSection === 'dashboard' && (
             <DashboardSection
               stats={dashboardStats}
@@ -324,27 +333,75 @@ const AdminPage: React.FC = () => {
                 id="admin-post-editor-panel"
                 className={`${postListOpen && !writingFocus ? 'hidden' : 'block'} min-w-0 2xl:block`}
               >
-                <PostEditor
-                  post={activePost}
-                  requestedPostId={activeId}
-                  onSaveSuccess={handleSaveSuccess}
-                  onDeleteSuccess={handleDeleteSuccess}
-                  categoryTree={categoryTree}
-                  onLoadCategories={loadCategories}
-                  onDirtyChange={setEditorDirty}
-                  postListOpen={postListVisible}
-                  focusMode={writingFocus}
-                  onToggleFocus={() => setWritingFocus(value => !value)}
-                  onTogglePostList={() => {
-                    setWritingFocus(false);
-                    if (isWideWorkspace) {
-                      setDesktopPostListOpen(open => writingFocus || !open);
-                    } else {
-                      setPostListVisibility(true);
-                    }
-                  }}
-                  onNewPost={handleNew}
-                />
+                {waitingForRequestedPost ? (
+                  <section
+                    data-testid="admin-post-load-state"
+                    aria-busy={requestedPostLoading}
+                    className="rounded-xl border border-[color:var(--border)] bg-[var(--surface)] p-6"
+                  >
+                    {requestedPostLoading ? (
+                      <LoadingSpinner message="선택한 글을 불러오는 중..." />
+                    ) : (
+                      <>
+                        <p role={postFetchError ? 'alert' : 'status'} className="text-sm text-[var(--text)]">
+                          {postFetchError ? '선택한 글을 불러오지 못했습니다.' : '선택한 글을 찾을 수 없습니다.'}
+                        </p>
+                        <p className="mt-2 text-sm text-[var(--text-muted)]">
+                          {postFetchError || '글이 삭제되었거나 현재 목록에 없습니다. 다시 불러오거나 다른 글을 선택해 주세요.'}
+                        </p>
+                        <button type="button" onClick={() => void fetchPosts('full')}
+                          className="mt-4 min-h-11 rounded-lg border border-[color:var(--border)] px-4 text-sm font-semibold">
+                          다시 시도
+                        </button>
+                      </>
+                    )}
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button type="button" onClick={() => { setWritingFocus(false); setDesktopPostListOpen(true); setPostListVisibility(true); }}
+                        className="min-h-11 rounded-lg border border-[color:var(--border)] px-4 text-sm">
+                        글 목록 열기
+                      </button>
+                      <button type="button" onClick={handleNew}
+                        className="min-h-11 rounded-lg border border-[color:var(--border)] px-4 text-sm">
+                        새 글 작성
+                      </button>
+                    </div>
+                  </section>
+                ) : (
+                  <>
+                    {postFetchError && (
+                      <div data-testid="admin-post-refresh-error" role="alert"
+                        className="mb-3 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-4 text-sm">
+                        <p>글 목록을 갱신하지 못했습니다. 편집 중인 내용은 유지됩니다.</p>
+                        <p className="mt-1 text-[var(--text-muted)]">{postFetchError}</p>
+                        <button type="button" disabled={loading} onClick={() => void fetchPosts('full')}
+                          className="mt-2 min-h-11 rounded-lg border border-[color:var(--border)] px-4 font-semibold disabled:opacity-50">
+                          다시 시도
+                        </button>
+                      </div>
+                    )}
+                    <PostEditor
+                      post={activePost}
+                      requestedPostId={activeId}
+                      onSaveSuccess={handleSaveSuccess}
+                      onDeleteSuccess={handleDeleteSuccess}
+                      categoryTree={categoryTree}
+                      onLoadCategories={loadCategories}
+                      onDirtyChange={setEditorDirty}
+                      postListOpen={postListVisible}
+                      focusMode={writingFocus}
+                      onToggleFocus={() => setWritingFocus(value => !value)}
+                      onTogglePostList={() => {
+                        setWritingFocus(false);
+                        if (isWideWorkspace) {
+                          setDesktopPostListOpen(open => writingFocus || !open);
+                        } else {
+                          setPostListVisibility(true);
+                        }
+                      }}
+                      onNewPost={handleNew}
+                    />
+                  </>
+                )}
               </div>
             </div>
           )}

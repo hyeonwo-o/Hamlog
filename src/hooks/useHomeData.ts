@@ -32,6 +32,7 @@ export function useHomeData() {
     const posts = usePostStore(state => state.posts);
     const loading = usePostStore(state => state.loading);
     const error = usePostStore(state => state.error);
+    const fetchError = usePostStore(state => state.fetchError);
     const hasLoaded = usePostStore(state => state.hasLoaded);
     const loadedMode = usePostStore(state => state.loadedMode);
     const fetchPosts = usePostStore(state => state.fetchPosts);
@@ -39,10 +40,10 @@ export function useHomeData() {
 
     // Fetch Posts
     useEffect(() => {
-        if (loadedMode === 'none' && !loading) {
+        if (loadedMode === 'none' && !loading && !fetchError) {
             void fetchHomePosts();
         }
-    }, [fetchHomePosts, loadedMode, loading]);
+    }, [fetchHomePosts, loadedMode, loading, fetchError]);
 
     // Fetch Profile
     useEffect(() => {

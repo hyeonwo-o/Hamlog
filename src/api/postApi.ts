@@ -1,6 +1,6 @@
 import type { Post, PostInput, PostRevision, PostRevisionDetail } from '../data/blogData';
 import { requestJson, requestVoid } from './client';
-import type { SearchPost } from '../types/search';
+import type { SearchPage, SearchPost } from '../types/search';
 import { normalizeSearchQuery } from '../utils/searchQuery';
 
 export type SavePostInput = PostInput & {
@@ -93,9 +93,18 @@ export async function restorePostRevision(id: string, revisionId: string, expect
 
 export async function searchPosts(
   query: string,
-  options: { category?: string | null; signal?: AbortSignal } = {}
-): Promise<SearchPost[]> {
-  const params = new URLSearchParams({ q: normalizeSearchQuery(query) });
+  options: { category?: string | null; tag?: string | null; series?: string | null; page?: number; pageSize?: number; signal?: AbortSignal } = {}
+): Promise<SearchPage> {
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? 25;
+  const params = new URLSearchParams({ q: normalizeSearchQuery(query), page: String(page), pageSize: String(pageSize) });
   if (options.category) params.set('category', options.category);
-  return requestJson<SearchPost[]>(`/search?${params}`, { signal: options.signal }, true);
+  if (options.tag) params.set('tag', options.tag);
+  if (options.series) params.set('series', options.series);
+  const result = await requestJson<SearchPage | SearchPost[]>(`/search?${params}`, { signal: options.signal }, true);
+  // Rolling older servers and existing mocks return a capped array without a
+  // continuation token. Treat it as complete instead of repeating page one.
+  return Array.isArray(result)
+    ? { posts: result, total: result.length, page, pageSize, hasMore: false }
+    : result;
 }

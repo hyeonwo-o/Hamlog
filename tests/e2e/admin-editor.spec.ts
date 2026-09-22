@@ -826,6 +826,14 @@ test('column layout conversion and ungrouping preserve every block and undo once
     const columns = page.locator('.ProseMirror [data-type="columns"]');
     const directColumns = columns.locator(':scope > [data-type="column"]');
     await expect(directColumns).toHaveCount(3);
+    await expect(page.getByRole('button', { name: '2단 레이아웃' })).toBeHidden();
+    // The editor mounts after the full document is ready. Select the layout
+    // explicitly instead of relying on an initialization transaction to show its menu.
+    await directColumns.first().getByText('첫 번째 열', { exact: true }).click();
+    await expect(page.getByRole('button', { name: '2단 레이아웃' })).toBeVisible();
+    // Moving keyboard focus into the menu must not hide it or lose selection.
+    await page.getByRole('button', { name: '2단 레이아웃' }).focus();
+    await expect(page.getByRole('button', { name: '레이아웃 해제' })).toBeVisible();
     await page.getByRole('button', { name: '2단 레이아웃' }).click();
     await expect(directColumns).toHaveCount(2);
     await expect(directColumns.nth(1)).toContainText('두 번째 열 A');
@@ -853,6 +861,61 @@ test('column layout conversion and ungrouping preserve every block and undo once
     await page.keyboard.press('Control+z');
     await expect(directColumns).toHaveCount(3);
   } finally {
+    if (postId) await deletePostFromAdmin(page, postId);
+  }
+});
+
+test('a delayed saved table shows its menu only after focus and keeps keyboard menu actions undoable', async ({ page }) => {
+  const uniqueId = Date.now();
+  let postId: string | null = null;
+  let releaseRead = () => {};
+  const gate = new Promise<void>(resolve => { releaseRead = resolve; });
+  await openAdminEditor(page);
+  try {
+    const created = await page.evaluate(async uniqueId => {
+      const response = await fetch('/api/posts', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `E2E loaded table ${uniqueId}`, slug: `e2e-loaded-table-${uniqueId}`, status: 'draft', tags: [],
+          contentJson: { type: 'doc', content: [{ type: 'table', content: [
+            { type: 'tableRow', content: [
+              { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '저장된 첫 셀' }] }] },
+              { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '저장된 둘째 셀' }] }] }
+            ] }
+          ] }] }
+        })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json() as Promise<{ id: string }>;
+    }, uniqueId);
+    postId = created.id;
+    await page.route('**/api/posts', async route => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      const response = await route.fetch();
+      await gate;
+      await route.fulfill({ response });
+    });
+    await page.goto(`/admin?section=posts&post=${postId}`);
+    await expect(page.getByTestId('admin-post-load-state')).toContainText('선택한 글을 불러오는 중');
+    await expect(page.locator('.ProseMirror')).toHaveCount(0);
+    releaseRead();
+    const table = page.locator('.ProseMirror table');
+    await expect(table.locator('tr')).toHaveCount(1);
+    const addRow = page.getByRole('button', { name: '아래에 행 추가', exact: true });
+    await expect(addRow).toBeHidden();
+    await table.getByText('저장된 첫 셀', { exact: true }).click();
+    await expect(addRow).toBeVisible();
+    await addRow.focus();
+    await expect(addRow).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(table.locator('tr')).toHaveCount(2);
+    await page.keyboard.press('Control+z');
+    await expect(table.locator('tr')).toHaveCount(1);
+    await expect(table).toContainText('저장된 첫 셀');
+    await expect(table).toContainText('저장된 둘째 셀');
+  } finally {
+    releaseRead();
+    await page.unroute('**/api/posts');
     if (postId) await deletePostFromAdmin(page, postId);
   }
 });

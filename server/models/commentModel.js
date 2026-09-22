@@ -5,6 +5,8 @@ import { dataDir } from '../config/paths.js';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { runWithDataStoreLock } from '../utils/storeLock.js';
+import { readPosts } from './postModel.js';
+import { isPostPublicVisible } from '../utils/postVisibility.js';
 
 const commentsFilePath = path.join(dataDir, 'comments.json');
 const BCRYPT_SALT_ROUNDS = 10;
@@ -45,6 +47,10 @@ export async function getCommentsByPostId(postId) {
 
 export async function createComment(data) {
     return runWithDataStoreLock(async () => {
+        // Visibility must be checked inside the insertion lock: a post may have
+        // entered trash or completed deletion while this request was queued.
+        const posts = await readPosts();
+        if (!posts.some(post => post.id === data.postId && isPostPublicVisible(post))) return null;
         const all = await readComments();
         const passwordHash = await bcrypt.hash(String(data.password), BCRYPT_SALT_ROUNDS);
         const newComment = {

@@ -2,6 +2,7 @@ import { readFile, mkdir, readdir, unlink } from 'fs/promises';
 import path from 'path';
 import { postsFilePath, dataDir, postsDir } from '../config/paths.js';
 import { writeJsonAtomic } from '../utils/fsUtils.js';
+import { readPostDeletionIntents } from './postDeletionModel.js';
 import {
     normalizeContentJson,
     hasContentJsonContent,
@@ -88,15 +89,17 @@ async function backfillLegacyContentJson(posts) {
  * but each write updates both the index and individual files.
  */
 export async function readPosts() {
+    let posts = [];
     try {
         const raw = await readFile(postsFilePath, 'utf8');
         const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed.map(normalizePost);
+        if (Array.isArray(parsed)) posts = parsed;
     } catch (error) {
-        if (error.code === 'ENOENT') return [];
-        throw error;
+        if (error.code !== 'ENOENT') throw error;
     }
+    const pending = await readPostDeletionIntents();
+    const pendingIds = new Set(pending.map(post => post.id));
+    return [...posts.filter(post => !pendingIds.has(post.id)), ...pending].map(normalizePost);
 }
 
 /**
@@ -120,7 +123,11 @@ export async function writePosts(posts) {
     const existingSlugs = new Set(normalized.map(p => `${p.slug}.json`));
     for (const file of files) {
         if (!existingSlugs.has(file)) {
-            await unlink(path.join(postsDir, file)).catch(() => { });
+            try {
+                await unlink(path.join(postsDir, file));
+            } catch (error) {
+                if (error.code !== 'ENOENT') throw error;
+            }
         }
     }
 }

@@ -143,7 +143,9 @@ test('late revision lists and details never leak into a different post', async (
   let releaseDetail = () => {};
   const pendingDetail = new Promise<void>(resolve => { releaseDetail = resolve; });
   let firstLists = 0;
+  let firstListReplies = 0;
   let firstDetails = 0;
+  let firstDetailReplies = 0;
   const mutations: string[] = [];
   await page.route('**/api/posts**', async route => {
     const request = route.request();
@@ -152,26 +154,36 @@ test('late revision lists and details never leak into a different post', async (
     if (path === '/api/posts') return route.fulfill({ json: { posts: [first, second], total: 2 } });
     if (path === `/api/posts/${first.id}/revisions`) {
       firstLists += 1;
-      if (firstLists === 1) await pendingList;
-      return route.fulfill({ json: firstRevisions }).catch(() => {});
+      // StrictMode may start multiple mount reads. Keep every old-document
+      // response pending until the second document is already visible.
+      await pendingList;
+      await route.fulfill({ json: firstRevisions }).catch(() => {});
+      firstListReplies += 1;
+      return;
     }
     if (path === `/api/posts/${second.id}/revisions`) return route.fulfill({ json: secondRevisions });
     if (path.endsWith(`/${firstRevisions[0].id}`)) {
       firstDetails += 1;
       await pendingDetail;
-      return route.fulfill({ json: detailFor(first, firstRevisions[0]) }).catch(() => {});
+      await route.fulfill({ json: detailFor(first, firstRevisions[0]) }).catch(() => {});
+      firstDetailReplies += 1;
+      return;
     }
     if (path.endsWith(`/${secondRevisions[0].id}`)) return route.fulfill({ json: detailFor(second, secondRevisions[0]) });
     return route.continue();
   });
   await page.goto(`/admin?section=posts&post=${first.id}`);
-  await expect.poll(() => firstLists).toBe(1);
+  await expect(page.getByPlaceholder('제목을 입력하세요')).toHaveValue(first.title);
+  await expect.poll(() => firstLists).toBeGreaterThan(0);
+  expect(firstListReplies).toBe(0);
   await navigatePost(page, second.id);
   await expect(page.getByPlaceholder('제목을 입력하세요')).toHaveValue(second.title);
   await openHistory(page);
   await expect(page.getByText('현재 글 이전 1', { exact: true })).toBeVisible();
   releaseList();
+  await expect.poll(() => firstListReplies === firstLists).toBe(true);
   await expect(page.getByText('이전 글 이전 1', { exact: true })).toBeHidden();
+  await expect(page.getByText('현재 글 이전 1', { exact: true })).toBeVisible();
 
   await navigatePost(page, first.id);
   await expect(page.getByPlaceholder('제목을 입력하세요')).toHaveValue(first.title);
@@ -185,6 +197,7 @@ test('late revision lists and details never leak into a different post', async (
   const comparison = page.getByLabel('저장 이력 비교', { exact: true });
   await expect(comparison).toContainText('이전: 현재 글 이전 1');
   releaseDetail();
+  await expect.poll(() => firstDetailReplies === firstDetails).toBe(true);
   await expect(comparison).not.toContainText('이전 글 이전 1');
   await expect(comparison).toContainText('이전: 현재 글 이전 1');
   expect(mutations).toEqual([]);

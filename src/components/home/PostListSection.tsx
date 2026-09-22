@@ -8,10 +8,17 @@ interface PostListSectionProps {
     filteredPosts: SearchPost[];
     categoryTree: CategoryTreeResult;
     selectedCategory: string | null;
+    selectedTag: string | null;
+    selectedSeries: string | null;
     searchQuery: string;
     normalizedQuery: string;
     searchLoading: boolean;
     searchError: string;
+    searchActive: boolean;
+    searchTotal: number;
+    searchHasMore: boolean;
+    onLoadMore: () => void;
+    onClearReaderFilter: (filter: 'tag' | 'series') => void;
     hasLoaded: boolean;
     loading: boolean;
     error: string | null;
@@ -26,10 +33,17 @@ export const PostListSection = ({
     filteredPosts,
     categoryTree,
     selectedCategory,
+    selectedTag,
+    selectedSeries,
     searchQuery,
     normalizedQuery,
     searchLoading,
     searchError,
+    searchActive,
+    searchTotal,
+    searchHasMore,
+    onLoadMore,
+    onClearReaderFilter,
     hasLoaded,
     loading,
     error,
@@ -46,11 +60,11 @@ export const PostListSection = ({
             <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h2 className="font-display text-xl font-semibold">
-                        전체 글
+                        {normalizedQuery ? '검색 결과' : selectedSeries ? '시리즈 글' : selectedTag ? '태그 글' : '전체 글'}
                     </h2>
                 </div>
                 <span className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                    {searchLoading ? '검색 중' : searchError ? '검색 실패' : `${filteredPosts.length}편`}
+                    {searchLoading && filteredPosts.length === 0 ? '검색 중' : searchError && filteredPosts.length === 0 ? '검색 실패' : `${searchTotal}편`}
                 </span>
             </div>
             <div className="mt-4 max-w-xl">
@@ -80,11 +94,21 @@ export const PostListSection = ({
                     )}
                 </div>
                 <p id="post-search-status" role="status" aria-live="polite" className="mt-2 text-xs text-[var(--text-muted)]">
-                    {searchLoading ? '본문을 포함해 검색하고 있습니다.'
-                        : searchError ? '검색을 완료하지 못했습니다. 다시 시도해 주세요.'
-                            : normalizedQuery ? `검색 결과 ${filteredPosts.length}편 · 최신 글부터 최대 25편 표시`
+                    {searchLoading ? filteredPosts.length > 0 ? '추가 결과를 불러오고 있습니다.' : '조건에 맞는 글을 검색하고 있습니다.'
+                        : searchError ? filteredPosts.length > 0 ? '추가 결과를 불러오지 못했습니다. 표시된 글은 유지됩니다.' : '검색을 완료하지 못했습니다. 다시 시도해 주세요.'
+                            : searchActive ? `총 ${searchTotal}편 중 ${filteredPosts.length}편 표시 · ${normalizedQuery ? '관련도 순' : '최신 발행일 순'}`
                                 : '제목뿐 아니라 본문에 있는 명령어와 오류 메시지도 찾을 수 있습니다.'}
                 </p>
+                {(selectedTag || selectedSeries) && <div aria-label="선택한 읽기 조건" className="mt-3 flex flex-wrap gap-2">
+                    {selectedTag && <button type="button" onClick={() => onClearReaderFilter('tag')} aria-label={`태그 ${selectedTag} 해제`}
+                        className="min-h-11 max-w-full break-words rounded-lg border border-[color:var(--border)] bg-[var(--accent-soft)] px-3 py-2 text-left text-xs text-[var(--accent-strong)]">
+                        태그 #{selectedTag} · 해제
+                    </button>}
+                    {selectedSeries && <button type="button" onClick={() => onClearReaderFilter('series')} aria-label={`시리즈 ${selectedSeries} 해제`}
+                        className="min-h-11 max-w-full break-words rounded-lg border border-[color:var(--border)] bg-[var(--accent-soft)] px-3 py-2 text-left text-xs text-[var(--accent-strong)]">
+                        시리즈 {selectedSeries} · 해제
+                    </button>}
+                </div>}
             </div>
             <div className="mt-5 grid gap-4 lg:grid-cols-[230px_minmax(0,1fr)]">
                 <CategorySidebar
@@ -99,7 +123,7 @@ export const PostListSection = ({
                             <p className="break-words text-sm text-[var(--text-muted)]">{searchError}</p>
                             <button type="button" onClick={onRetrySearch}
                                 className="mt-4 min-h-11 rounded border border-[color:var(--border)] px-4 text-sm text-[var(--text)]">
-                                검색 다시 시도
+                                {filteredPosts.length > 0 ? '추가 결과 다시 시도' : '검색 다시 시도'}
                             </button>
                         </div>
                     )}
@@ -112,13 +136,20 @@ export const PostListSection = ({
                         </div>
                     )}
 
+                    {searchHasMore && !searchError && <div className="flex justify-center py-3">
+                        <button type="button" onClick={onLoadMore} disabled={searchLoading}
+                            className="min-h-11 rounded-lg border border-[color:var(--border)] bg-[var(--surface)] px-6 py-2 text-sm text-[var(--text)] disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]">
+                            {searchLoading ? '불러오는 중…' : '더 보기'}
+                        </button>
+                    </div>}
+
                     {filteredPosts.length === 0 && hasLoaded && !loading && !error && !searchLoading && !searchError && (
                         <div className="angular-panel rounded-lg border border-[color:var(--border)] bg-[var(--surface)] p-6 text-center">
                             <h3 className="font-display text-lg font-semibold">
                                 조건에 맞는 글이 없어요
                             </h3>
                             <p className="mt-2 text-sm text-[var(--text-muted)]">
-                                카테고리를 바꾸거나 검색어를 지우고 다시 확인해 보세요.
+                                카테고리·태그·시리즈 조건을 해제하거나 검색어를 바꿔 다시 확인해 보세요.
                             </p>
                             <div className="mt-6 flex flex-wrap justify-center gap-2">
                                 {selectedCategory && (

@@ -27,6 +27,7 @@ import type { Post } from '../types/blog';
 import { TableOfContents } from '../components/TableOfContents';
 import { appBootstrapData } from '../utils/appBootstrap';
 import { getPostMetaDescription } from '../utils/postSeo';
+import PostSeriesNavigation from '../components/PostSeriesNavigation';
 
 const normalizePageProfile = (profile: SiteMeta) => ({
   ...siteMeta,
@@ -71,11 +72,13 @@ const PostPage: React.FC = () => {
   const loadRequestIdRef = useRef(0);
   const bootstrappedSlugRef = useRef(initialPost?.slug ?? null);
   const currentPostSlugRef = useRef(post?.slug ?? null);
+  const resolvedRequestSlugRef = useRef(initialPost?.slug ?? null);
   currentPostSlugRef.current = post?.slug ?? null;
 
   const loadPost = useCallback(async () => {
     const requestId = loadRequestIdRef.current + 1;
     loadRequestIdRef.current = requestId;
+    resolvedRequestSlugRef.current = null;
     setPost(null);
 
     if (!slug) {
@@ -89,6 +92,8 @@ const PostPage: React.FC = () => {
     try {
       const nextPost = await fetchPostBySlug(slug);
       if (loadRequestIdRef.current !== requestId) return;
+      if (!isPostVisible(nextPost)) return;
+      resolvedRequestSlugRef.current = slug;
       setPost(nextPost);
     } catch (loadError) {
       if (loadRequestIdRef.current !== requestId) return;
@@ -105,6 +110,15 @@ const PostPage: React.FC = () => {
       }
     }
   }, [slug]);
+
+  useEffect(() => {
+    if (!post || resolvedRequestSlugRef.current !== slug || !isPostVisible(post) || post.slug === slug) return;
+    navigate({
+      pathname: `/posts/${encodeURIComponent(post.slug)}`,
+      search: location.search,
+      hash: location.hash
+    }, { replace: true, state: { returnTo } });
+  }, [post, slug, navigate, location.search, location.hash, returnTo]);
 
   useEffect(() => {
     if (
@@ -144,10 +158,10 @@ const PostPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (loadedMode === 'none' && !loading) {
+    if (loadedMode === 'none' && !loading && !error) {
       void fetchPosts('summary');
     }
-  }, [fetchPosts, loadedMode, loading]);
+  }, [fetchPosts, loadedMode, loading, error]);
 
   const visiblePosts = useMemo(() => posts.filter(post => isPostVisible(post)), [posts]);
 
@@ -212,7 +226,7 @@ const PostPage: React.FC = () => {
     keywords: post ? (post.seo?.keywords?.length ? post.seo.keywords : post.tags) : [],
     url: post
       ? post.seo?.canonicalUrl
-        || `${typeof window !== 'undefined' ? window.location.origin : siteMeta.siteUrl}/posts/${post.slug}`
+        || `${typeof window !== 'undefined' ? window.location.origin : siteMeta.siteUrl}/posts/${encodeURIComponent(post.slug)}`
       : typeof window !== 'undefined'
         ? window.location.href
         : siteMeta.siteUrl,
@@ -233,7 +247,7 @@ const PostPage: React.FC = () => {
     preserveExisting: detailLoading && !post
   });
 
-  if (detailLoading || (!hasLoaded && posts.length === 0)) {
+  if (detailLoading || (!hasLoaded && !error && posts.length === 0)) {
     return (
       <ErrorBoundary>
         <div className="public-site min-h-screen text-[var(--text)]">
@@ -320,7 +334,7 @@ const PostPage: React.FC = () => {
                   selectedCategory={post.category ?? null}
                   onSelectCategory={(category) => {
                     if (category) {
-                      navigate(`/?category=${category}`);
+                      navigate(`/?${new URLSearchParams({ category })}`);
                     } else {
                       navigate('/');
                     }
@@ -343,7 +357,7 @@ const PostPage: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)] sm:gap-4">
                     <button
                       type="button"
-                      onClick={() => navigate(`/?category=${post.category ?? DEFAULT_CATEGORY}`)}
+                      onClick={() => navigate(`/?${new URLSearchParams({ category: post.category ?? DEFAULT_CATEGORY })}`)}
                       className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-[var(--surface-muted)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text)] transition hover:border-[color:var(--accent)] hover:text-[var(--accent-strong)]"
                     >
                       {post.category ?? '미분류'}
@@ -355,10 +369,12 @@ const PostPage: React.FC = () => {
                     {post.series && (
                       <>
                         <span className="opacity-30">|</span>
-                        <span className="inline-flex items-center gap-1.5 font-medium text-[var(--text)]">
+                        <Link to={`/?${new URLSearchParams({ series: post.series.trim() })}#writing`}
+                          aria-label={`시리즈 ${post.series} 전체 글`}
+                          className="inline-flex min-h-11 min-w-0 items-center gap-1.5 break-words font-medium text-[var(--text)] hover:text-[var(--accent-strong)]">
                           <BookOpen className="h-4 w-4" />
                           {post.series}
-                        </span>
+                        </Link>
                       </>
                     )}
                   </div>
@@ -374,9 +390,10 @@ const PostPage: React.FC = () => {
                   {post.tags.length > 0 && (
                     <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--text-muted)]">
                       {post.tags.map(tag => (
-                        <span key={tag} className="inline-flex items-center">
+                        <Link key={tag} to={`/?${new URLSearchParams({ tag })}#writing`}
+                          className="inline-flex min-h-11 max-w-full items-center break-words hover:text-[var(--accent-strong)] hover:underline">
                           #{tag}
-                        </span>
+                        </Link>
                       ))}
                     </div>
                   )}
@@ -395,6 +412,8 @@ const PostPage: React.FC = () => {
                     <PostContent contentHtml={post.contentHtml} />
                   </div>
                 </div>
+
+                <PostSeriesNavigation post={post} posts={visiblePosts} />
 
                 <div className="angular-panel rounded-2xl border border-[color:var(--border)] bg-[var(--surface)] p-5 sm:p-7 lg:p-8">
                   <Comments postId={post.id} />

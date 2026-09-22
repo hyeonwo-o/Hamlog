@@ -1,4 +1,6 @@
 import { readPosts, writePosts } from '../../models/postModel.js';
+import { nextPostTimestamp } from '../../utils/postVersion.js';
+import { isPostDeletionPending } from '../../utils/postVisibility.js';
 import {
   DEFAULT_CATEGORY,
   normalizeCategoryKey
@@ -9,9 +11,9 @@ export async function replaceCategoryInPosts(previousName, nextName) {
   let updatedCount = 0;
 
   const nextPosts = posts.map(post => {
-    if (normalizeCategoryKey(post.category) === normalizeCategoryKey(previousName)) {
+    if (!isPostDeletionPending(post) && normalizeCategoryKey(post.category) === normalizeCategoryKey(previousName)) {
       updatedCount += 1;
-      return { ...post, category: nextName };
+      return { ...post, category: nextName, updatedAt: nextPostTimestamp(post) };
     }
     return post;
   });

@@ -25,6 +25,9 @@ const HomePage = () => {
     // 2. Filtering & Logic Hook
     const {
         selectedCategory,
+        selectedTag,
+        selectedSeries,
+        clearReaderFilter,
         selectCategory,
         searchQuery,
         setSearchQuery,
@@ -32,6 +35,10 @@ const HomePage = () => {
         setIsComposing,
         searchLoading,
         searchError,
+        searchActive,
+        searchTotal,
+        searchHasMore,
+        loadMore,
         retrySearch,
         sortedPosts,
         popularPosts,
@@ -93,7 +100,7 @@ const HomePage = () => {
                 />
 
                 <main>
-                    {!hasLoaded && posts.length === 0 && (
+                    {!hasLoaded && !error && posts.length === 0 && (
                         <section className="mx-auto max-w-6xl px-4 py-12">
                             <LoadingSpinner message="글 불러오는 중..." />
                         </section>
@@ -114,16 +121,23 @@ const HomePage = () => {
                         </section>
                     )}
 
-                    {!normalizedQuery && !selectedCategory && <FeaturedSection posts={popularPosts} />}
+                    {!searchActive && !selectedCategory && <FeaturedSection posts={popularPosts} />}
 
                     <PostListSection
                         filteredPosts={filteredPosts}
                         categoryTree={categoryTree}
                         selectedCategory={selectedCategory}
+                        selectedTag={selectedTag}
+                        selectedSeries={selectedSeries}
                         searchQuery={searchQuery}
                         normalizedQuery={normalizedQuery}
                         searchLoading={searchLoading}
                         searchError={searchError}
+                        searchActive={searchActive}
+                        searchTotal={searchTotal}
+                        searchHasMore={searchHasMore}
+                        onLoadMore={() => void loadMore()}
+                        onClearReaderFilter={clearReaderFilter}
                         hasLoaded={hasLoaded}
                         loading={loading}
                         error={error}

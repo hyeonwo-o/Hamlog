@@ -1,7 +1,10 @@
 import { normalizePostStatus, normalizeScheduledAt } from './normalizers/postNormalizers.js';
+import { postOwnsSlug } from './postSlugAliases.js';
 
-// A malformed tombstone must stay private too. Only an explicit restore removes it.
-export const isPostTrashed = (post) => Object.hasOwn(post ?? {}, 'deletedAt');
+export const isPostDeletionPending = (post) => Object.hasOwn(post ?? {}, 'purgeRequestedAt');
+
+// Malformed tombstones and deletion intents must also fail closed.
+export const isPostTrashed = (post) => Object.hasOwn(post ?? {}, 'deletedAt') || isPostDeletionPending(post);
 
 export function getScheduledTimestamp(value) {
     const normalized = normalizeScheduledAt(value);
@@ -27,5 +30,5 @@ export function filterPublicPosts(posts, now = Date.now()) {
 }
 
 export function findPublicPostBySlug(posts, slug, now = Date.now()) {
-    return posts.find(post => post.slug === slug && isPostPublicVisible(post, now));
+    return posts.find(post => postOwnsSlug(post, slug) && isPostPublicVisible(post, now));
 }

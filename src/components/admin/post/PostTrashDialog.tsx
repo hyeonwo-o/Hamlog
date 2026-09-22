@@ -19,6 +19,7 @@ export default function PostTrashDialog({ onClose, onRestored, onDeleted }: Prop
   const [notice, setNotice] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
   const [confirmation, setConfirmation] = useState('');
+  const [uncertainDeletionIds, setUncertainDeletionIds] = useState<Set<string>>(new Set());
   const refresh = useCallback(async () => {
     requestRef.current?.abort();
     const controller = new AbortController();
@@ -27,7 +28,11 @@ export default function PostTrashDialog({ onClose, onRestored, onDeleted }: Prop
     setError('');
     try {
       const next = await fetchTrashedPosts(controller.signal);
-      if (!controller.signal.aborted) setPosts(next);
+      if (!controller.signal.aborted) {
+        setPosts(next);
+        setUncertainDeletionIds(new Set());
+        setDeleteTarget(current => current ? next.find(post => post.id === current.id) ?? null : null);
+      }
     } catch (reason) {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : '휴지통을 불러오지 못했습니다.');
     } finally {
@@ -70,7 +75,14 @@ export default function PostTrashDialog({ onClose, onRestored, onDeleted }: Prop
       // The action button disappears with its row; keep keyboard focus in the dialog.
       dialogRef.current?.focus();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '휴지통 작업에 실패했습니다.');
+      const message = reason instanceof Error ? reason.message : '휴지통 작업에 실패했습니다.';
+      if (permanent) {
+        // A failed response may follow a partially completed deletion. Never offer
+        // restoration until the server's current trash state has been confirmed.
+        setUncertainDeletionIds(current => new Set(current).add(post.id));
+        await refresh();
+      }
+      setError(message);
     } finally {
       busyRef.current = false;
       setBusyId('');
@@ -99,7 +111,7 @@ export default function PostTrashDialog({ onClose, onRestored, onDeleted }: Prop
           <h2 id="post-trash-title" className="text-lg font-semibold">글 휴지통</h2>
           <button type="button" className={buttonClass} onClick={onClose} disabled={Boolean(busyId)}>닫기</button>
         </div>
-        <p className="text-sm leading-6 text-[var(--text-muted)]">휴지통의 글은 공개되지 않습니다. 자동으로 삭제하지 않으며, 복원하면 비공개 초안으로 돌아옵니다. 댓글·수정 이력·조회수와 이미지도 보존합니다.</p>
+        <p className="text-sm leading-6 text-[var(--text-muted)]">휴지통의 글은 공개되지 않습니다. 영구삭제를 요청하기 전에는 자동으로 삭제하지 않으며, 복원하면 비공개 초안으로 돌아옵니다. 영구삭제가 시작된 글은 복원할 수 없고, 중단된 정리는 재시도하거나 서버 재시작 시 이어서 처리합니다.</p>
         <button type="button" onClick={() => void refresh()} disabled={loading || Boolean(busyId)} className={buttonClass}>휴지통 새로고침</button>
         {error && <p role="alert" className="break-words text-sm text-red-600 dark:text-red-300">{error}</p>}
         {notice && <p role="status" className="text-sm text-[var(--accent-strong)]">{notice}</p>}
@@ -108,16 +120,18 @@ export default function PostTrashDialog({ onClose, onRestored, onDeleted }: Prop
             {posts.map(post => <li key={post.id} className="space-y-3 rounded-lg border border-[color:var(--border)] p-3">
               <h3 className="break-words text-sm font-semibold">{post.title}</h3>
               <p className="text-xs text-[var(--text-muted)]">휴지통 이동: {post.deletedAt ? new Date(post.deletedAt).toLocaleString('ko-KR') : '알 수 없음'}</p>
+              {Object.hasOwn(post, 'purgeRequestedAt') && <p className="text-sm text-red-600 dark:text-red-300">영구삭제 정리가 완료되지 않았습니다. 일부 데이터가 이미 삭제되었으므로 복원할 수 없습니다. 영구삭제를 재시도해 주세요.</p>}
+              {uncertainDeletionIds.has(post.id) && <p className="text-sm text-red-600 dark:text-red-300">삭제 요청의 결과를 확인하지 못했습니다. 휴지통을 새로고침한 뒤 진행해 주세요.</p>}
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={Boolean(busyId)} onClick={() => void act(post)} className={buttonClass}>초안으로 복원</button>
-                <button type="button" disabled={Boolean(busyId)} onClick={() => { setDeleteTarget(post); setConfirmation(''); }} className={`${buttonClass} !text-red-600 dark:!text-red-300`}>영구삭제</button>
+                <button type="button" disabled={Boolean(busyId) || Object.hasOwn(post, 'purgeRequestedAt') || uncertainDeletionIds.has(post.id)} onClick={() => void act(post)} className={buttonClass}>초안으로 복원</button>
+                <button type="button" disabled={Boolean(busyId) || uncertainDeletionIds.has(post.id)} onClick={() => { setDeleteTarget(post); setConfirmation(''); }} className={`${buttonClass} !text-red-600 dark:!text-red-300`}>{Object.hasOwn(post, 'purgeRequestedAt') ? '영구삭제 재시도' : '영구삭제'}</button>
               </div>
               {deleteTarget?.id === post.id && <div className="space-y-2 border-t border-[color:var(--border)] pt-3">
                 <p className="text-sm text-red-600 dark:text-red-300">본문·댓글·조회수·수정 이력이 삭제되며 되돌릴 수 없습니다. 확인하려면 위 글 제목을 정확히 입력해 주세요.</p>
                 <input aria-label="영구삭제 확인 제목" value={confirmation} onChange={event => setConfirmation(event.target.value)} disabled={Boolean(busyId)}
                   className="min-h-11 w-full rounded border border-[color:var(--border)] bg-[var(--surface-muted)] px-3 text-sm" />
                 <div className="flex gap-2">
-                  <button type="button" disabled={Boolean(busyId) || confirmation !== post.title} onClick={() => void act(post, true)} className={`${buttonClass} !text-red-600 dark:!text-red-300`}>영구삭제 확인</button>
+                  <button type="button" disabled={Boolean(busyId) || uncertainDeletionIds.has(post.id) || confirmation !== post.title} onClick={() => void act(post, true)} className={`${buttonClass} !text-red-600 dark:!text-red-300`}>영구삭제 확인</button>
                   <button type="button" disabled={Boolean(busyId)} onClick={() => setDeleteTarget(null)} className={buttonClass}>취소</button>
                 </div>
               </div>}

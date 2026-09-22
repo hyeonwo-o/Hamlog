@@ -9,6 +9,21 @@ import { normalizePostStatus } from '../utils/postStatus';
 import { toIsoDateTime } from '../utils/adminDate';
 import { normalizeDraftCategory, DEFAULT_CATEGORY } from '../utils/category';
 import { isAuthenticationError } from '../api/client';
+import { parseAdminSection } from '../utils/adminSections';
+
+const returnToAdminLogin = () => {
+    const current = new URLSearchParams(window.location.search);
+    const next = new URLSearchParams({
+        section: parseAdminSection(current.get('section')),
+        auth: 'required'
+    });
+    const postId = current.get('post');
+    if (postId) next.set('post', postId);
+    // The destination is always our admin route. Never accept a return URL or
+    // redirect parameter from the page, even when a post ID resembles a URL.
+    // The existing beforeunload/pagehide handlers flush browser recovery first.
+    window.location.assign(`/admin?${next.toString()}`);
+};
 
 interface UsePostPersistenceProps {
     getCurrentDraft: () => PostDraft;
@@ -171,7 +186,7 @@ export const usePostPersistence = ({
         } catch (error) {
             if (!isCurrentDocument()) return false;
             if (isAuthenticationError(error)) {
-                window.location.assign('/admin?auth=required');
+                returnToAdminLogin();
                 return false;
             }
 
@@ -205,7 +220,7 @@ export const usePostPersistence = ({
         } catch (error) {
             if (!isCurrentDocument()) return;
             if (isAuthenticationError(error)) {
-                window.location.assign('/admin?auth=required');
+                returnToAdminLogin();
                 return;
             }
 

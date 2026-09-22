@@ -80,6 +80,8 @@ test('origin admin pages and every sensitive API reject unauthenticated requests
         ['get', '/api/posts/missing/revisions'], ['post', '/api/posts/missing/revisions/r/restore'],
         ['get', '/api/posts/trash/list'], ['post', '/api/posts/missing/trash/restore'], ['delete', '/api/posts/missing/permanent'],
         ['get', '/admin/api/posts/trash/list'], ['post', '/admin/api/posts/missing/trash/restore'], ['delete', '/admin/api/posts/missing/permanent'],
+        ['get', '/api/comments/moderation'], ['patch', '/api/comments/moderation/missing'], ['delete', '/api/comments/moderation/missing'],
+        ['get', '/admin/api/comments/moderation'], ['patch', '/admin/api/comments/moderation/missing'], ['delete', '/admin/api/comments/moderation/missing'],
         ['post', '/api/categories'], ['patch', '/api/categories/reorder'], ['delete', '/api/categories/missing'],
         ['put', '/api/profile'], ['post', '/api/uploads'], ['get', '/api/uploads/unused'],
         ['delete', '/api/uploads/unused'], ['get', '/api/analytics/summary'], ['get', '/api/preview']
@@ -184,6 +186,30 @@ test('Access protects trash and permits private restoration and explicit permane
         .send(purgeBody).expect(403);
     await request(app).delete(`/admin/api/posts/${id}/permanent`).set(headers).send(purgeBody).expect(204);
     await request(app).get(`/admin/api/posts/${id}/revisions`).set(headers).expect(404);
+});
+
+test('Access comment moderation hides public content and keeps origin/version checks', async () => {
+    const headers = { ...trusted, 'Cf-Access-Jwt-Assertion': await signedToken() };
+    const created = await request(app).post('/admin/api/posts').set(headers).send({
+        title: 'Access comment post', slug: 'access-comment-post', status: 'published',
+        contentHtml: '<p>공개 본문</p>'
+    }).expect(201);
+    const comment = (await request(app).post('/api/comments').send({
+        postId: created.body.id, author: '독자', password: 'author-password', content: '관리할 댓글'
+    }).expect(201)).body.comment;
+    const listing = await request(app).get('/admin/api/comments/moderation').set(headers).expect(200);
+    const target = listing.body.comments.find(item => item.id === comment.id);
+    assert.equal(Object.hasOwn(target, 'password'), false);
+    await request(app).patch(`/admin/api/comments/moderation/${comment.id}`).set(headers)
+        .set('Origin', 'https://foreign.test').send({ hidden: true, expectedVersion: target.moderation.version }).expect(403);
+    const hidden = (await request(app).patch(`/admin/api/comments/moderation/${comment.id}`).set(headers)
+        .send({ hidden: true, expectedVersion: target.moderation.version }).expect(200)).body.comment;
+    assert.deepEqual((await request(app).get(`/api/comments?postId=${created.body.id}`).expect(200)).body.comments, []);
+    await request(app).delete(`/admin/api/comments/moderation/${comment.id}`).set(headers)
+        .send({ expectedVersion: target.moderation.version }).expect(409);
+    await request(app).delete(`/admin/api/comments/moderation/${comment.id}`).set(headers)
+        .send({ expectedVersion: hidden.moderation.version }).expect(204);
+    await request(app).delete(`/admin/api/posts/${created.body.id}`).set(headers).expect(204);
 });
 
 test('public health and content stay open; logout clears old auth and hands off to Access', async () => {
