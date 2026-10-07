@@ -10,54 +10,53 @@ interface UsePostFilterProps {
 }
 
 const POSTS_PER_PAGE = 10;
+const FILTER_STORAGE_KEY = 'hamlog:admin:post-filter';
+const DEFAULT_FILTERS = { status: 'all' as PostStatus | 'all', category: 'all', includeDescendants: true };
+
+const readSavedFilters = () => {
+    try {
+        if (typeof window === 'undefined') return DEFAULT_FILTERS;
+        const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
+        const saved: unknown = raw ? JSON.parse(raw) : null;
+        if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return DEFAULT_FILTERS;
+        const candidate = saved as Record<string, unknown>;
+        const validStatuses: Array<PostStatus | 'all'> = ['all', 'draft', 'scheduled', 'published'];
+        return {
+            status: validStatuses.includes(candidate.status as PostStatus | 'all')
+                ? candidate.status as PostStatus | 'all' : DEFAULT_FILTERS.status,
+            category: typeof candidate.category === 'string' && candidate.category.trim()
+                ? candidate.category.trim() : DEFAULT_FILTERS.category,
+            includeDescendants: typeof candidate.includeDescendants === 'boolean'
+                ? candidate.includeDescendants : DEFAULT_FILTERS.includeDescendants
+        };
+    } catch {
+        // Browser preferences are optional, including when storage is blocked.
+        return DEFAULT_FILTERS;
+    }
+};
 
 export function usePostFilter({ posts, categoryTree }: UsePostFilterProps) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterStatus, setFilterStatus] = useState<PostStatus | 'all'>(() => {
-        if (typeof window === 'undefined') return 'all';
-        const saved = window.localStorage.getItem('hamlog:admin:post-filter');
-        if (!saved) return 'all';
-        try {
-            const parsed = JSON.parse(saved) as { status?: PostStatus | 'all' };
-            return parsed.status ?? 'all';
-        } catch {
-            return 'all';
-        }
-    });
-    const [filterCategory, setFilterCategory] = useState<string>(() => {
-        if (typeof window === 'undefined') return 'all';
-        const saved = window.localStorage.getItem('hamlog:admin:post-filter');
-        if (!saved) return 'all';
-        try {
-            const parsed = JSON.parse(saved) as { category?: string };
-            return parsed.category ?? 'all';
-        } catch {
-            return 'all';
-        }
-    });
-    const [filterCategoryIncludeDescendants, setFilterCategoryIncludeDescendants] = useState(() => {
-        if (typeof window === 'undefined') return true;
-        const saved = window.localStorage.getItem('hamlog:admin:post-filter');
-        if (!saved) return true;
-        try {
-            const parsed = JSON.parse(saved) as { includeDescendants?: boolean };
-            return parsed.includeDescendants ?? true;
-        } catch {
-            return true;
-        }
-    });
+    const [savedFilters] = useState(readSavedFilters);
+    const [filterStatus, setFilterStatus] = useState(savedFilters.status);
+    const [filterCategory, setFilterCategory] = useState(savedFilters.category);
+    const [filterCategoryIncludeDescendants, setFilterCategoryIncludeDescendants] = useState(savedFilters.includeDescendants);
     const [page, setPage] = useState(1);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        window.localStorage.setItem(
-            'hamlog:admin:post-filter',
-            JSON.stringify({
-                status: filterStatus,
-                category: filterCategory,
-                includeDescendants: filterCategoryIncludeDescendants
-            })
-        );
+        try {
+            window.localStorage.setItem(
+                FILTER_STORAGE_KEY,
+                JSON.stringify({
+                    status: filterStatus,
+                    category: filterCategory,
+                    includeDescendants: filterCategoryIncludeDescendants
+                })
+            );
+        } catch {
+            // Continue with the current in-memory filters when persistence fails.
+        }
     }, [filterCategory, filterCategoryIncludeDescendants, filterStatus]);
 
     const matchingCategoryKeys = useMemo(() => {

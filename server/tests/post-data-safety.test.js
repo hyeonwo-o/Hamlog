@@ -42,6 +42,46 @@ const create = async (slug = 'safety-fixture', category = '이전 분류') => {
   return result.data;
 };
 
+test('post updates reject missing or non-string versions before changing any stores', async () => {
+  const post = await create();
+  const originalPosts = await readPosts();
+  const originalCategories = await readCategories();
+  const originalRevisions = await readPostRevisions(post.id);
+  for (const version of [undefined, null, 0, false, [], {}]) {
+    const result = await updatePostService(post.id, {
+      title: 'Unversioned overwrite', category: 'Must Not Be Created',
+      ...(version === undefined ? {} : { expectedUpdatedAt: version })
+    });
+    assert.equal(result.code, 'precondition_required');
+  }
+  assert.deepEqual(await readPosts(), originalPosts);
+  assert.deepEqual(await readCategories(), originalCategories);
+  assert.deepEqual(await readPostRevisions(post.id), originalRevisions);
+
+  const saved = await updatePostService(post.id, { title: 'Current version save', expectedUpdatedAt: post.updatedAt });
+  assert.equal(saved.success, true);
+  assert.notEqual(saved.data.updatedAt, post.updatedAt);
+  const currentRevisions = await readPostRevisions(post.id);
+  for (const expectedUpdatedAt of [post.updatedAt, '']) {
+    const stale = await updatePostService(post.id, { title: 'Stale overwrite', expectedUpdatedAt });
+    assert.equal(stale.code, 'edit_conflict');
+  }
+  assert.equal((await readPosts())[0].title, 'Current version save');
+  assert.deepEqual(await readPostRevisions(post.id), currentRevisions);
+});
+
+test('a legacy post without updatedAt requires an explicit empty version and gains a version on save', async () => {
+  const { updatedAt, ...legacy } = await create();
+  assert.ok(updatedAt);
+  await writePosts([legacy]);
+  assert.equal((await updatePostService(legacy.id, { title: 'Unversioned overwrite' })).code, 'precondition_required');
+  const saved = await updatePostService(legacy.id, { title: 'Confirmed legacy overwrite', expectedUpdatedAt: '' });
+  assert.equal(saved.success, true);
+  assert.ok(Number.isFinite(Date.parse(saved.data.updatedAt)));
+  assert.equal((await updatePostService(legacy.id, { title: 'Repeated legacy overwrite', expectedUpdatedAt: '' })).code, 'edit_conflict');
+  assert.equal((await readPosts())[0].title, 'Confirmed legacy overwrite');
+});
+
 for (const action of ['rename', 'delete']) {
   test(`category ${action} advances affected versions and rejects stale saves before category recreation`, async () => {
     const post = await create();
@@ -243,7 +283,7 @@ test('rebuilding a missing index cannot expose or lose a pending deletion intent
 test('pending marker is server-owned and malformed markers fail closed even without deletedAt', async () => {
   const result = await createPostService({ slug: 'marker-input', title: 'Synthetic', status: 'draft', purgeRequestedAt: '2026-01-01' });
   assert.equal(result.data.purgeRequestedAt, undefined);
-  const changed = await updatePostService(result.data.id, { purgeRequestedAt: '2026-01-01' });
+  const changed = await updatePostService(result.data.id, { purgeRequestedAt: '2026-01-01', expectedUpdatedAt: result.data.updatedAt });
   assert.equal(changed.data.purgeRequestedAt, undefined);
   for (const purgeRequestedAt of [null, '', 'invalid']) {
     assert.equal(isPostPublicVisible({ status: 'published', purgeRequestedAt }), false);

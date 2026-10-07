@@ -206,7 +206,8 @@ test('authenticated content routes persist posts and categories', async () => {
             ...createPostPayload,
             slug: 'ci-hardening-updated',
             title: 'CI Hardening Updated',
-            category: 'Platform'
+            category: 'Platform',
+            expectedUpdatedAt: postsAfterCategoryRename[0].updatedAt
         });
 
     assert.equal(updatePostResponse.status, 200);
@@ -356,7 +357,7 @@ test('new posts default to draft and invalid API statuses are rejected', async (
     const invalidUpdateResponse = await withTrustedOrigin(request(app)
         .put(`/api/posts/${createDraftResponse.body.id}`)
         .set('Cookie', cookies))
-        .send({ status: null });
+        .send({ status: null, expectedUpdatedAt: createDraftResponse.body.updatedAt });
 
     assert.equal(invalidUpdateResponse.status, 400);
     assert.equal(invalidUpdateResponse.body.message, '유효하지 않은 포스트 상태입니다.');
@@ -522,7 +523,8 @@ test('post revisions can be listed and restored', async () => {
             ...createPostResponse.body,
             title: 'Revision Driven Post Updated',
             slug: 'revision-driven-post-updated',
-            category: 'Engineering'
+            category: 'Engineering',
+            expectedUpdatedAt: createPostResponse.body.updatedAt
         });
 
     assert.equal(updatePostResponse.status, 200);
@@ -576,7 +578,7 @@ test('post revisions can be listed and restored', async () => {
     assert.ok(restoredRevisionsResponse.body.some(revision => revision.event === 'updated'));
 });
 
-test('post updates reject stale editor saves', async () => {
+test('post updates require a string version and reject stale editor saves', async () => {
     const cookies = await loginAsAdmin();
 
     const createPostResponse = await withTrustedOrigin(request(app)
@@ -596,6 +598,24 @@ test('post updates reject stale editor saves', async () => {
 
     assert.equal(createPostResponse.status, 201);
 
+    const revisionsBeforeRejectedUpdates = await readPostRevisions(createPostResponse.body.id);
+    const categoriesBeforeRejectedUpdates = await readCategories();
+    for (const version of [undefined, null, 0, false, [], {}]) {
+        const rejectedUpdate = await withTrustedOrigin(request(app)
+            .put(`/api/posts/${createPostResponse.body.id}`)
+            .set('Cookie', cookies))
+            .send({
+                title: 'Unversioned Update',
+                category: 'Must Not Be Created',
+                ...(version === undefined ? {} : { expectedUpdatedAt: version })
+            });
+        assert.equal(rejectedUpdate.status, 428);
+        assert.match(rejectedUpdate.body.message, /버전을 확인/);
+    }
+    assert.equal((await readPosts())[0].title, createPostResponse.body.title);
+    assert.deepEqual(await readPostRevisions(createPostResponse.body.id), revisionsBeforeRejectedUpdates);
+    assert.deepEqual(await readCategories(), categoriesBeforeRejectedUpdates);
+
     const firstUpdateResponse = await withTrustedOrigin(request(app)
         .put(`/api/posts/${createPostResponse.body.id}`)
         .set('Cookie', cookies))
@@ -606,6 +626,7 @@ test('post updates reject stale editor saves', async () => {
         });
 
     assert.equal(firstUpdateResponse.status, 200);
+    const revisionsAfterFirstUpdate = await readPostRevisions(createPostResponse.body.id);
 
     const staleUpdateResponse = await withTrustedOrigin(request(app)
         .put(`/api/posts/${createPostResponse.body.id}`)
@@ -621,6 +642,7 @@ test('post updates reject stale editor saves', async () => {
 
     const posts = await readPosts();
     assert.equal(posts[0].title, 'Fresh Update');
+    assert.deepEqual(await readPostRevisions(createPostResponse.body.id), revisionsAfterFirstUpdate);
 });
 
 test('profile update and uploads require authentication and persist', async () => {

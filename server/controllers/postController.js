@@ -80,6 +80,7 @@ export const updatePost = async (req, res) => {
         if (!result.success) {
             const status = result.code === 'not_found' ? 404
                 : result.code === 'validation_error' ? 400
+                    : result.code === 'precondition_required' ? 428
                     : result.code === 'duplicate_slug' || result.code === 'edit_conflict' ? 409
                         : 500;
             return res.status(status).json({ message: result.error });

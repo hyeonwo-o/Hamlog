@@ -2,6 +2,26 @@ import { expect, test } from '@playwright/test';
 
 const backendOrigin = `http://127.0.0.1:${process.env.E2E_API_PORT ?? process.env.PORT ?? '4100'}`;
 
+test('production home defers the editor bundle until the authenticated editor opens', async ({ page }) => {
+  const scripts: string[] = [];
+  page.on('request', request => {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname.startsWith('/assets/') && pathname.endsWith('.js')) scripts.push(pathname);
+  });
+
+  await page.goto(`${backendOrigin}/`, { waitUntil: 'networkidle' });
+  await expect(page.locator('.public-site h1').first()).toBeVisible();
+  expect(scripts.some(pathname => pathname.includes('/editor-vendor-'))).toBe(false);
+
+  const login = await page.request.post(`${backendOrigin}/api/auth/login`, {
+    data: { password: process.env.ADMIN_PASSWORD ?? 'e2e-password' }
+  });
+  expect(login.ok()).toBe(true);
+  await page.goto(`${backendOrigin}/admin?section=posts`);
+  await expect(page.locator('.ProseMirror')).toBeVisible();
+  expect(scripts.some(pathname => pathname.includes('/editor-vendor-'))).toBe(true);
+});
+
 test('production home keeps a styled shell until bootstrap hydration completes', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
 

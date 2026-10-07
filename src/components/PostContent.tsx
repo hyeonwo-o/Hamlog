@@ -7,6 +7,7 @@ import { Copy, Check, Terminal } from 'lucide-react';
 import { resolveMeaningfulImageAlt } from '../editor/utils/imageAlt';
 import { buildImageVariantSrcSet, buildImageVariantUrl } from '../utils/imageUrl';
 import { resolveMermaidCodeBlockSource } from '../utils/mermaid';
+import { normalizeYoutubeEmbedUrl } from '../utils/youtubeEmbed';
 import { createHeadingIdAllocator } from '../../server/utils/headingAnchors.js';
 
 interface PostContentProps {
@@ -32,7 +33,9 @@ const sanitizeHtml = (html: string) =>
       'image',
       'domain'
     ],
-    ADD_TAGS: ['figure', 'figcaption', 'link-card']
+    // Every surviving iframe is validated and rebuilt below; source attributes
+    // never flow directly into the rendered iframe.
+    ADD_TAGS: ['figure', 'figcaption', 'link-card', 'iframe']
   });
 
 type HtmlNode = DOMNode | ChildNode;
@@ -277,6 +280,25 @@ const PostContent: React.FC<PostContentProps> = ({ contentHtml }) => {
   const options: HTMLReactParserOptions = {
     replace: (domNode: DOMNode) => {
       if (!isElementNode(domNode)) return undefined;
+
+      if (domNode.name === 'iframe') {
+        const src = normalizeYoutubeEmbedUrl(domNode.attribs.src);
+        if (!src) return <></>;
+        return (
+          <iframe
+            src={src}
+            title={cleanContextText(domNode.attribs.title) || 'YouTube 동영상'}
+            width={640}
+            height={360}
+            className="aspect-video h-auto w-full max-w-full border-0"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        );
+      }
 
       // 1. Handle Headings: Add IDs for TOC
       if (['h1', 'h2', 'h3'].includes(domNode.name)) {

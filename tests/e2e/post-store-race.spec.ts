@@ -26,7 +26,7 @@ test('old list responses cannot undo confirmed saves, creates, deletes or restor
           return Response.json(options.method === 'POST' ? created : updated);
         };
         const read = usePostStore.getState().fetchPosts('full');
-        if (action === 'update') await usePostStore.getState().updatePost(original.id, updated);
+        if (action === 'update') await usePostStore.getState().updatePost(original.id, { ...updated, expectedUpdatedAt: original.updatedAt });
         if (action === 'create') await usePostStore.getState().addPost(created);
         if (action === 'delete') await usePostStore.getState().deletePost(original.id);
         if (action === 'restore') usePostStore.getState().applyConfirmedPost(updated);
@@ -71,7 +71,7 @@ test('an invalidated list error does not clear an active save indicator or repla
         });
       };
       const read = usePostStore.getState().fetchPosts('full');
-      const write = usePostStore.getState().updatePost(post.id, post);
+      const write = usePostStore.getState().updatePost(post.id, { ...post, expectedUpdatedAt: '' });
       releaseRead(Response.json({ message: '오래된 목록 오류' }, { status: 500 }));
       await read;
       const pending = { loading: usePostStore.getState().loading, error: usePostStore.getState().error };

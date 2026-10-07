@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Post, PostInput } from '../data/blogData';
+import type { UpdatePostInput } from '../api/postApi';
 import {
   fetchPosts as fetchPostsRequest,
   createPost as createPostRequest,
@@ -20,7 +21,7 @@ interface PostState {
   fullPostIds: string[];
   fetchPosts: (mode?: 'summary' | 'full') => Promise<void>;
   addPost: (post: PostInput) => Promise<Post>;
-  updatePost: (id: string, post: PostInput) => Promise<Post>;
+  updatePost: (id: string, post: UpdatePostInput) => Promise<Post>;
   deletePost: (id: string) => Promise<void>;
   applyConfirmedPost: (post: Post) => void;
   removeConfirmedPost: (id: string) => void;
