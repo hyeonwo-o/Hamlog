@@ -42,20 +42,20 @@
     "@tiptap/react": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/suggestion": "3.31.3",
-    "axios": "^1.13.2",
+    "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.1.2",
     "clsx": "^2.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dompurify": "^3.4.14",
+    "dompurify": "^3.4.16",
     "express": "^4.19.2",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "html-react-parser": "^5.2.11",
     "jsonwebtoken": "^9.0.3",
     "jose": "6.2.12",
-    "katex": "^0.16.27",
+    "katex": "^0.18.10",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.562.0",
     "mermaid": "^11.17.0",
@@ -63,7 +63,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.2",
     "react-syntax-highlighter": "^16.1.0",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "tippy.js": "^6.3.7",
     "zustand": "^5.0.8"
   },
@@ -92,6 +92,7 @@
     "vite": "^7.3.6"
   },
   "overrides": {
-    "qs": "6.16.0"
+    "qs": "6.16.0",
+    "katex": "$katex"
   }
 }

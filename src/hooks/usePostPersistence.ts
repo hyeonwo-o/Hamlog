@@ -161,16 +161,21 @@ export const usePostPersistence = ({
                 seo.title || seo.description || seo.ogImage || seo.canonicalUrl || seo.keywords
                     ? seo
                     : undefined,
-            sections: [],
-            expectedUpdatedAt
+            sections: []
         };
 
         savingRef.current = true;
         setSaving(true);
         try {
-            const saved = activeId
-                ? await updatePost(activeId, payload)
-                : await addPost(payload);
+            let saved: Post;
+            if (activeId) {
+                if (expectedUpdatedAt === undefined) {
+                    throw new Error('현재 저장본의 버전을 확인한 뒤 저장해 주세요.');
+                }
+                saved = await updatePost(activeId, { ...payload, expectedUpdatedAt });
+            } else {
+                saved = await addPost(payload);
+            }
 
             // Saving still updates the store, but must never navigate back to an old
             // document or overwrite the draft that the user switched to.

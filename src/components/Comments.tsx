@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { formatDate } from '../utils/formatDate';
 import type { Comment } from '../types/comment';
 
@@ -16,6 +16,11 @@ interface CommentsProps {
 export const Comments: React.FC<CommentsProps> = ({ postId }) => {
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(false);
+    const [listError, setListError] = useState('');
+    const requestRef = useRef<AbortController | null>(null);
+    const mountedRef = useRef(false);
+    const postRef = useRef(postId);
+    postRef.current = postId;
 
     // Form State
     const [author, setAuthor] = useState('');
@@ -31,24 +36,47 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
     const [deleteError, setDeleteError] = useState('');
 
     const fetchComments = useCallback(async () => {
+        if (!mountedRef.current || postRef.current !== postId) return;
+        requestRef.current?.abort();
+        const controller = new AbortController();
+        requestRef.current = controller;
+        const isCurrentRequest = () => mountedRef.current && postRef.current === postId
+            && requestRef.current === controller && !controller.signal.aborted;
         setLoading(true);
+        setListError('');
         try {
-            const res = await fetch(`${API_BASE}/comments?postId=${postId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setComments(data.comments || []);
+            const res = await fetch(`${API_BASE}/comments?postId=${encodeURIComponent(postId)}`, {
+                signal: controller.signal
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.message || '댓글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+            }
+            const data = await res.json();
+            if (isCurrentRequest()) {
+                setComments(Array.isArray(data.comments) ? data.comments : []);
             }
         } catch (error) {
-            console.error(error);
+            if (isCurrentRequest()) {
+                setListError(error instanceof Error ? error.message : '댓글을 불러오지 못했습니다.');
+            }
         } finally {
-            setLoading(false);
+            if (isCurrentRequest()) setLoading(false);
         }
     }, [postId]);
 
     useEffect(() => {
+        mountedRef.current = true;
+        setComments([]);
+        setListError('');
         if (postId) {
             void fetchComments();
         }
+        return () => {
+            mountedRef.current = false;
+            requestRef.current?.abort();
+            requestRef.current = null;
+        };
     }, [postId, fetchComments]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -117,6 +145,18 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
 
             {/* List */}
             <div className="space-y-6 mb-10">
+                {listError && (
+                    <div role="alert" className="rounded-lg border border-[var(--border)] p-4 text-sm text-[var(--text-muted)]">
+                        <p>{listError}</p>
+                        <button
+                            type="button"
+                            onClick={() => void fetchComments()}
+                            className="mt-3 rounded-lg border border-[var(--border)] px-4 py-2 font-semibold text-[var(--text)]"
+                        >
+                            댓글 다시 불러오기
+                        </button>
+                    </div>
+                )}
                 {loading ? (
                     <p className="text-sm text-[var(--text-muted)]">불러오는 중...</p>
                 ) : comments.length > 0 ? (
@@ -141,9 +181,9 @@ export const Comments: React.FC<CommentsProps> = ({ postId }) => {
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                         </div>
                     ))
-                ) : (
+                ) : !listError ? (
                     <p className="text-sm text-[var(--text-muted)]">첫 번째 댓글을 남겨보세요.</p>
-                )}
+                ) : null}
             </div>
 
             {/* Form */}

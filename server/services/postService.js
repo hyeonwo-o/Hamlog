@@ -164,17 +164,21 @@ export async function updatePostService(id, rawData) {
             return { success: false, error: '휴지통의 글은 먼저 복원해 주세요.', code: 'edit_conflict' };
         }
 
-        if (rawData.expectedUpdatedAt !== undefined) {
-            const expectedUpdatedAt = String(rawData.expectedUpdatedAt ?? '');
-            const currentUpdatedAt = String(existing.updatedAt ?? '');
-
-            if (expectedUpdatedAt !== currentUpdatedAt) {
-                return {
-                    success: false,
-                    error: '다른 탭 또는 세션에서 글이 먼저 수정되었습니다. 최신 글을 다시 불러온 뒤 저장해 주세요.',
-                    code: 'edit_conflict'
-                };
-            }
+        if (typeof rawData?.expectedUpdatedAt !== 'string') {
+            return {
+                success: false,
+                error: '현재 저장본의 버전을 확인한 뒤 저장해 주세요.',
+                code: 'precondition_required'
+            };
+        }
+        // An explicit empty token supports legacy posts without updatedAt;
+        // omitting the token must never bypass concurrent-edit protection.
+        if (rawData.expectedUpdatedAt !== String(existing.updatedAt ?? '')) {
+            return {
+                success: false,
+                error: '다른 탭 또는 세션에서 글이 먼저 수정되었습니다. 최신 글을 다시 불러온 뒤 저장해 주세요.',
+                code: 'edit_conflict'
+            };
         }
 
         // 1. Normalize & Validate Input (merging with existing)

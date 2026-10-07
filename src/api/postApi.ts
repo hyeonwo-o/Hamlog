@@ -3,8 +3,10 @@ import { requestJson, requestVoid } from './client';
 import type { SearchPage, SearchPost } from '../types/search';
 import { normalizeSearchQuery } from '../utils/searchQuery';
 
-export type SavePostInput = PostInput & {
-  expectedUpdatedAt?: string;
+export type SavePostInput = PostInput;
+
+export type UpdatePostInput = SavePostInput & {
+  expectedUpdatedAt: string;
 };
 
 interface PostListResponse {
@@ -36,7 +38,7 @@ export async function createPost(payload: SavePostInput): Promise<Post> {
   });
 }
 
-export async function updatePost(id: string, payload: SavePostInput): Promise<Post> {
+export async function updatePost(id: string, payload: UpdatePostInput): Promise<Post> {
   return requestJson<Post>(`/posts/${id}`, {
     method: 'PUT',
     headers: {

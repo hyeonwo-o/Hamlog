@@ -159,6 +159,22 @@ if [ "$(docker exec "$CONTAINER_NAME" id -un)" != "root" ]; then
   exit 1
 fi
 
+# Include a real published post and upload in the snapshot used for restoration.
+docker exec -i "$CONTAINER_NAME" node --input-type=module - <<'NODE'
+import assert from 'node:assert/strict';
+import { writeFile } from 'node:fs/promises';
+import { createPostService } from './server/services/postService.js';
+process.umask(0o027);
+const result = await createPostService({
+  slug: 'docker-restore-smoke', title: 'Docker restore smoke',
+  summary: 'Backup restore verification', category: 'Smoke', status: 'published',
+  publishedAt: '2026-01-01',
+  contentJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Restored published content' }] }] }
+});
+assert.equal(result.success, true, result.error);
+await writeFile('/app/server/uploads/restore-cover.txt', 'backup upload');
+NODE
+
 mkdir -p "$SMOKE_ROOT/backups"
 HAMLOG_CONTAINER_NAME="$CONTAINER_NAME" \
   HAMLOG_VERIFY_DATA=true \
@@ -174,4 +190,78 @@ if [ "$(find "$SMOKE_ROOT/backups" -maxdepth 1 -type f -name 'hamlog-*.tar.gz' |
   exit 1
 fi
 
-echo "Docker smoke test passed: non-root runtime, writable mounts, read-only source, and legacy rollback backup."
+seed_newer_restore_changes() {
+  docker exec -i "$CONTAINER_NAME" node --input-type=module - <<'NODE'
+import assert from 'node:assert/strict';
+import { writeFile } from 'node:fs/promises';
+import { readPosts } from './server/models/postModel.js';
+import { beginPostDeletion } from './server/models/postDeletionModel.js';
+process.umask(0o027);
+const post = (await readPosts()).find(post => post.slug === 'docker-restore-smoke');
+assert.ok(post);
+await beginPostDeletion({ ...post, deletedAt: new Date().toISOString() });
+await writeFile('/app/server/uploads/restore-later.txt', 'newer upload');
+NODE
+}
+
+verify_restored_snapshot() {
+  docker exec -i "$CONTAINER_NAME" node --input-type=module - <<'NODE'
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const response = await fetch('http://127.0.0.1:4000/api/posts/docker-restore-smoke', { signal: AbortSignal.timeout(5000) });
+assert.equal(response.status, 200);
+const post = await response.json();
+assert.equal(post.title, 'Docker restore smoke');
+assert.equal(post.status, 'published');
+assert.match(post.contentHtml, /Restored published content/);
+assert.equal(fs.readFileSync('/app/server/uploads/restore-cover.txt', 'utf8'), 'backup upload');
+assert.equal(fs.existsSync('/app/server/uploads/restore-later.txt'), false);
+const intentsDir = '/app/server/data/post-deletions';
+assert.deepEqual(fs.existsSync(intentsDir) ? fs.readdirSync(intentsDir) : [], []);
+NODE
+  verify_writable_mounts
+}
+
+RESTORE_ARCHIVE="$(find "$SMOKE_ROOT/backups" -maxdepth 1 -type f -name 'hamlog-*.tar.gz' -print -quit)"
+seed_newer_restore_changes
+HAMLOG_CONTAINER_NAME="$CONTAINER_NAME" bash "$SCRIPT_DIR/restore-data.sh" "$RESTORE_ARCHIVE" "$SMOKE_ROOT"
+wait_for_health docker-smoke-root
+verify_restored_snapshot
+
+# Verify directory replacement also preserves permissions for the default user.
+docker rm -f "$CONTAINER_NAME" >/dev/null
+prepare_data node "$HOST_GID"
+start_container "" docker-smoke-restored
+wait_for_health docker-smoke-restored
+seed_newer_restore_changes
+HAMLOG_CONTAINER_NAME="$CONTAINER_NAME" bash "$SCRIPT_DIR/restore-data.sh" "$RESTORE_ARCHIVE" "$SMOKE_ROOT"
+wait_for_health docker-smoke-restored
+verify_restored_snapshot
+if [ "$(docker exec "$CONTAINER_NAME" id -un)" != node ]; then
+  echo "Restored container is not running as the node user." >&2
+  exit 1
+fi
+
+# The original snapshots must keep the later files and deletion records intact.
+docker run --rm -i --user "$HOST_UID:$HOST_GID" --network none --read-only \
+  --cap-drop ALL --security-opt no-new-privileges \
+  -v "$SMOKE_ROOT:/smoke:ro" --entrypoint node "$IMAGE" --input-type=module - <<'NODE'
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+const snapshots = fs.readdirSync('/smoke').filter(name => name.startsWith('.hamlog-before-restore.'));
+assert.equal(snapshots.length, 2);
+for (const name of snapshots) {
+  const root = path.join('/smoke', name);
+  assert.equal(fs.readFileSync(path.join(root, 'uploads/restore-later.txt'), 'utf8'), 'newer upload');
+  assert.equal(fs.readFileSync(path.join(root, 'uploads/restore-cover.txt'), 'utf8'), 'backup upload');
+  const intentsDir = path.join(root, 'data/post-deletions');
+  const intents = fs.readdirSync(intentsDir);
+  assert.equal(intents.length, 1);
+  const intent = JSON.parse(fs.readFileSync(path.join(intentsDir, intents[0]), 'utf8'));
+  assert.equal(intent.slug, 'docker-restore-smoke');
+  assert.ok(Number.isFinite(Date.parse(intent.purgeRequestedAt)));
+}
+NODE
+
+echo "Docker smoke test passed: non-root runtime, writable mounts, read-only source, legacy rollback backup, and snapshot restore."

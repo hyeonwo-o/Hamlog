@@ -64,20 +64,23 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'editor-vendor': [
-              '@tiptap/react',
-              '@tiptap/starter-kit',
-              '@tiptap/extension-image',
-              '@tiptap/extension-link',
-              '@tiptap/extension-placeholder',
-              '@tiptap/extension-table',
-              '@tiptap/extension-code-block-lowlight',
-              'tippy.js'
-            ],
-            'icon-vendor': ['lucide-react'],
-            'math-vendor': ['katex']
+          manualChunks(id) {
+            // Match package internals too: assigning only entry points lets the
+            // JSX runtime or shared CommonJS helpers leak into the lazy editor.
+            if (id.includes('commonjsHelpers')) return 'react-vendor'
+            const packagePath = id.split('/node_modules/').at(-1)
+            if (packagePath === id) return
+            const packageName = packagePath?.match(/^(@[^/]+\/[^/]+|[^/]+)/)?.[1]
+            if (!packageName) return
+
+            if (['react', 'react-dom', 'react-router', 'react-router-dom', 'scheduler'].includes(packageName)) {
+              return 'react-vendor'
+            }
+            if (packageName.startsWith('@tiptap/') || packageName.startsWith('prosemirror-') || packageName === 'tippy.js') {
+              return 'editor-vendor'
+            }
+            if (packageName === 'lucide-react') return 'icon-vendor'
+            if (packageName === 'katex') return 'math-vendor'
           }
         }
       }
